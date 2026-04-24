@@ -17,8 +17,26 @@ import {
 } from '@/lib/firebase/auth';
 import { isFirebaseConfigured } from '@/lib/firebase/config';
 
+function firebaseConfigUserMessage(): string {
+  if (typeof window === 'undefined') {
+    return 'Firebase environment variables are missing from this build.';
+  }
+  const host = window.location.hostname;
+  const isLocal =
+    host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
+  if (isLocal) {
+    return 'Firebase keys are not loaded. Add NEXT_PUBLIC_FIREBASE_* to .env.local in the project root, then stop and restart the dev server (npm run dev).';
+  }
+  return 'Firebase keys are not in this deployment. In Vercel: Project → Settings → Environment Variables — add every NEXT_PUBLIC_FIREBASE_* value from your .env.local (Production + Preview if needed), then redeploy. Client-side Firebase vars are baked in at build time.';
+}
+
+export type OpenLoginOptions = {
+  /** After successful sign-in, navigate here (e.g. `/photo-admin/setup`). */
+  redirectTo?: string;
+};
+
 type LoginModalContextValue = {
-  openLoginModal: () => void;
+  openLoginModal: (opts?: OpenLoginOptions) => void;
   closeLoginModal: () => void;
 };
 
@@ -35,9 +53,11 @@ export function useLoginModal() {
 function LoginModal({
   open,
   onClose,
+  redirectTo,
 }: {
   open: boolean;
   onClose: () => void;
+  redirectTo: string | null;
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -64,18 +84,22 @@ function LoginModal({
   }, [open]);
 
   const finishSuccess = useCallback(() => {
-    onClose();
+    const dest = redirectTo;
     setName('');
     setEmail('');
     setPassword('');
     setError(null);
+    if (dest) {
+      router.push(dest);
+    }
+    onClose();
     router.refresh();
-  }, [onClose, router]);
+  }, [onClose, redirectTo, router]);
 
   const onGoogle = async () => {
     setError(null);
     if (!isFirebaseConfigured()) {
-      setError('Add Firebase keys to .env.local.');
+      setError(firebaseConfigUserMessage());
       return;
     }
     setLoading(true);
@@ -92,7 +116,7 @@ function LoginModal({
     e.preventDefault();
     setError(null);
     if (!isFirebaseConfigured()) {
-      setError('Add Firebase keys to .env.local.');
+      setError(firebaseConfigUserMessage());
       return;
     }
     setLoading(true);
@@ -275,14 +299,25 @@ function LoginModal({
 
 export function LoginModalProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [redirectTo, setRedirectTo] = useState<string | null>(null);
 
-  const openLoginModal = useCallback(() => setOpen(true), []);
-  const closeLoginModal = useCallback(() => setOpen(false), []);
+  const openLoginModal = useCallback((opts?: OpenLoginOptions) => {
+    setRedirectTo(opts?.redirectTo ?? null);
+    setOpen(true);
+  }, []);
+  const closeLoginModal = useCallback(() => {
+    setOpen(false);
+    setRedirectTo(null);
+  }, []);
 
   return (
     <LoginModalContext.Provider value={{ openLoginModal, closeLoginModal }}>
       {children}
-      <LoginModal open={open} onClose={closeLoginModal} />
+      <LoginModal
+        open={open}
+        onClose={closeLoginModal}
+        redirectTo={redirectTo}
+      />
     </LoginModalContext.Provider>
   );
 }

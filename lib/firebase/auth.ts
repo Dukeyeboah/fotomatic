@@ -6,28 +6,24 @@ import {
   signOut,
   updateProfile,
 } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from './config';
+import {
+  ensureUserProfile,
+  type UserData,
+} from './user-profile';
 
-export interface UserData {
-  uid: string;
-  email: string | null;
-  displayName: string | null;
-  photoURL: string | null;
-  role: 'user' | 'photographer';
-  createdAt?: unknown;
-  updatedAt?: unknown;
-}
-
-export async function getUserData(uid: string): Promise<UserData | null> {
-  const snap = await getDoc(doc(db, 'users', uid));
-  if (!snap.exists()) return null;
-  return snap.data() as UserData;
-}
+export type { UserData } from './user-profile';
+export { getUserData } from './user-profile';
 
 export async function signInEmailPassword(email: string, password: string) {
   try {
     const cred = await signInWithEmailAndPassword(auth, email, password);
+    try {
+      await ensureUserProfile(cred.user);
+    } catch (err) {
+      console.warn('ensureUserProfile after email sign-in', err);
+    }
     return { user: cred.user, error: null as string | null };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Sign in failed';
@@ -45,11 +41,13 @@ export async function signUpEmailPassword(
     if (displayName) {
       await updateProfile(cred.user, { displayName });
     }
+    const emailLocal = email.split('@')[0]?.toLowerCase().replace(/[^a-z0-9._-]/gi, '') || null;
     const userData: UserData = {
       uid: cred.user.uid,
       email: cred.user.email,
       displayName: displayName || cred.user.displayName,
       photoURL: cred.user.photoURL,
+      username: emailLocal,
       role: 'user',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -77,22 +75,12 @@ const googleProvider = new GoogleAuthProvider();
 export async function signInWithGoogle() {
   try {
     const cred = await signInWithPopup(auth, googleProvider);
-    const u = cred.user;
-    const userRef = doc(db, 'users', u.uid);
-    const snap = await getDoc(userRef);
-    if (!snap.exists()) {
-      const userData: UserData = {
-        uid: u.uid,
-        email: u.email,
-        displayName: u.displayName,
-        photoURL: u.photoURL,
-        role: 'user',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
-      await setDoc(userRef, userData);
+    try {
+      await ensureUserProfile(cred.user);
+    } catch (err) {
+      console.warn('ensureUserProfile after Google sign-in', err);
     }
-    return { user: u, error: null as string | null };
+    return { user: cred.user, error: null as string | null };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Google sign-in failed';
     return { user: null, error: message };

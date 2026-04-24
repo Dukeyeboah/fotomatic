@@ -1,8 +1,14 @@
 'use client';
 
+import Link from 'next/link';
 import { SiteHeader } from '@/components/site-header';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
+
+function usernameFromEmail(email: string | null | undefined): string {
+  if (!email || !email.includes('@')) return '—';
+  return email.split('@')[0]!;
+}
 
 export default function AccountPage() {
   const { user, userData, loading } = useAuth();
@@ -16,7 +22,12 @@ export default function AccountPage() {
           Account
         </h1>
         <p className="mt-1 text-sm text-zinc-600">
-          Sign-in details and preferences for your Fotomatic account.
+          Overview of your Fotomatic account. Edit details on your profile page.
+        </p>
+        <p className="mt-2 text-xs text-zinc-500">
+          <Link href="/profile" className="underline">
+            Edit profile
+          </Link>
         </p>
         {loading ? (
           <p className="mt-8 text-sm text-zinc-500">Loading…</p>
@@ -24,15 +35,23 @@ export default function AccountPage() {
           <p className="mt-8 text-sm text-zinc-600">
             <button
               type="button"
-              onClick={openLoginModal}
+              onClick={() => openLoginModal()}
               className="cursor-pointer font-medium text-amber-900 underline"
             >
               Log in
             </button>{' '}
-            to manage your account.
+            to view your account.
           </p>
         ) : (
           <dl className="mt-8 space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm text-sm">
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                Username
+              </dt>
+              <dd className="mt-1 text-zinc-900">
+                {userData?.username ?? usernameFromEmail(user.email)}
+              </dd>
+            </div>
             <div>
               <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
                 Email
@@ -41,22 +60,24 @@ export default function AccountPage() {
             </div>
             <div>
               <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                User ID
+                Account type
               </dt>
-              <dd className="mt-1 break-all font-mono text-xs text-zinc-700">
-                {user.uid}
+              <dd className="mt-1 capitalize text-zinc-900">
+                {userData?.role === 'photographer' ? 'Photographer' : 'Client'}
               </dd>
             </div>
-            {userData?.role ? (
+            {(userData?.city || userData?.country || userData?.state) && (
               <div>
                 <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                  Role
+                  Location
                 </dt>
-                <dd className="mt-1 capitalize text-zinc-900">
-                  {userData.role}
+                <dd className="mt-1 text-zinc-900">
+                  {[userData.city, userData.state, userData.country]
+                    .filter(Boolean)
+                    .join(', ') || '—'}
                 </dd>
               </div>
-            ) : null}
+            )}
           </dl>
         )}
       </div>

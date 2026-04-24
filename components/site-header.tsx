@@ -53,7 +53,7 @@ export function SiteHeader() {
             ) : (
               <button
                 type="button"
-                onClick={openLoginModal}
+                onClick={() => openLoginModal()}
                 className="rounded-full bg-zinc-900 px-4 py-2 text-white hover:bg-zinc-800"
               >
                 Log in

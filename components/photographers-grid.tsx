@@ -71,17 +71,20 @@ export function PhotographersGrid({
   });
 
   const book = async (p: DirectoryPhotographer) => {
-    if (!user || !userData) {
+    if (!user) {
       openLoginModal();
       return;
     }
+    const userName =
+      userData?.displayName ?? user.displayName ?? user.email ?? 'Unknown';
+    const userEmail = userData?.email ?? user.email ?? '';
     setBookingId(p.id);
     const ok = await bookPhotographer({
       photographerId: p.id,
       photographerName: getPhotographerName(p),
       userId: user.uid,
-      userName: userData.displayName || user.email || 'Unknown',
-      userEmail: userData.email || user.email || '',
+      userName,
+      userEmail,
     });
     setBookingId(null);
     if (ok) {
