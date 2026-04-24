@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // Client accounts
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if false;
+    }
+
+    // Public directory (sync/import from your admin tooling or a separate pipeline)
+    match /photographers/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Logged-in clients create booking requests
+    match /photographerBookings/{id} {
+      allow read: if false;
+      allow create: if isAuthenticated();
+      allow update, delete: if false;
+    }
+
+    // Newsletter (optional landing form — tighten or add rate limits in production)
+    match /fotomaticNewsletterLeads/{id} {
+      allow read: if false;
+      allow create: if request.resource.data.email is string &&
+                      request.resource.data.email.size() > 3 &&
+                      request.resource.data.source == 'fotomatic';
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

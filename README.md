@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fotomatic
 
-## Getting Started
+Standalone marketing + photographer discovery app for **Fotomatic** (separate from Grad Drive).
 
-First, run the development server:
+## Stack
+
+- [Next.js](https://nextjs.org/) (App Router) + TypeScript + Tailwind CSS v4
+- [Firebase](https://firebase.google.com/) Auth + Firestore
+
+## Getting started
 
 ```bash
+cd Fotomatic
+cp .env.example .env.local
+# Fill in Firebase Web config from your Fotomatic Firebase project
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Firebase setup (new project)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Create a **new** Firebase project (e.g. `fotomatic-prod`).
+2. Enable **Authentication** → Email/Password.
+3. Enable **Firestore** → publish rules from `firestore.rules` in this repo (adjust as you add an admin console).
+4. Add a Web app and copy config into `.env.local`.
 
-## Learn More
+### Data model (initial)
 
-To learn more about Next.js, take a look at the following resources:
+- `photographers` — public read; seed/update via scripts or a future admin app (writes are denied to clients in the sample rules).
+- `photographerBookings` — authenticated users can **create** requests (adjust if you need admin read access).
+- `users` — one document per Firebase Auth user at signup.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Grad Drive integration (high level)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Grad Drive stays in its own repo; **link users to Fotomatic** for booking, e.g.  
+  `https://fotomatic.app/photographers?code=YOURCODE`
+- Map messages for codes in `.env.local` using `NEXT_PUBLIC_PROMO_MESSAGES` (see `.env.example`).
 
-## Deploy on Vercel
+## Deploy
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Typical options: **Vercel**, **Firebase Hosting**, or any Node host. Set the same `NEXT_PUBLIC_*` env vars in the hosting dashboard.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Repo / GitHub
+
+This folder was scaffolded with its own `git` history from `create-next-app`. To push to GitHub:
+
+```bash
+cd Fotomatic
+git remote add origin https://github.com/YOUR_ORG/fotomatic.git
+git branch -M main
+git push -u origin main
+```
+
+## Assets
+
+Marketing images live in `public/fotomaticImages/` (logo, wordmark, hero + grid photos).
