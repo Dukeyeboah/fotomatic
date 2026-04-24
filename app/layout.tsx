@@ -17,6 +17,24 @@ export const metadata: Metadata = {
   title: 'Fotomatic — Your moments, beautifully preserved',
   description:
     'Find trusted photographers for graduation, portraits, weddings, and milestones.',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      {
+        url: '/icon-light-32x32.png',
+        type: 'image/png',
+        sizes: '32x32',
+        media: '(prefers-color-scheme: light)',
+      },
+      {
+        url: '/icon-dark-32x32.png',
+        type: 'image/png',
+        sizes: '32x32',
+        media: '(prefers-color-scheme: dark)',
+      },
+    ],
+    apple: [{ url: '/apple-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
 };
 
 export default function RootLayout({

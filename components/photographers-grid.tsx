@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import Image from 'next/image';
+import { bookPhotographer } from '@/lib/firebase/firestore';
 import {
-  getPhotographers,
-  bookPhotographer,
-  type Photographer,
-} from '@/lib/firebase/firestore';
+  type DirectoryPhotographer,
+  getDirectoryPhotographers,
+} from '@/lib/photographers-directory';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
-import { Loader2, MapPin, AtSign, ArrowUpRight } from 'lucide-react';
+import { MapPin, AtSign, ArrowUpRight } from 'lucide-react';
 
 const PLACEHOLDER_IMAGES = [
   '/fotomaticImages/fotomatic1.jpg',
@@ -18,12 +18,12 @@ const PLACEHOLDER_IMAGES = [
   '/fotomaticImages/fotomatic4.jpg',
 ];
 
-function getPhotographerName(p: Photographer) {
-  if (p.firstName && p.lastName) return `${p.firstName} ${p.lastName}`;
-  return p.firstName || p.name || 'Photographer';
+function getPhotographerName(p: DirectoryPhotographer) {
+  if (p.lastName) return `${p.firstName} ${p.lastName}`.trim();
+  return p.firstName;
 }
 
-function getInitials(p: Photographer) {
+function getInitials(p: DirectoryPhotographer) {
   const n = getPhotographerName(p);
   const parts = n.split(/\s+/).filter(Boolean);
   if (parts.length >= 2)
@@ -31,17 +31,16 @@ function getInitials(p: Photographer) {
   return n.slice(0, 2).toUpperCase();
 }
 
-function formatLocation(p: Photographer): string {
+function formatLocation(p: DirectoryPhotographer): string {
   const city = p.city?.trim();
   const state = p.state?.trim();
   const country = p.country?.trim();
-  const legacy = [p.address, p.state].filter(Boolean).join(', ');
   if (city && state && country) return `${city}, ${state} · ${country}`;
-  if (city && country) return `${city}, ${country}`;
   if (city && state) return `${city}, ${state}`;
+  if (state && country) return `${state} · ${country}`;
+  if (state) return `${state}, United States`;
   if (city) return city;
-  if (legacy) return legacy;
-  return p.location?.trim() || 'Location coming soon';
+  return 'Location coming soon';
 }
 
 function normalizeUrl(href: string, kind: 'web' | 'ig'): string {
@@ -61,21 +60,11 @@ export function PhotographersGrid({
   /** Shown when a referral/discount code is active (e.g. from Grad Drive link). */
   promoLabel?: string | null;
 }) {
-  const [list, setList] = useState<Photographer[]>([]);
-  const [loading, setLoading] = useState(true);
+  const list = useMemo(() => getDirectoryPhotographers(), []);
   const [q, setQ] = useState('');
   const [bookingId, setBookingId] = useState<string | null>(null);
   const { user, userData } = useAuth();
   const { openLoginModal } = useLoginModal();
-
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      const data = await getPhotographers('interested-follow-up');
-      setList(data);
-      setLoading(false);
-    })();
-  }, []);
 
   const filtered = list.filter((p) => {
     if (!q) return true;
@@ -85,8 +74,8 @@ export function PhotographersGrid({
     return n.includes(qq) || loc.includes(qq);
   });
 
-  const book = async (p: Photographer) => {
-    if (!user || !userData || !p.id) {
+  const book = async (p: DirectoryPhotographer) => {
+    if (!user || !userData) {
       openLoginModal();
       return;
     }
@@ -138,12 +127,10 @@ export function PhotographersGrid({
         />
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-zinc-300" />
-        </div>
-      ) : filtered.length === 0 ? (
-        <p className="text-center text-sm text-zinc-500">No photographers found.</p>
+      {filtered.length === 0 ? (
+        <p className="text-center text-sm text-zinc-500">
+          No photographers found.
+        </p>
       ) : (
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((p, i) => {
@@ -179,7 +166,9 @@ export function PhotographersGrid({
                   ) : (
                     <>
                       <Image
-                        src={PLACEHOLDER_IMAGES[i % PLACEHOLDER_IMAGES.length]!}
+                        src={
+                          PLACEHOLDER_IMAGES[i % PLACEHOLDER_IMAGES.length]!
+                        }
                         alt=""
                         fill
                         className="object-cover opacity-40 grayscale-[20%] transition-opacity group-hover:opacity-50"
@@ -228,7 +217,9 @@ export function PhotographersGrid({
                       </a>
                     ) : null}
                     {!igHref && !webHref ? (
-                      <span className="text-xs text-zinc-400">Links coming soon</span>
+                      <span className="text-xs text-zinc-400">
+                        Links coming soon
+                      </span>
                     ) : null}
                   </div>
                   <button
