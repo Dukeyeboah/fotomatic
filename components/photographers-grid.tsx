@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Image from 'next/image';
-import { bookPhotographer } from '@/lib/firebase/firestore';
+import { BookingRequestModal } from '@/components/booking-request-modal';
 import {
   type DirectoryPhotographer,
   getDirectoryPhotographers,
@@ -58,7 +58,8 @@ export function PhotographersGrid({
 }) {
   const list = useMemo(() => getDirectoryPhotographers(), []);
   const [q, setQ] = useState('');
-  const [bookingId, setBookingId] = useState<string | null>(null);
+  const [bookingPhotographer, setBookingPhotographer] =
+    useState<DirectoryPhotographer | null>(null);
   const { user, userData } = useAuth();
   const { openLoginModal } = useLoginModal();
 
@@ -70,30 +71,12 @@ export function PhotographersGrid({
     return n.includes(qq) || loc.includes(qq);
   });
 
-  const book = async (p: DirectoryPhotographer) => {
+  const openBooking = (p: DirectoryPhotographer) => {
     if (!user) {
       openLoginModal();
       return;
     }
-    const userName =
-      userData?.displayName ?? user.displayName ?? user.email ?? 'Unknown';
-    const userEmail = userData?.email ?? user.email ?? '';
-    setBookingId(p.id);
-    const ok = await bookPhotographer({
-      photographerId: p.id,
-      photographerName: getPhotographerName(p),
-      userId: user.uid,
-      userName,
-      userEmail,
-    });
-    setBookingId(null);
-    if (ok) {
-      alert(
-        `Request sent for ${getPhotographerName(p)}. Our team will follow up.`,
-      );
-    } else {
-      alert('Could not send booking. Try again later.');
-    }
+    setBookingPhotographer(p);
   };
 
   return (
@@ -213,11 +196,10 @@ export function PhotographersGrid({
                   </div>
                   <button
                     type="button"
-                    onClick={() => book(p)}
-                    disabled={bookingId === p.id}
-                    className="mt-auto w-full cursor-pointer rounded-xl bg-zinc-900 py-3 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 disabled:opacity-60"
+                    onClick={() => openBooking(p)}
+                    className="mt-auto w-full cursor-pointer rounded-xl bg-zinc-900 py-3 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
                   >
-                    {bookingId === p.id ? 'Sending…' : 'Request booking'}
+                    Request booking
                   </button>
                 </div>
               </article>
@@ -225,6 +207,16 @@ export function PhotographersGrid({
           })}
         </div>
       )}
+
+      {bookingPhotographer && user ? (
+        <BookingRequestModal
+          photographer={bookingPhotographer}
+          user={user}
+          userData={userData}
+          promoLabel={promoLabel}
+          onClose={() => setBookingPhotographer(null)}
+        />
+      ) : null}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { SiteHeader } from '@/components/site-header';
 import { ProfileSettingsForm } from '@/components/profile-settings-form';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
+import { defaultUserDataFromAuth } from '@/lib/firebase/user-profile';
 import { Loader2 } from 'lucide-react';
 
 export default function ProfilePage() {
@@ -31,7 +32,7 @@ export default function ProfilePage() {
           <div className="mt-12 flex justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-zinc-300" />
           </div>
-        ) : !user || !userData ? (
+        ) : !user ? (
           <p className="mt-8 text-sm text-zinc-600">
             <button
               type="button"
@@ -44,12 +45,24 @@ export default function ProfilePage() {
           </p>
         ) : (
           <div className="mt-8">
+            {!userData ? (
+              <p className="mb-6 rounded-xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
+                Your account is signed in, but the app could not load your
+                Firestore profile yet (check the console and deploy{' '}
+                <code className="rounded bg-white/80 px-1">firestore.rules</code>{' '}
+                to the same Firebase project as your env keys). You can still
+                edit below; saving creates or updates your profile when rules
+                allow.
+              </p>
+            ) : null}
             <ProfileSettingsForm
-              key={`${user.uid}-${userData.role}`}
+              key={`${user.uid}-${userData?.role ?? 'pending'}`}
               user={user}
-              userData={userData}
+              userData={userData ?? defaultUserDataFromAuth(user)}
               onSaved={refreshUserData}
-              showMediaUploads={userData.role === 'photographer'}
+              showMediaUploads={
+                (userData?.role ?? 'user') === 'photographer'
+              }
             />
           </div>
         )}

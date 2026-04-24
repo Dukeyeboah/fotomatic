@@ -1,3 +1,4 @@
+import { FirebaseError } from 'firebase/app';
 import {
   collection,
   doc,
@@ -46,9 +47,21 @@ export interface PhotographerBooking {
   userId: string;
   userName: string;
   userEmail: string;
+  eventType: string;
+  eventLocation: string;
+  duration: string;
+  /** ISO `YYYY-MM-DD` or user-entered date text */
+  eventDate: string;
+  notes: string;
+  /** Optional referral / promo line from landing links */
+  promoNote?: string;
   status?: 'pending' | 'contacted' | 'completed';
   timestamp?: Timestamp;
 }
+
+export type BookPhotographerResult =
+  | { ok: true }
+  | { ok: false; message: string };
 
 const photographersCollection = collection(db, 'photographers');
 const bookingsCollection = collection(db, 'photographerBookings');
@@ -94,19 +107,52 @@ export async function getPhotographers(
 }
 
 export async function bookPhotographer(
-  data: Omit<PhotographerBooking, 'id' | 'timestamp'>,
-): Promise<boolean> {
+  data: Omit<PhotographerBooking, 'id' | 'timestamp' | 'status'>,
+): Promise<BookPhotographerResult> {
   try {
     const ref = doc(bookingsCollection);
-    await setDoc(ref, {
-      ...data,
+    const payload: Record<string, unknown> = {
+      photographerId: data.photographerId,
+      photographerName: data.photographerName,
+      userId: data.userId,
+      userName: data.userName,
+      userEmail: data.userEmail,
+      eventType: data.eventType,
+      eventLocation: data.eventLocation,
+      duration: data.duration,
+      eventDate: data.eventDate,
+      notes: data.notes,
       status: 'pending',
       timestamp: serverTimestamp(),
-    });
-    return true;
+    };
+    if (data.promoNote !== undefined && data.promoNote !== '') {
+      payload.promoNote = data.promoNote;
+    }
+    await setDoc(ref, payload);
+    return { ok: true };
   } catch (e) {
     console.error('bookPhotographer', e);
-    return false;
+    if (e instanceof FirebaseError) {
+      if (e.code === 'permission-denied') {
+        return {
+          ok: false,
+          message:
+            'Firestore blocked this request. Deploy the latest `firestore.rules` in Firebase (same project as your app keys) and try again.',
+        };
+      }
+      if (e.code === 'unavailable') {
+        return {
+          ok: false,
+          message:
+            'Firestore is temporarily unavailable. Check your network and try again.',
+        };
+      }
+      return { ok: false, message: `${e.code}: ${e.message}` };
+    }
+    return {
+      ok: false,
+      message: 'Could not send booking. Try again later.',
+    };
   }
 }
 

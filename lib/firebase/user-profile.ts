@@ -42,6 +42,18 @@ function emailLocalPart(email: string | null | undefined): string | null {
   return local || null;
 }
 
+/** Safe defaults when Firestore has not loaded yet; avoids `undefined` (Firestore rejects it). */
+export function defaultUserDataFromAuth(authUser: User): UserData {
+  return {
+    uid: authUser.uid,
+    email: authUser.email ?? null,
+    displayName: authUser.displayName ?? null,
+    photoURL: authUser.photoURL ?? null,
+    username: emailLocalPart(authUser.email),
+    role: 'user',
+  };
+}
+
 export async function getUserData(uid: string): Promise<UserData | null> {
   const snap = await getDoc(doc(db, 'users', uid));
   if (!snap.exists()) return null;
@@ -58,18 +70,18 @@ export async function ensureUserProfile(authUser: User): Promise<UserData> {
   const username = emailLocalPart(authUser.email);
 
   if (!snap.exists()) {
-    const data: UserData = {
+    const data: Record<string, unknown> = {
       uid: authUser.uid,
-      email: authUser.email,
-      displayName: authUser.displayName,
-      photoURL: authUser.photoURL,
+      email: authUser.email ?? null,
+      displayName: authUser.displayName ?? null,
+      photoURL: authUser.photoURL ?? null,
       username,
       role: 'user',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
     await setDoc(ref, data);
-    return data;
+    return data as unknown as UserData;
   }
 
   const existing = snap.data() as UserData;

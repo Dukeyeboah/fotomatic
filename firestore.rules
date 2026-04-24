@@ -23,10 +23,41 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Logged-in clients create booking requests
+    // Logged-in clients create booking requests (userId must match auth)
     match /photographerBookings/{id} {
       allow read: if false;
-      allow create: if isAuthenticated();
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.photographerId is string
+        && request.resource.data.photographerId.size() > 0
+        && request.resource.data.photographerId.size() < 220
+        && request.resource.data.photographerName is string
+        && request.resource.data.photographerName.size() > 0
+        && request.resource.data.photographerName.size() < 220
+        && request.resource.data.userName is string
+        && request.resource.data.userName.size() > 0
+        && request.resource.data.userName.size() < 220
+        && request.resource.data.userEmail is string
+        && request.resource.data.userEmail.size() > 2
+        && request.resource.data.userEmail.size() < 320
+        && request.resource.data.eventType is string
+        && request.resource.data.eventType.size() > 0
+        && request.resource.data.eventType.size() < 120
+        && request.resource.data.eventLocation is string
+        && request.resource.data.eventLocation.size() > 0
+        && request.resource.data.eventLocation.size() < 500
+        && request.resource.data.duration is string
+        && request.resource.data.duration.size() > 0
+        && request.resource.data.duration.size() < 120
+        && request.resource.data.eventDate is string
+        && request.resource.data.eventDate.size() > 0
+        && request.resource.data.eventDate.size() < 80
+        && request.resource.data.notes is string
+        && request.resource.data.notes.size() < 8000
+        && (!request.resource.data.keys().hasAny(['promoNote'])
+            || (request.resource.data.promoNote is string
+                && request.resource.data.promoNote.size() < 500));
       allow update, delete: if false;
     }
 
