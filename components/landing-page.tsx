@@ -455,7 +455,6 @@ function JoinPhotographerModal({
     </div>
   );
 }
-
 export function LandingPage() {
   const { openLoginModal } = useLoginModal();
   const [joinModalOpen, setJoinModalOpen] = useState(false);
