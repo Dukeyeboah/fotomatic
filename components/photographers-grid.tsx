@@ -11,24 +11,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
 import { MapPin, AtSign, ArrowUpRight } from 'lucide-react';
 
-const PLACEHOLDER_IMAGES = [
-  '/fotomaticImages/fotomatic1.jpg',
-  '/fotomaticImages/fotomatic2.jpg',
-  '/fotomaticImages/fotomatic3.jpg',
-  '/fotomaticImages/fotomatic4.jpg',
-];
+/** Match numbered JPEGs in `public/photographerImages` (`1.jpg` … `N.jpg`). */
+const PHOTOGRAPHER_PLACEHOLDER_COUNT = 26;
+
+/** Stable image per directory id: `/photographerImages/1.jpg` … `N.jpg`. */
+function defaultPhotographerImage(p: DirectoryPhotographer): string {
+  const m = /^dir-(\d+)$/.exec(p.id);
+  const idx = m ? parseInt(m[1]!, 10) : 0;
+  const n = (idx % PHOTOGRAPHER_PLACEHOLDER_COUNT) + 1;
+  return `/photographerImages/${n}.jpg`;
+}
 
 function getPhotographerName(p: DirectoryPhotographer) {
   if (p.lastName) return `${p.firstName} ${p.lastName}`.trim();
   return p.firstName;
-}
-
-function getInitials(p: DirectoryPhotographer) {
-  const n = getPhotographerName(p);
-  const parts = n.split(/\s+/).filter(Boolean);
-  if (parts.length >= 2)
-    return (parts[0]![0] + parts[1]![0]).toUpperCase();
-  return n.slice(0, 2).toUpperCase();
 }
 
 function formatLocation(p: DirectoryPhotographer): string {
@@ -107,8 +103,7 @@ export function PhotographersGrid({
           Find a photographer
         </h1>
         <p className="mx-auto max-w-lg text-zinc-600">
-          Minimal profiles — image, links, and location — so you can choose
-          quickly.
+          Book a photographer of your choice.
         </p>
         {promoLabel ? (
           <p className="inline-block rounded-full border border-amber-200/80 bg-amber-50/90 px-4 py-2 text-sm font-medium text-amber-900">
@@ -121,7 +116,7 @@ export function PhotographersGrid({
         <input
           type="search"
           placeholder="Search by name or location…"
-          className="w-full max-w-md rounded-full border border-zinc-200/80 bg-[#faf8f5] px-5 py-3 text-sm shadow-sm outline-none ring-zinc-900/0 transition-shadow focus:bg-white focus:ring-2 focus:ring-amber-900/15"
+          className="w-full max-w-md rounded-full border border-zinc-200/80 bg-[#faf8f5] px-5 py-3 text-sm text-zinc-800 placeholder:text-zinc-500 caret-zinc-900 shadow-sm outline-none ring-zinc-900/0 transition-shadow focus:bg-white focus:text-zinc-900 focus:placeholder:text-zinc-500 focus:ring-2 focus:ring-amber-900/15"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
@@ -133,7 +128,7 @@ export function PhotographersGrid({
         </p>
       ) : (
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((p, i) => {
+          {filtered.map((p) => {
             const photo = p.photoUrl?.trim();
             const ig = p.instagram?.trim();
             const web = p.website?.trim();
@@ -164,22 +159,13 @@ export function PhotographersGrid({
                       />
                     )
                   ) : (
-                    <>
-                      <Image
-                        src={
-                          PLACEHOLDER_IMAGES[i % PLACEHOLDER_IMAGES.length]!
-                        }
-                        alt=""
-                        fill
-                        className="object-cover opacity-40 grayscale-[20%] transition-opacity group-hover:opacity-50"
-                        sizes="(max-width: 768px) 100vw, 33vw"
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/25">
-                        <span className="font-serif text-3xl font-medium tracking-wide text-white drop-shadow-sm">
-                          {getInitials(p)}
-                        </span>
-                      </div>
-                    </>
+                    <Image
+                      src={defaultPhotographerImage(p)}
+                      alt=""
+                      fill
+                      className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.02]"
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                    />
                   )}
                 </div>
                 <div className="flex flex-1 flex-col gap-4 p-5">
