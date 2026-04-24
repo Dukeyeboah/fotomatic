@@ -39,6 +39,19 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    match /photographerApplications/{id} {
+      allow read: if false;
+      allow create: if request.resource.data.source == 'fotomatic' &&
+                      request.resource.data.name is string &&
+                      request.resource.data.name.size() > 0 &&
+                      request.resource.data.email is string &&
+                      request.resource.data.email.size() > 3 &&
+                      request.resource.data.city is string &&
+                      request.resource.data.country is string &&
+                      request.resource.data.interestedInClientWork is bool;
+      allow update, delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

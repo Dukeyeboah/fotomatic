@@ -18,10 +18,13 @@ export interface Photographer {
   email?: string;
   website?: string;
   instagram?: string;
+  /** Profile or hero image URL for directory cards */
+  photoUrl?: string;
   phone?: string;
   address?: string;
   city?: string;
   state?: string;
+  country?: string;
   status:
     | 'contacted'
     | 'not-contacted'
@@ -119,6 +122,36 @@ export async function saveNewsletterLead(email: string): Promise<boolean> {
     return true;
   } catch (e) {
     console.error('saveNewsletterLead', e);
+    return false;
+  }
+}
+
+export interface PhotographerApplicationInput {
+  name: string;
+  email: string;
+  city: string;
+  state: string;
+  country: string;
+  instagram: string;
+  website: string;
+  portfolioLinks: string;
+  interestedInClientWork: boolean;
+  howDidYouHear: string;
+}
+
+export async function savePhotographerApplication(
+  data: PhotographerApplicationInput,
+): Promise<boolean> {
+  try {
+    const ref = doc(collection(db, 'photographerApplications'));
+    await setDoc(ref, {
+      ...data,
+      source: 'fotomatic',
+      createdAt: serverTimestamp(),
+    });
+    return true;
+  } catch (e) {
+    console.error('savePhotographerApplication', e);
     return false;
   }
 }

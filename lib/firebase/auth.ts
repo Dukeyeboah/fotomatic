@@ -1,6 +1,8 @@
 import {
   createUserWithEmailAndPassword,
+  GoogleAuthProvider,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
   updateProfile,
 } from 'firebase/auth';
@@ -67,5 +69,32 @@ export async function signOutUser() {
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Sign out failed';
     return { error: message };
+  }
+}
+
+const googleProvider = new GoogleAuthProvider();
+
+export async function signInWithGoogle() {
+  try {
+    const cred = await signInWithPopup(auth, googleProvider);
+    const u = cred.user;
+    const userRef = doc(db, 'users', u.uid);
+    const snap = await getDoc(userRef);
+    if (!snap.exists()) {
+      const userData: UserData = {
+        uid: u.uid,
+        email: u.email,
+        displayName: u.displayName,
+        photoURL: u.photoURL,
+        role: 'user',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+      await setDoc(userRef, userData);
+    }
+    return { user: u, error: null as string | null };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Google sign-in failed';
+    return { user: null, error: message };
   }
 }

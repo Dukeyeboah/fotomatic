@@ -3,12 +3,15 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { signOutUser } from '@/lib/firebase/auth';
-import { useRouter } from 'next/navigation';
+import { useLoginModal } from '@/contexts/LoginModalContext';
+import { AccountMenuDropdown } from '@/components/account-menu-dropdown';
+import { usePathname } from 'next/navigation';
 
 export function SiteHeader() {
   const { user, loading } = useAuth();
-  const router = useRouter();
+  const { openLoginModal } = useLoginModal();
+  const pathname = usePathname();
+  const isPhotographersPage = pathname === '/photographers';
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-zinc-200/80 bg-white/90 backdrop-blur">
@@ -26,7 +29,7 @@ export function SiteHeader() {
             className="h-9 w-9 object-contain"
           />
           <Image
-            src="/fotomaticImages/fotomatic.png"
+            src="/fotomaticImages/fotomatic.jpg"
             alt="Fotomatic"
             width={160}
             height={40}
@@ -34,40 +37,27 @@ export function SiteHeader() {
           />
         </Link>
         <nav className="flex items-center gap-3 sm:gap-4 text-sm font-medium text-zinc-700">
-          <button
-            type="button"
-            className="cursor-pointer hover:text-zinc-900"
-            onClick={() => {
-              document
-                .getElementById('how-it-works')
-                ?.scrollIntoView({ behavior: 'smooth' });
-            }}
-          >
-            How it works
-          </button>
-          <Link href="/photographers" className="hover:text-zinc-900">
-            Photographers
-          </Link>
+          {!isPhotographersPage && (
+            <>
+              <Link href="/#how-it-works" className="hover:text-zinc-900">
+                How it works
+              </Link>
+              <Link href="/photographers" className="hover:text-zinc-900">
+                Photographers
+              </Link>
+            </>
+          )}
           {!loading &&
             (user ? (
+              <AccountMenuDropdown />
+            ) : (
               <button
                 type="button"
-                className="cursor-pointer hover:text-zinc-900"
-                onClick={async () => {
-                  await signOutUser();
-                  router.push('/');
-                  router.refresh();
-                }}
-              >
-                Sign out
-              </button>
-            ) : (
-              <Link
-                href="/login"
+                onClick={openLoginModal}
                 className="rounded-full bg-zinc-900 px-4 py-2 text-white hover:bg-zinc-800"
               >
                 Log in
-              </Link>
+              </button>
             ))}
         </nav>
       </div>
