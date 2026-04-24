@@ -144,12 +144,6 @@ function JoinPhotographerModal({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
-  useEffect(() => {
-    if (open) {
-      setApplyStatus('idle');
-    }
-  }, [open]);
-
   const onApply = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -458,6 +452,7 @@ function JoinPhotographerModal({
 export function LandingPage() {
   const { openLoginModal } = useLoginModal();
   const [joinModalOpen, setJoinModalOpen] = useState(false);
+  const [joinModalKey, setJoinModalKey] = useState(0);
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterStatus, setNewsletterStatus] = useState<
     'idle' | 'loading' | 'ok' | 'err'
@@ -479,10 +474,16 @@ export function LandingPage() {
     [newsletterEmail],
   );
 
+  const openJoinModal = useCallback(() => {
+    setJoinModalKey((k) => k + 1);
+    setJoinModalOpen(true);
+  }, []);
+
   return (
     <div className="min-h-screen bg-white text-zinc-900">
       <LandingNav />
       <JoinPhotographerModal
+        key={joinModalKey}
         open={joinModalOpen}
         onClose={() => setJoinModalOpen(false)}
       />
@@ -508,7 +509,7 @@ export function LandingPage() {
               </Link>
               <button
                 type="button"
-                onClick={() => setJoinModalOpen(true)}
+                onClick={openJoinModal}
                 className="inline-flex cursor-pointer items-center justify-center rounded-xl border border-zinc-200 bg-white px-8 py-4 text-base font-semibold text-zinc-900 shadow-sm transition-colors hover:bg-zinc-50"
               >
                 Join as a Photographer
@@ -766,7 +767,7 @@ export function LandingPage() {
                 </p>
                 <button
                   type="button"
-                  onClick={() => setJoinModalOpen(true)}
+                  onClick={openJoinModal}
                   className="mt-5 inline-flex cursor-pointer rounded-xl border border-zinc-200 bg-white px-6 py-3 text-sm font-semibold text-zinc-900 transition-colors hover:bg-zinc-50"
                 >
                   Apply to Join
