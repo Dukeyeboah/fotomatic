@@ -7,11 +7,22 @@ function formatBody(data: Record<string, unknown>): string {
     'New Fotomatic photographer application',
     '',
     `Name: ${data.name}`,
+    `First / last: ${data.firstName} ${data.lastName}`,
     `Email: ${data.email}`,
+    `Phone: ${data.phone || '—'} (phone OK for contact: ${data.phoneContact ? 'yes' : 'no'})`,
+    `Email OK for contact: ${data.emailContact ? 'yes' : 'no'}`,
+    `Address: ${data.address || '—'}`,
     `City: ${data.city}`,
     `State/region: ${data.state || '—'}`,
     `Country: ${data.country}`,
+    `Starting hourly rate: ${data.startingHourlyRate}`,
+    `Photography focus: ${data.photographyFocus}`,
+    `Service area: ${data.serviceArea || '—'}`,
+    `Open to other areas: ${data.openToOtherAreas ? 'Yes' : 'No'}`,
+    `Bio:\n${data.bio || '—'}`,
     `Instagram: ${data.instagram || '—'}`,
+    `Twitter: ${data.twitter || '—'}`,
+    `Facebook: ${data.facebook || '—'}`,
     `Website: ${data.website || '—'}`,
     `Portfolio links:\n${data.portfolioLinks || '—'}`,
     `How they heard: ${data.howDidYouHear || '—'}`,
@@ -78,5 +89,5 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({ emailed: true as const });
+  return NextResponse.json({ emailed: true });
 }

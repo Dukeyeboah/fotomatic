@@ -11,21 +11,22 @@ import {
   type Timestamp,
 } from 'firebase/firestore';
 import { db } from './config';
+import { addDoc } from 'firebase/firestore';
 
 export interface Photographer {
   id?: string;
   firstName: string;
-  lastName?: string;
-  email?: string;
-  website?: string;
-  instagram?: string;
+  lastName?: string | null;
+  email?: string | null;
+  website?: string | null;
+  instagram?: string | null;
   /** Profile or hero image URL for directory cards */
-  photoUrl?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  country?: string;
+  photoUrl?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
   status:
     | 'contacted'
     | 'not-contacted'
@@ -34,8 +35,8 @@ export interface Photographer {
   instagramContact: boolean;
   emailContact: boolean;
   phoneContact: boolean;
-  name?: string;
-  location?: string;
+  name?: string | null;
+  location?: string | null;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
@@ -44,6 +45,7 @@ export interface PhotographerBooking {
   id?: string;
   photographerId: string;
   photographerName: string;
+  photographerStartingHourlyRate: number;
   userId: string;
   userName: string;
   userEmail: string;
@@ -53,9 +55,11 @@ export interface PhotographerBooking {
   /** ISO `YYYY-MM-DD` or user-entered date text */
   eventDate: string;
   notes: string;
+  /** Client accepted standard contract terms at request time. */
+  agreedToContract: boolean;
   /** Optional referral / promo line from landing links */
   promoNote?: string;
-  status?: 'pending' | 'contacted' | 'completed';
+  status?: 'requested' | 'accepted_pending_payment' | 'confirmed' | 'pending_client_response' | 'declined';
   timestamp?: Timestamp;
 }
 
@@ -114,6 +118,7 @@ export async function bookPhotographer(
     const payload: Record<string, unknown> = {
       photographerId: data.photographerId,
       photographerName: data.photographerName,
+      photographerStartingHourlyRate: data.photographerStartingHourlyRate,
       userId: data.userId,
       userName: data.userName,
       userEmail: data.userEmail,
@@ -122,7 +127,8 @@ export async function bookPhotographer(
       duration: data.duration,
       eventDate: data.eventDate,
       notes: data.notes,
-      status: 'pending',
+      agreedToContract: data.agreedToContract,
+      status: 'requested',
       timestamp: serverTimestamp(),
     };
     if (data.promoNote !== undefined && data.promoNote !== '') {
@@ -173,14 +179,29 @@ export async function saveNewsletterLead(email: string): Promise<boolean> {
 }
 
 export interface PhotographerApplicationInput {
+  applicantUserId: string;
+  /** Combined display name for admin / email templates */
   name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   city: string;
   state: string;
   country: string;
+  address: string;
+  startingHourlyRate: number;
+  bio: string;
+  photographyFocus: string;
+  phone: string;
+  phoneContact: boolean;
+  emailContact: boolean;
   instagram: string;
+  twitter: string;
+  facebook: string;
   website: string;
   portfolioLinks: string;
+  serviceArea: string;
+  openToOtherAreas: boolean;
   interestedInClientWork: boolean;
   howDidYouHear: string;
 }
@@ -193,8 +214,23 @@ export async function savePhotographerApplication(
     await setDoc(ref, {
       ...data,
       source: 'fotomatic',
+      status: 'submitted',
       createdAt: serverTimestamp(),
     });
+    // Admin event feed (readable by admin dashboard)
+    try {
+      await addDoc(collection(db, 'adminEvents'), {
+        type: 'photographer_application',
+        title: 'New photographer application',
+        body: `${data.name} applied (${data.city}, ${data.country}).`,
+        threadId: null,
+        applicationId: ref.id,
+        createdAt: serverTimestamp(),
+      });
+    } catch (e) {
+      // Don't block applications if adminEvents is not writable for this user.
+      console.warn('[savePhotographerApplication] adminEvents write failed', e);
+    }
     return true;
   } catch (e) {
     console.error('savePhotographerApplication', e);

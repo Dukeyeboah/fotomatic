@@ -63,7 +63,11 @@ export default function AccountPage() {
                 Account type
               </dt>
               <dd className="mt-1 capitalize text-zinc-900">
-                {userData?.role === 'photographer' ? 'Photographer' : 'Client'}
+                {userData?.role === 'admin'
+                  ? 'Admin'
+                  : userData?.role === 'photographer'
+                    ? 'Photographer'
+                    : 'Client'}
               </dd>
             </div>
             {(userData?.city || userData?.country || userData?.state) && (

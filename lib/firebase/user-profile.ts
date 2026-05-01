@@ -6,18 +6,33 @@ import { db } from './config';
 export interface PhotographerProfileFields {
   bio?: string;
   style?: string;
+  /** Primary specialty (directory + application). */
+  photographyFocus?: string;
   interests?: string;
   behance?: string;
   instagram?: string;
   twitter?: string;
+  facebook?: string;
   linkedin?: string;
   website?: string;
   portfolioUrl?: string;
   bannerImageUrl?: string;
   profileImageUrl?: string;
+  /**
+   * Directory id like `dir-12` or `p-{uid}` so bookings from the public directory
+   * can be shown in this photographer admin UI.
+   */
+  directoryId?: string | null;
+  /** Optional published hourly rate used at acceptance time. */
+  hourlyRate?: number | null;
   city?: string;
   state?: string;
   country?: string;
+  phone?: string;
+  phoneContact?: boolean;
+  emailContact?: boolean;
+  serviceArea?: string;
+  openToOtherAreas?: boolean;
 }
 
 export interface UserData {
@@ -27,7 +42,7 @@ export interface UserData {
   photoURL: string | null;
   /** Lowercase handle from email local-part by default; editable. */
   username?: string | null;
-  role: 'user' | 'photographer';
+  role: 'user' | 'photographer' | 'admin';
   city?: string | null;
   state?: string | null;
   country?: string | null;

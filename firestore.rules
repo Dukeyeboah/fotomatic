@@ -9,56 +9,309 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == uid;
     }
 
+    function isAdmin() {
+      return isAuthenticated()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
     // Client accounts
     match /users/{userId} {
-      allow read: if isOwner(userId);
+      allow read: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin();
       allow delete: if false;
     }
 
     // Public directory (sync/import from your admin tooling or a separate pipeline)
     match /photographers/{id} {
       allow read: if true;
-      allow write: if false;
+      allow write: if isAdmin();
+      allow update: if isAuthenticated()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'photographer'
+        && resource.data.applicantUserId == request.auth.uid
+        && request.resource.data.applicantUserId == resource.data.applicantUserId
+        && request.resource.data.listed == resource.data.listed
+        && request.resource.data.status == resource.data.status;
     }
 
-    // Logged-in clients create booking requests (userId must match auth)
-    match /photographerBookings/{id} {
-      allow read: if false;
+    // Booking threads (structured decision flow)
+    match /bookingThreads/{id} {
+      allow read: if isAuthenticated()
+        && (resource.data.clientUserId == request.auth.uid
+            || resource.data.photographerUserId == request.auth.uid);
+      allow read: if isAdmin();
+
+      // Client creates a booking request thread
       allow create: if isAuthenticated()
-        && request.resource.data.userId == request.auth.uid
-        && request.resource.data.status == 'pending'
-        && request.resource.data.photographerId is string
-        && request.resource.data.photographerId.size() > 0
-        && request.resource.data.photographerId.size() < 220
+        && request.resource.data.clientUserId == request.auth.uid
+        && request.resource.data.status == 'requested'
+        && request.resource.data.clientName is string
+        && request.resource.data.clientName.size() > 0
+        && request.resource.data.clientName.size() < 220
+        && request.resource.data.clientEmail is string
+        && request.resource.data.clientEmail.size() > 2
+        && request.resource.data.clientEmail.size() < 320
+        && request.resource.data.photographerDirectoryId is string
+        && request.resource.data.photographerDirectoryId.size() > 0
+        && request.resource.data.photographerDirectoryId.size() < 220
         && request.resource.data.photographerName is string
         && request.resource.data.photographerName.size() > 0
         && request.resource.data.photographerName.size() < 220
-        && request.resource.data.userName is string
-        && request.resource.data.userName.size() > 0
-        && request.resource.data.userName.size() < 220
-        && request.resource.data.userEmail is string
-        && request.resource.data.userEmail.size() > 2
-        && request.resource.data.userEmail.size() < 320
+        && request.resource.data.photographerStartingHourlyRate is number
+        && request.resource.data.photographerStartingHourlyRate >= 0
+        && request.resource.data.photographerStartingHourlyRate < 10000
+        && request.resource.data.photographerUserId == null
         && request.resource.data.eventType is string
         && request.resource.data.eventType.size() > 0
         && request.resource.data.eventType.size() < 120
-        && request.resource.data.eventLocation is string
-        && request.resource.data.eventLocation.size() > 0
-        && request.resource.data.eventLocation.size() < 500
+        && request.resource.data.eventDate is string
+        && request.resource.data.eventDate.size() > 0
+        && request.resource.data.eventDate.size() < 32
+        && request.resource.data.eventTimeframe is string
+        && request.resource.data.eventTimeframe.size() < 140
         && request.resource.data.duration is string
         && request.resource.data.duration.size() > 0
         && request.resource.data.duration.size() < 120
-        && request.resource.data.eventDate is string
-        && request.resource.data.eventDate.size() > 0
-        && request.resource.data.eventDate.size() < 80
-        && request.resource.data.notes is string
-        && request.resource.data.notes.size() < 8000
+        && request.resource.data.eventLocation is string
+        && request.resource.data.eventLocation.size() > 0
+        && request.resource.data.eventLocation.size() < 500
+        && request.resource.data.clientMessage is string
+        && request.resource.data.clientMessage.size() < 8000
+        && request.resource.data.agreedToContract is bool
+        && request.resource.data.agreedToContract == true
+        && request.resource.data.unreadByClientCount == 0
         && (!request.resource.data.keys().hasAny(['promoNote'])
+            || request.resource.data.promoNote == null
             || (request.resource.data.promoNote is string
                 && request.resource.data.promoNote.size() < 500));
+
+      // Client can update only a limited set of fields (future: pay / confirm)
+      allow update: if isAuthenticated()
+        && resource.data.clientUserId == request.auth.uid
+        && request.resource.data.clientUserId == resource.data.clientUserId
+        && request.resource.data.photographerDirectoryId == resource.data.photographerDirectoryId
+        && request.resource.data.photographerName == resource.data.photographerName
+        && request.resource.data.status in [
+          'requested',
+          'accepted_pending_payment',
+          'confirmed',
+          'pending_client_response',
+          'declined',
+          'expired'
+        ];
+
+      // Photographer can update status once claimed (accept/suggest/decline)
+      allow update: if isAuthenticated()
+        && resource.data.photographerUserId == request.auth.uid
+        && request.resource.data.photographerUserId == resource.data.photographerUserId
+        && request.resource.data.status in [
+          'requested',
+          'accepted_pending_payment',
+          'confirmed',
+          'pending_client_response',
+          'declined',
+          'expired'
+        ];
+      allow update: if isAdmin();
+
+      allow delete: if false;
+    }
+
+    match /bookingThreadMessages/{id} {
+      allow read: if isAuthenticated()
+        && exists(/databases/$(database)/documents/bookingThreads/$(resource.data.threadId))
+        && (
+          get(/databases/$(database)/documents/bookingThreads/$(resource.data.threadId)).data.clientUserId == request.auth.uid
+          || get(/databases/$(database)/documents/bookingThreads/$(resource.data.threadId)).data.photographerUserId == request.auth.uid
+        );
+      allow read: if isAdmin();
+
+      allow create: if isAuthenticated()
+        && request.resource.data.threadId is string
+        && request.resource.data.threadId.size() > 0
+        && request.resource.data.senderUserId == request.auth.uid
+        && request.resource.data.senderRole in ['client', 'photographer']
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() < 8000
+        && exists(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId))
+        && (
+          get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.clientUserId == request.auth.uid
+          || get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.photographerUserId == request.auth.uid
+        );
+
+      // System timeline messages (senderUserId "system") — used by createBookingThread and photographer actions
+      allow create: if isAuthenticated()
+        && request.resource.data.threadId is string
+        && request.resource.data.threadId.size() > 0
+        && request.resource.data.senderUserId == 'system'
+        && request.resource.data.senderRole == 'system'
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() < 8000
+        && exists(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId))
+        && (
+          get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.clientUserId == request.auth.uid
+          || get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.photographerUserId == request.auth.uid
+        );
+
       allow update, delete: if false;
+    }
+
+    match /notifications/{id} {
+      allow read: if isOwner(resource.data.userId);
+      // Client can mark read on their own notifications
+      allow update: if isAuthenticated()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.read is bool;
+      // Only allow creation from client when it's for themselves (system/server can also write via Admin SDK later)
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.read == false
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() < 220
+        && request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && request.resource.data.body.size() < 1000;
+      // Admin can send notifications to other users.
+      allow create: if isAdmin()
+        && request.resource.data.userId is string
+        && request.resource.data.userId.size() > 0
+        && request.resource.data.read == false
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() < 220
+        && request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && request.resource.data.body.size() < 1000;
+      allow delete: if false;
+    }
+
+    match /adminEvents/{id} {
+      allow read: if isAdmin();
+      // Client creates booking/admin events from the app.
+      // (In production we'd tighten this or move to server-side Admin SDK.)
+      allow create: if isAuthenticated()
+        && request.resource.data.type is string
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() < 220
+        && request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && request.resource.data.body.size() < 1000;
+      allow update, delete: if false;
+    }
+
+    // Support / contact messages visible to admins (clients & photographers submit)
+    match /supportInbox/{id} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated()
+        && request.resource.data.senderUserId == request.auth.uid
+        && request.resource.data.senderRole in ['client', 'photographer']
+        && request.resource.data.senderName is string
+        && request.resource.data.senderName.size() > 0
+        && request.resource.data.senderName.size() < 220
+        && request.resource.data.message is string
+        && request.resource.data.message.size() > 0
+        && request.resource.data.message.size() < 8000
+        && request.resource.data.readByAdmin == false
+        && (!request.resource.data.keys().hasAny(['senderEmail'])
+            || request.resource.data.senderEmail == null
+            || (request.resource.data.senderEmail is string
+                && request.resource.data.senderEmail.size() < 320))
+        && (!request.resource.data.keys().hasAny(['subject'])
+            || request.resource.data.subject == null
+            || (request.resource.data.subject is string
+                && request.resource.data.subject.size() > 0
+                && request.resource.data.subject.size() < 220))
+        && (
+          (request.resource.data.senderRole == 'client'
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'user')
+          || (request.resource.data.senderRole == 'photographer'
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'photographer')
+          || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        );
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /photographerApplications/{id} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated()
+        && request.resource.data.applicantUserId == request.auth.uid
+        && request.resource.data.source == 'fotomatic'
+        && request.resource.data.status == 'submitted'
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.firstName is string
+        && request.resource.data.firstName.size() > 0
+        && request.resource.data.firstName.size() < 120
+        && request.resource.data.lastName is string
+        && request.resource.data.lastName.size() > 0
+        && request.resource.data.lastName.size() < 120
+        && request.resource.data.email is string
+        && request.resource.data.email.size() > 3
+        && request.resource.data.email.size() < 320
+        && request.resource.data.city is string
+        && request.resource.data.city.size() > 0
+        && request.resource.data.country is string
+        && request.resource.data.country.size() > 0
+        && request.resource.data.startingHourlyRate is number
+        && request.resource.data.startingHourlyRate >= 1
+        && request.resource.data.startingHourlyRate < 10000
+        && request.resource.data.bio is string
+        && request.resource.data.bio.size() > 0
+        && request.resource.data.bio.size() < 2000
+        && request.resource.data.photographyFocus is string
+        && request.resource.data.photographyFocus.size() > 0
+        && request.resource.data.photographyFocus.size() < 120
+        && request.resource.data.phoneContact is bool
+        && request.resource.data.emailContact is bool
+        && request.resource.data.openToOtherAreas is bool
+        && request.resource.data.interestedInClientWork is bool
+        && (!request.resource.data.keys().hasAny(['state'])
+            || (request.resource.data.state is string
+                && request.resource.data.state.size() < 120))
+        && (!request.resource.data.keys().hasAny(['address'])
+            || (request.resource.data.address is string
+                && request.resource.data.address.size() < 500))
+        && (!request.resource.data.keys().hasAny(['phone'])
+            || (request.resource.data.phone is string
+                && request.resource.data.phone.size() < 40))
+        && (!request.resource.data.keys().hasAny(['instagram'])
+            || (request.resource.data.instagram is string
+                && request.resource.data.instagram.size() < 500))
+        && (!request.resource.data.keys().hasAny(['twitter'])
+            || (request.resource.data.twitter is string
+                && request.resource.data.twitter.size() < 500))
+        && (!request.resource.data.keys().hasAny(['facebook'])
+            || (request.resource.data.facebook is string
+                && request.resource.data.facebook.size() < 500))
+        && (!request.resource.data.keys().hasAny(['website'])
+            || (request.resource.data.website is string
+                && request.resource.data.website.size() < 500))
+        && (!request.resource.data.keys().hasAny(['portfolioLinks'])
+            || (request.resource.data.portfolioLinks is string
+                && request.resource.data.portfolioLinks.size() < 2000))
+        && (!request.resource.data.keys().hasAny(['serviceArea'])
+            || (request.resource.data.serviceArea is string
+                && request.resource.data.serviceArea.size() < 500))
+        && (!request.resource.data.keys().hasAny(['howDidYouHear'])
+            || (request.resource.data.howDidYouHear is string
+                && request.resource.data.howDidYouHear.size() < 500));
+      allow update: if isAdmin()
+        && request.resource.data.source == resource.data.source
+        && request.resource.data.applicantUserId == resource.data.applicantUserId
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.status in ['submitted', 'approved', 'declined'];
+      allow delete: if false;
+    }
+
+    // Legacy collection (no longer used by app)
+    match /photographerBookings/{id} {
+      allow read, write: if false;
     }
 
     // Newsletter (optional landing form — tighten or add rate limits in production)
@@ -70,18 +323,6 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    match /photographerApplications/{id} {
-      allow read: if false;
-      allow create: if request.resource.data.source == 'fotomatic' &&
-                      request.resource.data.name is string &&
-                      request.resource.data.name.size() > 0 &&
-                      request.resource.data.email is string &&
-                      request.resource.data.email.size() > 3 &&
-                      request.resource.data.city is string &&
-                      request.resource.data.country is string &&
-                      request.resource.data.interestedInClientWork is bool;
-      allow update, delete: if false;
-    }
 
     match /{document=**} {
       allow read, write: if false;

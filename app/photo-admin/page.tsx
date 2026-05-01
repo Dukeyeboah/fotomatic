@@ -102,12 +102,20 @@ export default function PhotoAdminGatePage() {
             {authLoading ? (
               <p className="text-sm text-zinc-500">Loading session…</p>
             ) : user ? (
-              <Link
-                href="/photo-admin/setup"
-                className="inline-flex rounded-xl bg-zinc-900 px-6 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
-              >
-                Continue to profile setup
-              </Link>
+              <div className="grid gap-3">
+                <Link
+                  href="/photo-admin/setup"
+                  className="inline-flex justify-center rounded-xl bg-zinc-900 px-6 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
+                >
+                  Continue to profile setup
+                </Link>
+                <Link
+                  href="/photo-admin/bookings"
+                  className="inline-flex justify-center rounded-xl border border-zinc-200 bg-white px-6 py-3 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                >
+                  View bookings
+                </Link>
+              </div>
             ) : (
               <button
                 type="button"

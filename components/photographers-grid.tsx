@@ -1,30 +1,25 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import Image from 'next/image';
 import { BookingRequestModal } from '@/components/booking-request-modal';
 import {
   type DirectoryPhotographer,
-  getDirectoryPhotographers,
+  photographerPlaceholderImagePath,
 } from '@/lib/photographers-directory';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
-import { MapPin, AtSign, ArrowUpRight } from 'lucide-react';
-
-/** Match numbered JPEGs in `public/photographerImages` (`1.jpg` … `N.jpg`). */
-const PHOTOGRAPHER_PLACEHOLDER_COUNT = 26;
-
-/** Stable image per directory id: `/photographerImages/1.jpg` … `N.jpg`. */
-function defaultPhotographerImage(p: DirectoryPhotographer): string {
-  const m = /^dir-(\d+)$/.exec(p.id);
-  const idx = m ? parseInt(m[1]!, 10) : 0;
-  const n = (idx % PHOTOGRAPHER_PLACEHOLDER_COUNT) + 1;
-  return `/photographerImages/${n}.jpg`;
-}
+import { MapPin, AtSign, ArrowUpRight, Heart } from 'lucide-react';
+import { useSavedPhotographerIds } from '@/lib/hooks/use-saved-photographer-ids';
+import { useMergedDirectoryPhotographers } from '@/lib/hooks/use-merged-directory-photographers';
 
 function getPhotographerName(p: DirectoryPhotographer) {
   if (p.lastName) return `${p.firstName} ${p.lastName}`.trim();
   return p.firstName;
+}
+
+function formatStartingRate(p: DirectoryPhotographer): string {
+  return `From $${p.startingHourlyRate}/hr`;
 }
 
 function formatLocation(p: DirectoryPhotographer): string {
@@ -52,16 +47,20 @@ function normalizeUrl(href: string, kind: 'web' | 'ig'): string {
 
 export function PhotographersGrid({
   promoLabel,
+  variant = 'marketing',
 }: {
   /** Shown when a referral/discount code is active (e.g. from Grad Drive link). */
   promoLabel?: string | null;
+  /** `embedded`: tighter layout for dashboard shell */
+  variant?: 'marketing' | 'embedded';
 }) {
-  const list = useMemo(() => getDirectoryPhotographers(), []);
+  const list = useMergedDirectoryPhotographers();
   const [q, setQ] = useState('');
   const [bookingPhotographer, setBookingPhotographer] =
     useState<DirectoryPhotographer | null>(null);
   const { user, userData } = useAuth();
   const { openLoginModal } = useLoginModal();
+  const { toggle, isSaved } = useSavedPhotographerIds();
 
   const filtered = list.filter((p) => {
     if (!q) return true;
@@ -79,16 +78,35 @@ export function PhotographersGrid({
     setBookingPhotographer(p);
   };
 
+  const embedded = variant === 'embedded';
+
   return (
-    <div className="mx-auto max-w-6xl space-y-10 px-4 py-14 sm:px-6 lg:px-8">
-      <div className="space-y-3 text-center">
-        <p className="text-[11px] font-semibold tracking-[0.2em] text-amber-900/70">
-          DIRECTORY
-        </p>
-        <h1 className="font-serif text-3xl font-medium tracking-tight text-zinc-900 md:text-4xl">
+    <div
+      className={[
+        'mx-auto max-w-6xl space-y-10 px-4 sm:px-6 lg:px-8',
+        embedded ? 'py-6 lg:py-8' : 'py-14',
+      ].join(' ')}
+    >
+      <div className={embedded ? 'space-y-2 text-left' : 'space-y-3 text-center'}>
+        {!embedded ? (
+          <p className="text-[11px] font-semibold tracking-[0.2em] text-amber-900/70">
+            DIRECTORY
+          </p>
+        ) : null}
+        <h1
+          className={[
+            'font-serif font-medium tracking-tight text-zinc-900',
+            embedded ? 'text-2xl md:text-3xl' : 'text-3xl md:text-4xl',
+          ].join(' ')}
+        >
           Find a photographer
         </h1>
-        <p className="mx-auto max-w-lg text-zinc-600">
+        <p
+          className={[
+            'text-zinc-600',
+            embedded ? 'max-w-xl text-sm' : 'mx-auto max-w-lg',
+          ].join(' ')}
+        >
           Book a photographer of your choice.
         </p>
         {promoLabel ? (
@@ -98,11 +116,11 @@ export function PhotographersGrid({
         ) : null}
       </div>
 
-      <div className="flex justify-center">
+      <div className={embedded ? 'flex justify-start' : 'flex justify-center'}>
         <input
           type="search"
           placeholder="Search by name or location…"
-          className="w-full max-w-md rounded-full border border-zinc-200/80 bg-[#faf8f5] px-5 py-3 text-sm text-zinc-800 placeholder:text-zinc-500 caret-zinc-900 shadow-sm outline-none ring-zinc-900/0 transition-shadow focus:bg-white focus:text-zinc-900 focus:placeholder:text-zinc-500 focus:ring-2 focus:ring-amber-900/15"
+          className="w-full max-w-md rounded-full border border-zinc-200/80 bg-white px-5 py-3 text-sm text-zinc-900 placeholder:text-zinc-500 caret-zinc-900 shadow-sm outline-none ring-zinc-900/0 transition-shadow focus:ring-2 focus:ring-amber-900/15"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
@@ -118,8 +136,12 @@ export function PhotographersGrid({
             const photo = p.photoUrl?.trim();
             const ig = p.instagram?.trim();
             const web = p.website?.trim();
+            const tw = p.twitter?.trim();
+            const fb = p.facebook?.trim();
             const igHref = ig ? normalizeUrl(ig, 'ig') : '';
             const webHref = web ? normalizeUrl(web, 'web') : '';
+            const twHref = tw ? normalizeUrl(tw, 'web') : '';
+            const fbHref = fb ? normalizeUrl(fb, 'web') : '';
 
             return (
               <article
@@ -127,6 +149,26 @@ export function PhotographersGrid({
                 className="group flex flex-col overflow-hidden rounded-2xl bg-[#faf8f5] shadow-sm ring-1 ring-zinc-900/5 transition-shadow hover:shadow-md"
               >
                 <div className="relative aspect-[4/5] bg-gradient-to-br from-stone-200/80 to-stone-100">
+                  <button
+                    type="button"
+                    title={
+                      isSaved(p.id) ? 'Remove from saved' : 'Save photographer'
+                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!user) {
+                        openLoginModal();
+                        return;
+                      }
+                      toggle(p.id);
+                    }}
+                    className="absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-zinc-900 shadow-md ring-1 ring-zinc-900/10 transition-colors hover:bg-white"
+                  >
+                    <Heart
+                      className={`h-5 w-5 ${isSaved(p.id) ? 'fill-red-500 text-red-500' : 'text-zinc-700'}`}
+                      strokeWidth={1.75}
+                    />
+                  </button>
                   {photo ? (
                     /^https?:\/\//i.test(photo) ? (
                       // eslint-disable-next-line @next/next/no-img-element -- remote photographer URLs
@@ -146,7 +188,7 @@ export function PhotographersGrid({
                     )
                   ) : (
                     <Image
-                      src={defaultPhotographerImage(p)}
+                      src={photographerPlaceholderImagePath(p.id)}
                       alt=""
                       fill
                       className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.02]"
@@ -156,9 +198,14 @@ export function PhotographersGrid({
                 </div>
                 <div className="flex flex-1 flex-col gap-4 p-5">
                   <div>
-                    <h2 className="font-serif text-lg font-semibold text-zinc-900">
-                      {getPhotographerName(p)}
-                    </h2>
+                    <div className="flex items-start justify-between gap-3">
+                      <h2 className="font-serif text-lg font-semibold text-zinc-900">
+                        {getPhotographerName(p)}
+                      </h2>
+                      <span className="shrink-0 rounded-full border border-zinc-200/80 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-800">
+                        {formatStartingRate(p)}
+                      </span>
+                    </div>
                     <p className="mt-1.5 flex items-start gap-1.5 text-sm text-zinc-600">
                       <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400" />
                       {formatLocation(p)}
@@ -188,7 +235,29 @@ export function PhotographersGrid({
                         <ArrowUpRight className="h-3 w-3 opacity-50" />
                       </a>
                     ) : null}
-                    {!igHref && !webHref ? (
+                    {twHref ? (
+                      <a
+                        href={twHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200/80 bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 transition-colors hover:border-zinc-300"
+                      >
+                        X / Twitter
+                        <ArrowUpRight className="h-3 w-3 opacity-50" />
+                      </a>
+                    ) : null}
+                    {fbHref ? (
+                      <a
+                        href={fbHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200/80 bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 transition-colors hover:border-zinc-300"
+                      >
+                        Facebook
+                        <ArrowUpRight className="h-3 w-3 opacity-50" />
+                      </a>
+                    ) : null}
+                    {!igHref && !webHref && !twHref && !fbHref ? (
                       <span className="text-xs text-zinc-400">
                         Links coming soon
                       </span>

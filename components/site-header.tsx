@@ -5,19 +5,36 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
 import { AccountMenuDropdown } from '@/components/account-menu-dropdown';
+import { NotificationBell } from '@/components/notification-bell';
 import { usePathname } from 'next/navigation';
 
 export function SiteHeader() {
-  const { user, loading } = useAuth();
+  const { user, userData, loading } = useAuth();
   const { openLoginModal } = useLoginModal();
   const pathname = usePathname();
-  const isPhotographersPage = pathname === '/photographers';
+  const isBackoffice =
+    pathname === '/admin' ||
+    pathname.startsWith('/admin/') ||
+    pathname === '/photo-admin' ||
+    pathname.startsWith('/photo-admin/');
+  const isAdmin = userData?.role === 'admin';
+  const isPhotographer = userData?.role === 'photographer';
+  const isAdminUser = userData?.role === 'admin';
+  const showMarketingNav = pathname === '/' && !isBackoffice && !isAdmin;
+  const logoHref =
+    user && !isBackoffice
+      ? isAdminUser
+        ? '/admin'
+        : isPhotographer
+          ? '/photographer'
+          : '/dashboard'
+      : '/';
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-zinc-200/80 bg-white/90 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link
-          href="/"
+          href={logoHref}
           className="flex items-center gap-2 sm:gap-3"
           aria-label="Fotomatic home"
         >
@@ -37,7 +54,7 @@ export function SiteHeader() {
           />
         </Link>
         <nav className="flex items-center gap-3 sm:gap-4 text-sm font-medium text-zinc-700">
-          {!isPhotographersPage && (
+          {showMarketingNav ? (
             <>
               <Link href="/#how-it-works" className="hover:text-zinc-900">
                 How it works
@@ -46,10 +63,13 @@ export function SiteHeader() {
                 Photographers
               </Link>
             </>
-          )}
+          ) : null}
           {!loading &&
             (user ? (
-              <AccountMenuDropdown />
+              <div className="flex items-center gap-2">
+                <NotificationBell />
+                <AccountMenuDropdown />
+              </div>
             ) : (
               <button
                 type="button"

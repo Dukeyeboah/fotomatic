@@ -1,5 +1,6 @@
 /** Values stored on `photographerBookings.eventType`. */
 export const BOOKING_EVENT_TYPES = [
+  'Graduation',
   'Wedding',
   'Engagement',
   'Portrait session',

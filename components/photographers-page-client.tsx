@@ -7,7 +7,11 @@ import { getPromoMessageForCode } from '@/lib/promo';
 
 const STORAGE_KEY = 'fotomatic_active_promo';
 
-export function PhotographersGridClient() {
+export function PhotographersGridClient({
+  variant = 'marketing',
+}: {
+  variant?: 'marketing' | 'embedded';
+}) {
   const searchParams = useSearchParams();
   const [promoLabel, setPromoLabel] = useState<string | null>(null);
 
@@ -33,5 +37,7 @@ export function PhotographersGridClient() {
     }
   }, [searchParams]);
 
-  return <PhotographersGrid promoLabel={promoLabel} />;
+  return (
+    <PhotographersGrid promoLabel={promoLabel} variant={variant} />
+  );
 }

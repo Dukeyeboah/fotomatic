@@ -9,6 +9,7 @@ import {
   saveNewsletterLead,
   savePhotographerApplication,
 } from '@/lib/firebase/firestore';
+import { PHOTOGRAPHY_FOCUS_OPTIONS } from '@/lib/photography-focus';
 import {
   GraduationCap,
   Calendar,
@@ -100,14 +101,28 @@ function LandingNav() {
 }
 
 type ApplyPayload = {
+  applicantUserId: string;
   name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   city: string;
   state: string;
   country: string;
+  address: string;
+  startingHourlyRate: number;
+  bio: string;
+  photographyFocus: string;
+  phone: string;
+  phoneContact: boolean;
+  emailContact: boolean;
   instagram: string;
+  twitter: string;
+  facebook: string;
   website: string;
   portfolioLinks: string;
+  serviceArea: string;
+  openToOtherAreas: boolean;
   interestedInClientWork: boolean;
   howDidYouHear: string;
 };
@@ -119,21 +134,51 @@ function JoinPhotographerModal({
   open: boolean;
   onClose: () => void;
 }) {
+  const { user, userData, loading } = useAuth();
+  const alreadyPhotographer = userData?.role === 'photographer';
+  const { openLoginModal } = useLoginModal();
   const [apply, setApply] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
+    address: '',
     city: '',
     state: '',
     country: '',
+    startingHourlyRate: '',
+    bio: '',
+    photoFocusChoice: '' as string,
+    photoFocusOther: '',
+    phone: '',
+    phoneContact: false,
+    emailContact: false,
     instagram: '',
+    twitter: '',
+    facebook: '',
     website: '',
     portfolioLinks: '',
+    serviceArea: '',
+    openToOtherAreas: false,
     interestedInClientWork: false,
     howDidYouHear: '',
   });
   const [applyStatus, setApplyStatus] = useState<
     'idle' | 'loading' | 'ok' | 'err'
   >('idle');
+
+  useEffect(() => {
+    if (!open || !user) return;
+    setApply((s) => ({
+      ...s,
+      email: s.email || user.email || '',
+      firstName:
+        s.firstName || user.displayName?.trim().split(/\s+/)[0] || '',
+      lastName:
+        s.lastName ||
+        user.displayName?.trim().split(/\s+/).slice(1).join(' ') ||
+        '',
+    }));
+  }, [open, user]);
 
   useEffect(() => {
     if (!open) return;
@@ -147,24 +192,58 @@ function JoinPhotographerModal({
   const onApply = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
+      if (userData?.role === 'photographer') return;
+      if (!user) {
+        openLoginModal({ redirectTo: '/#get-started' });
+        return;
+      }
+      const rate = Number(apply.startingHourlyRate);
+      const focusResolved =
+        apply.photoFocusChoice === 'Other'
+          ? apply.photoFocusOther.trim()
+          : apply.photoFocusChoice.trim();
+      const bioWords = apply.bio.trim().split(/\s+/).filter(Boolean).length;
       if (
-        !apply.name.trim() ||
+        !apply.firstName.trim() ||
+        !apply.lastName.trim() ||
         !apply.email.trim() ||
         !apply.city.trim() ||
-        !apply.country.trim()
+        !apply.country.trim() ||
+        !apply.photoFocusChoice ||
+        !focusResolved ||
+        !Number.isFinite(rate) ||
+        rate < 1 ||
+        !apply.bio.trim() ||
+        bioWords > 150
       ) {
         setApplyStatus('err');
         return;
       }
+      const displayName =
+        `${apply.firstName.trim()} ${apply.lastName.trim()}`.trim();
       const payload: ApplyPayload = {
-        name: apply.name.trim(),
+        applicantUserId: user.uid,
+        name: displayName,
+        firstName: apply.firstName.trim(),
+        lastName: apply.lastName.trim(),
         email: apply.email.trim(),
         city: apply.city.trim(),
         state: apply.state.trim(),
         country: apply.country.trim(),
+        address: apply.address.trim(),
+        startingHourlyRate: rate,
+        bio: apply.bio.trim(),
+        photographyFocus: focusResolved,
+        phone: apply.phone.trim(),
+        phoneContact: apply.phoneContact,
+        emailContact: apply.emailContact,
         instagram: apply.instagram.trim(),
+        twitter: apply.twitter.trim(),
+        facebook: apply.facebook.trim(),
         website: apply.website.trim(),
         portfolioLinks: apply.portfolioLinks.trim(),
+        serviceArea: apply.serviceArea.trim(),
+        openToOtherAreas: apply.openToOtherAreas,
         interestedInClientWork: apply.interestedInClientWork,
         howDidYouHear: apply.howDidYouHear.trim(),
       };
@@ -194,19 +273,32 @@ function JoinPhotographerModal({
 
       setApplyStatus('ok');
       setApply({
-        name: '',
+        firstName: '',
+        lastName: '',
         email: '',
+        address: '',
         city: '',
         state: '',
         country: '',
+        startingHourlyRate: '',
+        bio: '',
+        photoFocusChoice: '',
+        photoFocusOther: '',
+        phone: '',
+        phoneContact: false,
+        emailContact: false,
         instagram: '',
+        twitter: '',
+        facebook: '',
         website: '',
         portfolioLinks: '',
+        serviceArea: '',
+        openToOtherAreas: false,
         interestedInClientWork: false,
         howDidYouHear: '',
       });
     },
-    [apply],
+    [apply, user, userData?.role, openLoginModal],
   );
 
   if (!open) return null;
@@ -224,7 +316,7 @@ function JoinPhotographerModal({
         aria-label='Close'
         onClick={onClose}
       />
-      <div className='relative z-10 flex max-h-[min(90vh,720px)] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-zinc-900/10'>
+      <div className='relative z-10 flex max-h-[min(90vh,800px)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-zinc-900/10'>
         <div className='flex shrink-0 items-start justify-between gap-4 border-b border-zinc-100 px-6 py-4'>
           <div>
             <p className='text-[11px] font-semibold tracking-[0.22em] text-amber-900/70'>
@@ -273,41 +365,89 @@ function JoinPhotographerModal({
             </div>
           ) : (
             <form onSubmit={onApply} className='space-y-4'>
+              {!loading && alreadyPhotographer ? (
+                <div className='rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-800'>
+                  You are already a photographer on Fotomatic. Profile and bookings
+                  are available from your account menu.
+                </div>
+              ) : null}
+              {!loading && !user ? (
+                <div className='rounded-2xl border border-amber-200/80 bg-amber-50/90 p-4 text-sm text-amber-950'>
+                  Please{' '}
+                  <button
+                    type='button'
+                    className='font-semibold underline'
+                    onClick={() => openLoginModal({ redirectTo: '/#get-started' })}
+                  >
+                    log in or sign up
+                  </button>{' '}
+                  before applying.
+                </div>
+              ) : null}
+              <fieldset
+                disabled={alreadyPhotographer}
+                className='min-w-0 space-y-4 border-0 p-0 disabled:opacity-70'
+              >
               <div className='grid gap-3 sm:grid-cols-2'>
-                <label className='block space-y-1 sm:col-span-2'>
+                <label className='block space-y-1'>
                   <span className='text-xs font-medium text-zinc-600'>
-                    Full name
+                    First name <span className='text-red-600'>*</span>
                   </span>
                   <input
                     required
-                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-900/20'
-                    value={apply.name}
+                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
+                    value={apply.firstName}
                     onChange={(e) =>
-                      setApply((s) => ({ ...s, name: e.target.value }))
+                      setApply((s) => ({ ...s, firstName: e.target.value }))
+                    }
+                  />
+                </label>
+                <label className='block space-y-1'>
+                  <span className='text-xs font-medium text-zinc-600'>
+                    Last name <span className='text-red-600'>*</span>
+                  </span>
+                  <input
+                    required
+                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
+                    value={apply.lastName}
+                    onChange={(e) =>
+                      setApply((s) => ({ ...s, lastName: e.target.value }))
                     }
                   />
                 </label>
                 <label className='block space-y-1 sm:col-span-2'>
                   <span className='text-xs font-medium text-zinc-600'>
-                    Email
+                    Email <span className='text-red-600'>*</span>
                   </span>
                   <input
                     type='email'
                     required
-                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-900/20'
+                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
                     value={apply.email}
                     onChange={(e) =>
                       setApply((s) => ({ ...s, email: e.target.value }))
                     }
                   />
                 </label>
+                <label className='block space-y-1 sm:col-span-2'>
+                  <span className='text-xs font-medium text-zinc-600'>
+                    Street address <span className='font-normal text-zinc-400'>(optional)</span>
+                  </span>
+                  <input
+                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
+                    value={apply.address}
+                    onChange={(e) =>
+                      setApply((s) => ({ ...s, address: e.target.value }))
+                    }
+                  />
+                </label>
                 <label className='block space-y-1'>
                   <span className='text-xs font-medium text-zinc-600'>
-                    City
+                    City <span className='text-red-600'>*</span>
                   </span>
                   <input
                     required
-                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-900/20'
+                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
                     value={apply.city}
                     onChange={(e) =>
                       setApply((s) => ({ ...s, city: e.target.value }))
@@ -316,10 +456,10 @@ function JoinPhotographerModal({
                 </label>
                 <label className='block space-y-1'>
                   <span className='text-xs font-medium text-zinc-600'>
-                    State / region
+                    State / region <span className='font-normal text-zinc-400'>(optional)</span>
                   </span>
                   <input
-                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-900/20'
+                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
                     placeholder='If applicable'
                     value={apply.state}
                     onChange={(e) =>
@@ -329,11 +469,11 @@ function JoinPhotographerModal({
                 </label>
                 <label className='block space-y-1 sm:col-span-2'>
                   <span className='text-xs font-medium text-zinc-600'>
-                    Country
+                    Country <span className='text-red-600'>*</span>
                   </span>
                   <input
                     required
-                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-900/20'
+                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
                     value={apply.country}
                     onChange={(e) =>
                       setApply((s) => ({ ...s, country: e.target.value }))
@@ -342,10 +482,154 @@ function JoinPhotographerModal({
                 </label>
                 <label className='block space-y-1 sm:col-span-2'>
                   <span className='text-xs font-medium text-zinc-600'>
-                    Instagram profile
+                    Starting hourly rate (USD) <span className='text-red-600'>*</span>
                   </span>
                   <input
-                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-900/20'
+                    inputMode='decimal'
+                    required
+                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
+                    placeholder='e.g. 200'
+                    value={apply.startingHourlyRate}
+                    onChange={(e) =>
+                      setApply((s) => ({
+                        ...s,
+                        startingHourlyRate: e.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <div className='space-y-2 sm:col-span-2'>
+                  <span className='text-xs font-medium text-zinc-600'>
+                    Photography focus / specialty <span className='text-red-600'>*</span>
+                  </span>
+                  <select
+                    required
+                    className='w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
+                    value={apply.photoFocusChoice}
+                    onChange={(e) =>
+                      setApply((s) => ({
+                        ...s,
+                        photoFocusChoice: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value=''>Select…</option>
+                    {PHOTOGRAPHY_FOCUS_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                  {apply.photoFocusChoice === 'Other' ? (
+                    <input
+                      className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
+                      placeholder='Describe your focus'
+                      value={apply.photoFocusOther}
+                      onChange={(e) =>
+                        setApply((s) => ({
+                          ...s,
+                          photoFocusOther: e.target.value,
+                        }))
+                      }
+                    />
+                  ) : null}
+                </div>
+                <label className='block space-y-1 sm:col-span-2'>
+                  <span className='text-xs font-medium text-zinc-600'>
+                    Short bio <span className='text-red-600'>*</span>{' '}
+                    <span className='font-normal text-zinc-400'>(max ~150 words)</span>
+                  </span>
+                  <textarea
+                    required
+                    rows={4}
+                    maxLength={2000}
+                    className='w-full resize-y rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
+                    value={apply.bio}
+                    onChange={(e) =>
+                      setApply((s) => ({ ...s, bio: e.target.value }))
+                    }
+                  />
+                </label>
+                <label className='block space-y-1 sm:col-span-2'>
+                  <span className='text-xs font-medium text-zinc-600'>
+                    Primary service area <span className='font-normal text-zinc-400'>(optional)</span>
+                  </span>
+                  <input
+                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
+                    placeholder='Regions you usually work in'
+                    value={apply.serviceArea}
+                    onChange={(e) =>
+                      setApply((s) => ({ ...s, serviceArea: e.target.value }))
+                    }
+                  />
+                </label>
+                <label className='flex cursor-pointer items-start gap-3 text-sm text-zinc-700 sm:col-span-2'>
+                  <input
+                    type='checkbox'
+                    className='mt-1 rounded border-zinc-300 text-amber-900 focus:ring-amber-900/30'
+                    checked={apply.openToOtherAreas}
+                    onChange={(e) =>
+                      setApply((s) => ({
+                        ...s,
+                        openToOtherAreas: e.target.checked,
+                      }))
+                    }
+                  />
+                  <span>Open to traveling or serving nearby regions beyond my primary area.</span>
+                </label>
+                <label className='block space-y-1 sm:col-span-2'>
+                  <span className='text-xs font-medium text-zinc-600'>
+                    Phone <span className='font-normal text-zinc-400'>(optional)</span>
+                  </span>
+                  <input
+                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
+                    value={apply.phone}
+                    onChange={(e) =>
+                      setApply((s) => ({ ...s, phone: e.target.value }))
+                    }
+                  />
+                </label>
+                <div className='flex flex-col gap-3 sm:col-span-2'>
+                  <label className='flex cursor-pointer items-start gap-3 text-sm text-zinc-700'>
+                    <input
+                      type='checkbox'
+                      className='mt-1 rounded border-zinc-300 text-amber-900 focus:ring-amber-900/30'
+                      checked={apply.phoneContact}
+                      onChange={(e) =>
+                        setApply((s) => ({
+                          ...s,
+                          phoneContact: e.target.checked,
+                        }))
+                      }
+                    />
+                    <span>
+                      Clients may contact me by phone for booking-related questions.
+                      If unchecked, we won&apos;t show your number publicly.
+                    </span>
+                  </label>
+                  <label className='flex cursor-pointer items-start gap-3 text-sm text-zinc-700'>
+                    <input
+                      type='checkbox'
+                      className='mt-1 rounded border-zinc-300 text-amber-900 focus:ring-amber-900/30'
+                      checked={apply.emailContact}
+                      onChange={(e) =>
+                        setApply((s) => ({
+                          ...s,
+                          emailContact: e.target.checked,
+                        }))
+                      }
+                    />
+                    <span>
+                      Clients may contact me by email for booking-related questions.
+                    </span>
+                  </label>
+                </div>
+                <label className='block space-y-1 sm:col-span-2'>
+                  <span className='text-xs font-medium text-zinc-600'>
+                    Instagram <span className='font-normal text-zinc-400'>(optional)</span>
+                  </span>
+                  <input
+                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
                     placeholder='@handle or full URL'
                     value={apply.instagram}
                     onChange={(e) =>
@@ -355,10 +639,34 @@ function JoinPhotographerModal({
                 </label>
                 <label className='block space-y-1 sm:col-span-2'>
                   <span className='text-xs font-medium text-zinc-600'>
-                    Website
+                    X / Twitter <span className='font-normal text-zinc-400'>(optional)</span>
                   </span>
                   <input
-                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-900/20'
+                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
+                    value={apply.twitter}
+                    onChange={(e) =>
+                      setApply((s) => ({ ...s, twitter: e.target.value }))
+                    }
+                  />
+                </label>
+                <label className='block space-y-1 sm:col-span-2'>
+                  <span className='text-xs font-medium text-zinc-600'>
+                    Facebook <span className='font-normal text-zinc-400'>(optional)</span>
+                  </span>
+                  <input
+                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
+                    value={apply.facebook}
+                    onChange={(e) =>
+                      setApply((s) => ({ ...s, facebook: e.target.value }))
+                    }
+                  />
+                </label>
+                <label className='block space-y-1 sm:col-span-2'>
+                  <span className='text-xs font-medium text-zinc-600'>
+                    Website <span className='font-normal text-zinc-400'>(optional)</span>
+                  </span>
+                  <input
+                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
                     placeholder='https://'
                     value={apply.website}
                     onChange={(e) =>
@@ -368,12 +676,12 @@ function JoinPhotographerModal({
                 </label>
                 <label className='block space-y-1 sm:col-span-2'>
                   <span className='text-xs font-medium text-zinc-600'>
-                    Portfolio links
+                    Other portfolio / links <span className='font-normal text-zinc-400'>(optional)</span>
                   </span>
                   <textarea
-                    rows={3}
-                    className='w-full resize-y rounded-xl border border-zinc-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-900/20'
-                    placeholder='URLs to galleries or project pages'
+                    rows={2}
+                    className='w-full resize-y rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
+                    placeholder='URLs separated by spaces or new lines'
                     value={apply.portfolioLinks}
                     onChange={(e) =>
                       setApply((s) => ({
@@ -385,10 +693,11 @@ function JoinPhotographerModal({
                 </label>
                 <label className='block space-y-1 sm:col-span-2'>
                   <span className='text-xs font-medium text-zinc-600'>
-                    How did you hear about Fotomatic?
+                    How did you hear about Fotomatic?{' '}
+                    <span className='font-normal text-zinc-400'>(optional)</span>
                   </span>
                   <input
-                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-900/20'
+                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
                     value={apply.howDidYouHear}
                     onChange={(e) =>
                       setApply((s) => ({
@@ -432,7 +741,7 @@ function JoinPhotographerModal({
               ) : null}
               <button
                 type='submit'
-                disabled={applyStatus === 'loading'}
+                disabled={applyStatus === 'loading' || alreadyPhotographer}
                 className='flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-zinc-900 py-3.5 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60'
               >
                 {applyStatus === 'loading' ? (
@@ -444,6 +753,7 @@ function JoinPhotographerModal({
                   'Submit application'
                 )}
               </button>
+              </fieldset>
             </form>
           )}
         </div>
@@ -452,7 +762,12 @@ function JoinPhotographerModal({
   );
 }
 export function LandingPage() {
+  const { userData } = useAuth();
   const { openLoginModal } = useLoginModal();
+  const joinPhotographerDisabled = userData?.role === 'photographer';
+  const joinPhotographerTitle = joinPhotographerDisabled
+    ? 'You are already a photographer.'
+    : undefined;
   const [joinModalOpen, setJoinModalOpen] = useState(false);
   const [joinModalKey, setJoinModalKey] = useState(0);
   const [newsletterEmail, setNewsletterEmail] = useState('');
@@ -509,13 +824,16 @@ export function LandingPage() {
               >
                 Find a Photographer
               </Link>
-              <button
-                type='button'
-                onClick={openJoinModal}
-                className='inline-flex cursor-pointer items-center justify-center rounded-xl border border-zinc-200 bg-white px-8 py-4 text-base font-semibold text-zinc-900 shadow-sm transition-colors hover:bg-zinc-50'
-              >
-                Join as a Photographer
-              </button>
+              <span className='inline-flex' title={joinPhotographerTitle}>
+                <button
+                  type='button'
+                  onClick={openJoinModal}
+                  disabled={joinPhotographerDisabled}
+                  className='inline-flex cursor-pointer items-center justify-center rounded-xl border border-zinc-200 bg-white px-8 py-4 text-base font-semibold text-zinc-900 shadow-sm transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-white'
+                >
+                  Join as a Photographer
+                </button>
+              </span>
             </div>
             <p className='text-sm text-zinc-500'>
               <button
@@ -764,13 +1082,16 @@ export function LandingPage() {
                 <p className='font-medium text-zinc-900'>
                   Are you a photographer?
                 </p>
-                <button
-                  type='button'
-                  onClick={openJoinModal}
-                  className='mt-5 inline-flex cursor-pointer rounded-xl border border-zinc-200 bg-white px-6 py-3 text-sm font-semibold text-zinc-900 transition-colors hover:bg-zinc-50'
-                >
-                  Apply to Join
-                </button>
+                <span className='mt-5 inline-flex' title={joinPhotographerTitle}>
+                  <button
+                    type='button'
+                    onClick={openJoinModal}
+                    disabled={joinPhotographerDisabled}
+                    className='inline-flex cursor-pointer rounded-xl border border-zinc-200 bg-white px-6 py-3 text-sm font-semibold text-zinc-900 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-white'
+                  >
+                    Apply to Join
+                  </button>
+                </span>
               </div>
             </div>
           </div>

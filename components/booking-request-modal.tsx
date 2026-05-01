@@ -2,29 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
-import { bookPhotographer } from '@/lib/firebase/firestore';
 import type { UserData } from '@/lib/firebase/user-profile';
 import {
   BOOKING_DURATION_PRESETS,
   BOOKING_EVENT_TYPES,
 } from '@/lib/booking-request';
 import type { DirectoryPhotographer } from '@/lib/photographers-directory';
+import { createBookingThread } from '@/lib/firebase/booking-threads';
 import { CalendarDays, Loader2, X } from 'lucide-react';
-
-const EVENT_DATE_MAX_LEN = 79;
-
-/** Stored in Firestore `eventDate` (length-capped). */
-function buildEventDatePayload(
-  isoDate: string,
-  timeframe: string,
-): string {
-  const tf = timeframe.trim();
-  if (!tf) return isoDate.trim();
-  const combined = `${isoDate.trim()} · ${tf}`;
-  return combined.length > EVENT_DATE_MAX_LEN
-    ? combined.slice(0, EVENT_DATE_MAX_LEN)
-    : combined;
-}
 
 function getPhotographerName(p: DirectoryPhotographer): string {
   if (p.lastName) return `${p.firstName} ${p.lastName}`.trim();
@@ -43,6 +28,10 @@ function formatLocation(p: DirectoryPhotographer): string {
   return '—';
 }
 
+function formatStartingRate(p: DirectoryPhotographer): string {
+  return `From $${p.startingHourlyRate}/hr`;
+}
+
 type Props = {
   photographer: DirectoryPhotographer | null;
   user: User;
@@ -58,6 +47,13 @@ export function BookingRequestModal({
   promoLabel,
   onClose,
 }: Props) {
+  const inputClass =
+    'w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-amber-900/20';
+  const selectClass =
+    'w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20';
+  const textareaClass =
+    'w-full resize-y rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-amber-900/20';
+
   const [eventType, setEventType] = useState<string>(BOOKING_EVENT_TYPES[0]!);
   const [eventLocation, setEventLocation] = useState('');
   const [duration, setDuration] = useState<string>(
@@ -68,6 +64,7 @@ export function BookingRequestModal({
   /** Optional: time of day, flexibility, multi-day window */
   const [eventTimeframe, setEventTimeframe] = useState('');
   const [notes, setNotes] = useState('');
+  const [agreedToContract, setAgreedToContract] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,6 +76,7 @@ export function BookingRequestModal({
     setPreferredDate('');
     setEventTimeframe('');
     setNotes('');
+    setAgreedToContract(false);
     setError(null);
   }, [photographer?.id]);
 
@@ -108,21 +106,28 @@ export function BookingRequestModal({
       setError('Please choose a preferred date on the calendar.');
       return;
     }
+    if (!agreedToContract) {
+      setError('Please agree to the standard contract terms to continue.');
+      return;
+    }
     setSending(true);
     const promoNote = promoLabel?.trim().slice(0, 499);
-    const eventDate = buildEventDatePayload(preferredDate, eventTimeframe);
-    const result = await bookPhotographer({
-      photographerId: photographer.id,
+    const eventDate = preferredDate.trim();
+    const result = await createBookingThread({
+      clientUserId: user.uid,
+      clientName: userName,
+      clientEmail: userEmail,
+      photographerDirectoryId: photographer.id,
       photographerName: getPhotographerName(photographer),
-      userId: user.uid,
-      userName,
-      userEmail,
+      photographerStartingHourlyRate: photographer.startingHourlyRate,
       eventType: eventType.trim(),
-      eventLocation: eventLocation.trim(),
-      duration: duration.trim(),
       eventDate,
-      notes: notes.trim(),
-      ...(promoNote ? { promoNote } : {}),
+      eventTimeframe: eventTimeframe.trim(),
+      duration: duration.trim(),
+      eventLocation: eventLocation.trim(),
+      clientMessage: notes.trim(),
+      agreedToContract,
+      promoNote: promoNote ?? null,
     });
     setSending(false);
     if (result.ok) {
@@ -179,7 +184,12 @@ export function BookingRequestModal({
           <p className="mt-1 font-medium text-zinc-900">
             {getPhotographerName(photographer)}
           </p>
-          <p className="mt-0.5 text-zinc-600">{formatLocation(photographer)}</p>
+          <div className="mt-0.5 flex flex-wrap items-center justify-between gap-2 text-zinc-600">
+            <p className="text-sm">{formatLocation(photographer)}</p>
+            <p className="text-sm font-semibold text-zinc-900">
+              {formatStartingRate(photographer)}
+            </p>
+          </div>
         </div>
 
         {promoLabel ? (
@@ -199,7 +209,7 @@ export function BookingRequestModal({
             <span className="text-xs font-medium text-zinc-600">Event type</span>
             <select
               required
-              className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-900/20"
+              className={selectClass}
               value={eventType}
               onChange={(e) => setEventType(e.target.value)}
             >
@@ -217,7 +227,7 @@ export function BookingRequestModal({
             </span>
             <input
               required
-              className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-900/20"
+              className={inputClass}
               value={eventLocation}
               onChange={(e) => setEventLocation(e.target.value)}
               placeholder="Venue, neighborhood, or city"
@@ -228,7 +238,7 @@ export function BookingRequestModal({
             <span className="text-xs font-medium text-zinc-600">Duration</span>
             <select
               required
-              className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-900/20"
+              className={selectClass}
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
             >
@@ -252,7 +262,7 @@ export function BookingRequestModal({
               <input
                 type="date"
                 required
-                className="w-full cursor-pointer rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20"
+                className={`${inputClass} cursor-pointer`}
                 value={preferredDate}
                 onChange={(e) => setPreferredDate(e.target.value)}
               />
@@ -268,7 +278,7 @@ export function BookingRequestModal({
               </span>
               <input
                 type="text"
-                className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-900/20"
+                className={inputClass}
                 value={eventTimeframe}
                 onChange={(e) => setEventTimeframe(e.target.value)}
                 placeholder="e.g. 2pm start, golden hour, or flexible that week"
@@ -282,11 +292,23 @@ export function BookingRequestModal({
             </span>
             <textarea
               rows={4}
-              className="w-full resize-y rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-900/20"
+              className={textareaClass}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Timing, shot list, budget range, references…"
             />
+          </label>
+
+          <label className="flex items-start gap-3 rounded-xl border border-zinc-200/80 bg-white p-4">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-zinc-900"
+              checked={agreedToContract}
+              onChange={(e) => setAgreedToContract(e.target.checked)}
+            />
+            <span className="text-sm text-zinc-700">
+              I agree to Fotomatic&apos;s standard contract terms for bookings.
+            </span>
           </label>
 
           <div className="flex flex-wrap gap-3 pt-2">
