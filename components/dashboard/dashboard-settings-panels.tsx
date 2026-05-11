@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronDown, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
 import { ProfileSettingsForm } from '@/components/profile-settings-form';
 import { SupportInboxComposer } from '@/components/support-inbox-composer';
+import { PhotographerApplicationStatusCard } from '@/components/photographer-application-status-card';
 import { defaultUserDataFromAuth } from '@/lib/firebase/user-profile';
 
 type PanelId = 'profile' | 'account' | 'support';
@@ -24,8 +25,26 @@ export function DashboardSettingsPanels() {
     setOpen((cur) => (cur === id ? null : id));
   };
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.location.hash !== '#photographer-application') return;
+    const el = document.getElementById('photographer-application');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
+
+  const showApplicationCard =
+    !loading && user && (userData?.role ?? 'user') === 'user';
+
   return (
     <div className="mt-8 space-y-3">
+      {showApplicationCard ? (
+        <PhotographerApplicationStatusCard
+          domId="photographer-application"
+          className="mb-1"
+        />
+      ) : null}
       <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
         <button
           type="button"

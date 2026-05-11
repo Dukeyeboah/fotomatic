@@ -162,6 +162,7 @@ export async function createBookingThread(
       body: `${data.clientName} requested ${data.photographerName} (${data.eventType} on ${data.eventDate}).`,
       threadId: threadRef.id,
       applicationId: null,
+      read: false,
       createdAt: serverTimestamp(),
     });
 
@@ -476,6 +477,7 @@ export async function photographerAccept(args: {
       body: `${args.photographerName} accepted a booking (thread ${args.threadId}).`,
       threadId: args.threadId,
       applicationId: null,
+      read: false,
       createdAt: serverTimestamp(),
     });
     return { ok: true, value: true };
@@ -532,6 +534,7 @@ export async function photographerSuggestAlternative(args: {
       body: `${args.photographerName} suggested a new time (thread ${args.threadId}).`,
       threadId: args.threadId,
       applicationId: null,
+      read: false,
       createdAt: serverTimestamp(),
     });
     return { ok: true, value: true };
@@ -583,6 +586,7 @@ export async function photographerDecline(args: {
       body: `${args.photographerName} declined a booking (thread ${args.threadId}).`,
       threadId: args.threadId,
       applicationId: null,
+      read: false,
       createdAt: serverTimestamp(),
     });
     return { ok: true, value: true };

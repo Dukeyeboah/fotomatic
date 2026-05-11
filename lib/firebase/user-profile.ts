@@ -1,5 +1,5 @@
 import type { User } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from './config';
 
 /** Extended fields for users with role `photographer`. */
@@ -35,6 +35,11 @@ export interface PhotographerProfileFields {
   emailContact?: boolean;
   serviceArea?: string;
   openToOtherAreas?: boolean;
+  /**
+   * When true, photographer shell shows one-time profile setup after approval.
+   * Cleared when they dismiss the prompt or save from that flow.
+   */
+  showProfileSetupModal?: boolean;
 }
 
 export interface UserData {
@@ -130,6 +135,21 @@ function omitUndefinedDeep(
     }
   }
   return out;
+}
+
+export async function clearPhotographerProfileSetupModal(
+  uid: string,
+): Promise<boolean> {
+  try {
+    await updateDoc(doc(db, 'users', uid), {
+      'photographer.showProfileSetupModal': false,
+      updatedAt: serverTimestamp(),
+    });
+    return true;
+  } catch (e) {
+    console.error('clearPhotographerProfileSetupModal', e);
+    return false;
+  }
 }
 
 export async function updateUserDocument(

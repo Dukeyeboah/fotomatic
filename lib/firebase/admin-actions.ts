@@ -93,12 +93,16 @@ export async function adminApprovePhotographerApplication(args: {
       : 150;
 
     const directoryId = `p-${args.applicantUserId}`;
+    const displayName =
+      [firstName, lastName].filter(Boolean).join(' ').trim() ||
+      args.applicantName.trim();
 
     // 1) Promote role + seed photographer profile on user doc
     await setDoc(
       doc(db, 'users', args.applicantUserId),
       {
         role: 'photographer',
+        displayName,
         photographer: {
           directoryId,
           hourlyRate: rate,
@@ -117,6 +121,7 @@ export async function adminApprovePhotographerApplication(args: {
           phone: str(app.phone) || undefined,
           phoneContact: app.phoneContact === true,
           emailContact: app.emailContact === true,
+          showProfileSetupModal: true,
         },
         updatedAt: serverTimestamp(),
       },
@@ -134,16 +139,13 @@ export async function adminApprovePhotographerApplication(args: {
       userId: args.applicantUserId,
       threadId: null,
       type: 'system',
-      title: 'You’re approved as a photographer',
-      body: 'Your application was approved. Open your dashboard at /photographer and edit your public profile at /profile (images, bio, portfolio).',
+      title: 'You’re approved as a Fotomatic photographer',
+      body: 'Congratulations — your application was approved. Complete your public profile: add a profile photo, 3–15 portfolio images, and review your bio and links so clients can book you. A setup window will open when you visit your photographer dashboard.',
       read: false,
       createdAt: serverTimestamp(),
     });
 
     // 3b) Public directory listing (clients browse this collection)
-    const displayName =
-      [firstName, lastName].filter(Boolean).join(' ').trim() ||
-      args.applicantName.trim();
     await setDoc(
       doc(db, 'photographers', directoryId),
       {
@@ -187,6 +189,7 @@ export async function adminApprovePhotographerApplication(args: {
       body: `Approved ${args.applicantName} (${args.applicantUserId}).`,
       threadId: null,
       applicationId: args.applicationId,
+      read: false,
       createdAt: serverTimestamp(),
     });
 
@@ -224,6 +227,7 @@ export async function adminDeclinePhotographerApplication(args: {
       body: `Declined ${args.applicantName} (${args.applicantUserId}).`,
       threadId: null,
       applicationId: args.applicationId,
+      read: false,
       createdAt: serverTimestamp(),
     });
 

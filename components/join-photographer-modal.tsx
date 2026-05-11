@@ -1,11 +1,42 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
 import { savePhotographerApplication } from '@/lib/firebase/firestore';
+import { COUNTRY_NAMES } from '@/lib/countries';
 import { PHOTOGRAPHY_FOCUS_OPTIONS } from '@/lib/photography-focus';
 import { CheckCircle2, Loader2, X } from 'lucide-react';
+
+const DRAFT_STORAGE_KEY = 'fotomatic_join_photographer_draft_v1';
+
+function emptyApplyForm() {
+  return {
+    firstName: '',
+    lastName: '',
+    email: '',
+    address: '',
+    city: '',
+    state: '',
+    country: '',
+    startingHourlyRate: '',
+    bio: '',
+    photoFocusChoice: '' as string,
+    photoFocusOther: '',
+    phone: '',
+    phoneContact: false,
+    emailContact: false,
+    instagram: '',
+    twitter: '',
+    facebook: '',
+    website: '',
+    portfolioLinks: '',
+    serviceArea: '',
+    openToOtherAreas: false,
+    interestedInClientWork: false,
+    howDidYouHear: '',
+  };
+}
 
 type ApplyPayload = {
   applicantUserId: string;
@@ -47,48 +78,75 @@ export function JoinPhotographerModal({
   const { user, userData, loading } = useAuth();
   const alreadyPhotographer = userData?.role === 'photographer';
   const { openLoginModal } = useLoginModal();
-  const [apply, setApply] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    address: '',
-    city: '',
-    state: '',
-    country: '',
-    startingHourlyRate: '',
-    bio: '',
-    photoFocusChoice: '' as string,
-    photoFocusOther: '',
-    phone: '',
-    phoneContact: false,
-    emailContact: false,
-    instagram: '',
-    twitter: '',
-    facebook: '',
-    website: '',
-    portfolioLinks: '',
-    serviceArea: '',
-    openToOtherAreas: false,
-    interestedInClientWork: false,
-    howDidYouHear: '',
-  });
+  const [apply, setApply] = useState(emptyApplyForm);
   const [applyStatus, setApplyStatus] = useState<
     'idle' | 'loading' | 'ok' | 'err'
   >('idle');
+  const prevOpenRef = useRef(false);
 
+  /** When the dialog opens, hydrate from session draft + account defaults. */
+  useEffect(() => {
+    if (!open) {
+      prevOpenRef.current = false;
+      return;
+    }
+    if (prevOpenRef.current) return;
+    prevOpenRef.current = true;
+
+    let next = emptyApplyForm();
+    try {
+      const raw = sessionStorage.getItem(DRAFT_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        if (parsed && typeof parsed === 'object') {
+          next = { ...next, ...(parsed as typeof next) };
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    if (user) {
+      const parts =
+        user.displayName?.trim().split(/\s+/).filter(Boolean) ?? [];
+      next.email = (next.email || user.email || '').trim();
+      next.firstName = (next.firstName || parts[0] || '').trim();
+      next.lastName = (
+        next.lastName ||
+        (parts.length > 1 ? parts.slice(1).join(' ') : '')
+      ).trim();
+    }
+    setApply(next);
+    setApplyStatus('idle');
+  }, [open, user]);
+
+  /** If the user signs in while the modal stays open, fill blanks from Auth. */
   useEffect(() => {
     if (!open || !user) return;
     setApply((s) => ({
       ...s,
-      email: s.email || user.email || '',
+      email: (s.email || user.email || '').trim(),
       firstName:
-        s.firstName || user.displayName?.trim().split(/\s+/)[0] || '',
-      lastName:
+        (s.firstName || user.displayName?.trim().split(/\s+/)[0] || '').trim(),
+      lastName: (
         s.lastName ||
-        user.displayName?.trim().split(/\s+/).slice(1).join(' ') ||
-        '',
+        (user.displayName?.trim().includes(' ')
+          ? user.displayName.trim().split(/\s+/).slice(1).join(' ')
+          : '')
+      ).trim(),
     }));
   }, [open, user]);
+
+  useEffect(() => {
+    if (!open || alreadyPhotographer || applyStatus === 'ok') return;
+    const t = window.setTimeout(() => {
+      try {
+        sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(apply));
+      } catch {
+        /* ignore */
+      }
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [open, apply, alreadyPhotographer, applyStatus]);
 
   useEffect(() => {
     if (!open) return;
@@ -104,6 +162,11 @@ export function JoinPhotographerModal({
       e.preventDefault();
       if (userData?.role === 'photographer') return;
       if (!user) {
+        try {
+          sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(apply));
+        } catch {
+          /* ignore */
+        }
         openLoginModal({ redirectTo: loginRedirectTo });
         return;
       }
@@ -182,31 +245,12 @@ export function JoinPhotographerModal({
       }
 
       setApplyStatus('ok');
-      setApply({
-        firstName: '',
-        lastName: '',
-        email: '',
-        address: '',
-        city: '',
-        state: '',
-        country: '',
-        startingHourlyRate: '',
-        bio: '',
-        photoFocusChoice: '',
-        photoFocusOther: '',
-        phone: '',
-        phoneContact: false,
-        emailContact: false,
-        instagram: '',
-        twitter: '',
-        facebook: '',
-        website: '',
-        portfolioLinks: '',
-        serviceArea: '',
-        openToOtherAreas: false,
-        interestedInClientWork: false,
-        howDidYouHear: '',
-      });
+      try {
+        sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+      } catch {
+        /* ignore */
+      }
+      setApply(emptyApplyForm());
     },
     [apply, user, userData?.role, openLoginModal, loginRedirectTo],
   );
@@ -283,15 +327,20 @@ export function JoinPhotographerModal({
               ) : null}
               {!loading && !user ? (
                 <div className='rounded-2xl border border-amber-200/80 bg-amber-50/90 p-4 text-sm text-amber-950'>
-                  Please{' '}
-                  <button
-                    type='button'
-                    className='font-semibold underline'
-                    onClick={() => openLoginModal({ redirectTo: loginRedirectTo })}
-                  >
-                    log in or sign up
-                  </button>{' '}
-                  before applying.
+                  <p>
+                    You can fill out the form now — we save your progress in this
+                    browser. When you&apos;re ready, use{' '}
+                    <span className='font-semibold'>Submit application</span> and
+                    you&apos;ll be asked to{' '}
+                    <button
+                      type='button'
+                      className='font-semibold underline'
+                      onClick={() => openLoginModal({ redirectTo: loginRedirectTo })}
+                    >
+                      log in or sign up
+                    </button>{' '}
+                    so we can receive it.
+                  </p>
                 </div>
               ) : null}
               <fieldset
@@ -381,14 +430,21 @@ export function JoinPhotographerModal({
                   <span className='text-xs font-medium text-zinc-600'>
                     Country <span className='text-red-600'>*</span>
                   </span>
-                  <input
+                  <select
                     required
-                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
+                    className='w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
                     value={apply.country}
                     onChange={(e) =>
                       setApply((s) => ({ ...s, country: e.target.value }))
                     }
-                  />
+                  >
+                    <option value=''>Select country</option>
+                    {COUNTRY_NAMES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label className='block space-y-1 sm:col-span-2'>
                   <span className='text-xs font-medium text-zinc-600'>
@@ -534,13 +590,19 @@ export function JoinPhotographerModal({
                     </span>
                   </label>
                 </div>
+                <p className='text-[11px] leading-snug text-zinc-500 sm:col-span-2'>
+                  Social links: paste full profile URLs (starting with{' '}
+                  <span className='font-mono text-zinc-600'>https://</span>), not
+                  @handles.
+                </p>
                 <label className='block space-y-1 sm:col-span-2'>
                   <span className='text-xs font-medium text-zinc-600'>
-                    Instagram <span className='font-normal text-zinc-400'>(optional)</span>
+                    Instagram profile URL{' '}
+                    <span className='font-normal text-zinc-400'>(optional)</span>
                   </span>
                   <input
                     className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
-                    placeholder='@handle or full URL'
+                    placeholder='https://www.instagram.com/yourprofile'
                     value={apply.instagram}
                     onChange={(e) =>
                       setApply((s) => ({ ...s, instagram: e.target.value }))
@@ -549,10 +611,12 @@ export function JoinPhotographerModal({
                 </label>
                 <label className='block space-y-1 sm:col-span-2'>
                   <span className='text-xs font-medium text-zinc-600'>
-                    X / Twitter <span className='font-normal text-zinc-400'>(optional)</span>
+                    X (Twitter) profile URL{' '}
+                    <span className='font-normal text-zinc-400'>(optional)</span>
                   </span>
                   <input
                     className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
+                    placeholder='https://x.com/yourprofile'
                     value={apply.twitter}
                     onChange={(e) =>
                       setApply((s) => ({ ...s, twitter: e.target.value }))
@@ -561,10 +625,12 @@ export function JoinPhotographerModal({
                 </label>
                 <label className='block space-y-1 sm:col-span-2'>
                   <span className='text-xs font-medium text-zinc-600'>
-                    Facebook <span className='font-normal text-zinc-400'>(optional)</span>
+                    Facebook profile or page URL{' '}
+                    <span className='font-normal text-zinc-400'>(optional)</span>
                   </span>
                   <input
                     className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
+                    placeholder='https://www.facebook.com/yourprofile'
                     value={apply.facebook}
                     onChange={(e) =>
                       setApply((s) => ({ ...s, facebook: e.target.value }))
@@ -573,11 +639,12 @@ export function JoinPhotographerModal({
                 </label>
                 <label className='block space-y-1 sm:col-span-2'>
                   <span className='text-xs font-medium text-zinc-600'>
-                    Website <span className='font-normal text-zinc-400'>(optional)</span>
+                    Website URL{' '}
+                    <span className='font-normal text-zinc-400'>(optional)</span>
                   </span>
                   <input
                     className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
-                    placeholder='https://'
+                    placeholder='https://yourdomain.com'
                     value={apply.website}
                     onChange={(e) =>
                       setApply((s) => ({ ...s, website: e.target.value }))

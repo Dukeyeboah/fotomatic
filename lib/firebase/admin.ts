@@ -2,6 +2,7 @@
 
 import {
   collection,
+  getDocs,
   onSnapshot,
   orderBy,
   query,
@@ -9,6 +10,7 @@ import {
   where,
   doc,
   getDoc,
+  updateDoc,
   type Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
@@ -63,6 +65,8 @@ export type AdminEvent = {
   body: string;
   threadId?: string | null;
   applicationId?: string | null;
+  /** When false or missing, admin bell / inbox treat as unread for photographer-application rows. */
+  read?: boolean;
   createdAt?: unknown;
 };
 
@@ -113,6 +117,62 @@ export function subscribeAdminEvents(cb: (events: AdminEvent[]) => void): Unsubs
       ),
     () => cb([]),
   );
+}
+
+/** Unread rows in the admin feed (applications + booking lifecycle, for bell / sidebar). */
+export function subscribeUnreadAdminEventCount(
+  cb: (count: number) => void,
+): Unsubscribe {
+  return subscribeAdminEvents((events) => {
+    cb(events.filter((e) => e.read !== true && e.id).length);
+  });
+}
+
+export async function markAdminEventRead(eventId: string): Promise<boolean> {
+  try {
+    await updateDoc(doc(adminEventsCol, eventId), { read: true });
+    return true;
+  } catch (e) {
+    console.error('markAdminEventRead', e);
+    return false;
+  }
+}
+
+/** Mark recent unread admin feed rows read (applications and booking events). */
+export async function markAllUnreadAdminEventsRead(): Promise<void> {
+  try {
+    const q = query(adminEventsCol, orderBy('createdAt', 'desc'), limit(100));
+    const snap = await getDocs(q);
+    await Promise.all(
+      snap.docs
+        .filter((d) => (d.data() as { read?: boolean }).read !== true)
+        .map((d) => updateDoc(d.ref, { read: true })),
+    );
+  } catch (e) {
+    console.warn('markAllUnreadAdminEventsRead', e);
+  }
+}
+
+export async function markPhotographerAdminEventsReadForApplication(
+  applicationId: string,
+): Promise<void> {
+  try {
+    const q = query(
+      adminEventsCol,
+      where('applicationId', '==', applicationId),
+      limit(25),
+    );
+    const snap = await getDocs(q);
+    await Promise.all(
+      snap.docs.map((d) => {
+        const data = d.data() as { read?: boolean; type?: string };
+        if (data.read === true) return Promise.resolve();
+        return updateDoc(d.ref, { read: true });
+      }),
+    );
+  } catch (e) {
+    console.warn('markPhotographerAdminEventsReadForApplication', e);
+  }
 }
 
 export function subscribePhotographerUsers(

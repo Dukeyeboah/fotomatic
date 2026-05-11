@@ -5,12 +5,13 @@ import { useEffect, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { subscribeUnreadNotificationCount } from '@/lib/firebase/booking-threads';
+import { subscribeUnreadAdminEventCount } from '@/lib/firebase/admin';
 
 function notificationsHrefForRole(
   role: string | undefined,
 ): string {
   if (role === 'photographer') return '/photographer/notifications';
-  if (role === 'admin') return '/notifications';
+  if (role === 'admin') return '/admin/notifications';
   return '/dashboard/notifications';
 }
 
@@ -23,8 +24,25 @@ export function NotificationBell() {
       setUnread(0);
       return;
     }
+    if (userData?.role === 'admin') {
+      let n = 0;
+      let a = 0;
+      const emit = () => setUnread(n + a);
+      const u1 = subscribeUnreadNotificationCount(user.uid, (c) => {
+        n = c;
+        emit();
+      });
+      const u2 = subscribeUnreadAdminEventCount((c) => {
+        a = c;
+        emit();
+      });
+      return () => {
+        u1();
+        u2();
+      };
+    }
     return subscribeUnreadNotificationCount(user.uid, setUnread);
-  }, [user]);
+  }, [user, userData?.role]);
 
   if (loading || !user) return null;
 

@@ -17,6 +17,7 @@ import {
   HelpCircle,
   UserRound,
   CalendarCheck,
+  ClipboardList,
   Inbox,
   Search,
 } from 'lucide-react';
@@ -107,7 +108,7 @@ export function AccountMenuDropdown() {
           ) : null}
           {userData?.role === 'admin' ? (
             <Row href="/admin/inbox" icon={Inbox} onClick={close}>
-              Inbox
+              Applications & bookings
             </Row>
           ) : null}
 
@@ -185,6 +186,13 @@ export function AccountMenuDropdown() {
                 onClick={close}
               >
                 My bookings
+              </Row>
+              <Row
+                href="/dashboard/settings#photographer-application"
+                icon={ClipboardList}
+                onClick={close}
+              >
+                Photographer application
               </Row>
               <Row
                 href="/dashboard/settings"

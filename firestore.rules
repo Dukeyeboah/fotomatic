@@ -204,8 +204,14 @@ service cloud.firestore {
         && request.resource.data.title.size() < 220
         && request.resource.data.body is string
         && request.resource.data.body.size() > 0
-        && request.resource.data.body.size() < 1000;
-      allow update, delete: if false;
+        && request.resource.data.body.size() < 1000
+        && (!request.resource.data.keys().hasAny(['read'])
+            || request.resource.data.read == false);
+      // Admins mark feed rows read (e.g. photographer application alerts).
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+        && request.resource.data.read == true;
+      allow delete: if false;
     }
 
     // Support / contact messages visible to admins (clients & photographers submit)
@@ -242,7 +248,9 @@ service cloud.firestore {
     }
 
     match /photographerApplications/{id} {
-      allow read: if isAdmin();
+      allow read: if isAdmin()
+        || (isAuthenticated()
+            && resource.data.applicantUserId == request.auth.uid);
       allow create: if isAuthenticated()
         && request.resource.data.applicantUserId == request.auth.uid
         && request.resource.data.source == 'fotomatic'

@@ -121,7 +121,7 @@ export function DashboardAccountMenu() {
           ) : null}
           {userData?.role === 'admin' ? (
             <MenuRow href="/admin/inbox" icon={Inbox} onNavigate={close}>
-              Inbox
+              Applications & bookings
             </MenuRow>
           ) : null}
           <MenuRow

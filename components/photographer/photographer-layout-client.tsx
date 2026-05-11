@@ -10,6 +10,7 @@ import { DashboardMessagesNavLink } from '@/components/dashboard/messages-nav-li
 import { PhotographerSidebar } from '@/components/photographer/photographer-sidebar';
 import { PhotographerWelcomeHeader } from '@/components/photographer/photographer-welcome-header';
 import { PhotographerAccountMenu } from '@/components/photographer/photographer-account-menu';
+import { PhotographerProfileSetupModal } from '@/components/photographer-profile-setup-modal';
 
 const COLLAPSE_KEY = 'fotomatic_photographer_sidebar_collapsed';
 
@@ -148,6 +149,7 @@ export function PhotographerLayoutClient({
         </header>
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
+      <PhotographerProfileSetupModal />
     </div>
   );
 }

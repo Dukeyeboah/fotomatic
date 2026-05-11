@@ -71,7 +71,7 @@ export default function AdminInboxPage() {
           ADMIN
         </p>
         <h1 className="mt-2 font-serif text-2xl font-medium text-zinc-900">
-          Inbox
+          Applications & bookings
         </h1>
         <p className="mt-1 text-sm text-zinc-600">
           New photographer applications and booking lifecycle events.
@@ -90,7 +90,7 @@ export default function AdminInboxPage() {
             >
               Log in
             </button>{' '}
-            to view admin inbox.
+            to view applications and bookings.
           </p>
         ) : !isAdmin ? (
           <div className="mt-10 rounded-2xl border border-amber-200/80 bg-amber-50/90 p-6 text-sm text-amber-950">

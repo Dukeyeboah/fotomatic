@@ -285,7 +285,7 @@ export function AdminDashboardHome() {
               href="/admin/inbox"
               className="mt-4 inline-block text-xs font-semibold text-amber-900 hover:underline"
             >
-              Open applications inbox →
+              Open applications & bookings →
             </Link>
           </section>
         </div>

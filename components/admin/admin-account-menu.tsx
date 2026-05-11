@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { signOutUser } from '@/lib/firebase/auth';
 import {
+  Bell,
   ChevronDown,
   CircleUserRound,
   LayoutDashboard,
@@ -88,6 +89,9 @@ export function AdminAccountMenu() {
         <div className="absolute right-0 z-50 mt-2 w-56 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg">
           <Row href="/admin" icon={LayoutDashboard} onClose={close}>
             Dashboard
+          </Row>
+          <Row href="/admin/notifications" icon={Bell} onClose={close}>
+            Notifications
           </Row>
           <Row href="/admin/users" icon={Users} onClose={close}>
             Users

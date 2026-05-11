@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { SiteHeader } from '@/components/site-header';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
+import { PhotographerApplicationStatusCard } from '@/components/photographer-application-status-card';
 
 function usernameFromEmail(email: string | null | undefined): string {
   if (!email || !email.includes('@')) return '—';
@@ -84,6 +85,14 @@ export default function AccountPage() {
             )}
           </dl>
         )}
+        {user &&
+        userData &&
+        userData.role !== 'photographer' &&
+        userData.role !== 'admin' ? (
+          <div className="mt-8 max-w-lg">
+            <PhotographerApplicationStatusCard />
+          </div>
+        ) : null}
       </div>
     </div>
   );

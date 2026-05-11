@@ -225,6 +225,7 @@ export async function savePhotographerApplication(
         body: `${data.name} applied (${data.city}, ${data.country}).`,
         threadId: null,
         applicationId: ref.id,
+        read: false,
         createdAt: serverTimestamp(),
       });
     } catch (e) {

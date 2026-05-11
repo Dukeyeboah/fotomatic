@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
 import {
   getApplicationById,
+  markPhotographerAdminEventsReadForApplication,
   type PhotographerApplication,
 } from '@/lib/firebase/admin';
 import {
@@ -32,6 +33,20 @@ function splitLinks(s: string | undefined): string[] {
     .slice(0, 20);
 }
 
+function dash(s: string | undefined | null): string {
+  const t = (s ?? '').trim();
+  return t || '—';
+}
+
+function formatHourlyRate(n: number | undefined): string {
+  if (n == null || Number.isNaN(n)) return '—';
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
 export default function AdminApplicationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user, userData, loading } = useAuth();
@@ -47,6 +62,11 @@ export default function AdminApplicationDetailPage() {
     })();
   }, [user, isAdmin, id]);
 
+  useEffect(() => {
+    if (!isAdmin || !id) return;
+    void markPhotographerAdminEventsReadForApplication(id);
+  }, [isAdmin, id]);
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 md:py-10">
         <p className="text-[11px] font-semibold tracking-[0.2em] text-amber-900/70">
@@ -57,7 +77,7 @@ export default function AdminApplicationDetailPage() {
         </h1>
         <p className="mt-2 text-sm text-zinc-600">
           <Link href="/admin/inbox" className="underline">
-            Inbox
+            Applications & bookings
           </Link>{' '}
           ·{' '}
           <Link href="/admin" className="underline">
@@ -155,18 +175,101 @@ export default function AdminApplicationDetailPage() {
 
             <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
               <p className="text-sm font-semibold text-zinc-900">
-                Links & portfolio
+                Contact & location
               </p>
-              <div className="mt-4 space-y-3 text-sm">
-                <LinkRow label="Instagram" value={app.instagram} />
-                <LinkRow label="Website" value={app.website} />
-                <PortfolioLinks value={app.portfolioLinks} />
-              </div>
+              <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    Legal / display name
+                  </dt>
+                  <dd className="mt-1 text-zinc-900">{dash(app.name)}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    First & last name
+                  </dt>
+                  <dd className="mt-1 text-zinc-900">
+                    {dash(
+                      [app.firstName, app.lastName].filter(Boolean).join(' ') ||
+                        undefined,
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    Phone
+                  </dt>
+                  <dd className="mt-1 text-zinc-900">{dash(app.phone)}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    Street address
+                  </dt>
+                  <dd className="mt-1 text-zinc-900">{dash(app.address)}</dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    City, state, country
+                  </dt>
+                  <dd className="mt-1 text-zinc-900">
+                    {dash(
+                      [
+                        app.city,
+                        app.state,
+                        app.country,
+                      ]
+                        .filter((x) => (x ?? '').trim())
+                        .join(', ') || undefined,
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    OK to contact by phone
+                  </dt>
+                  <dd className="mt-1 text-zinc-900">
+                    {app.phoneContact ? 'Yes' : 'No'}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    OK to contact by email
+                  </dt>
+                  <dd className="mt-1 text-zinc-900">
+                    {app.emailContact ? 'Yes' : 'No'}
+                  </dd>
+                </div>
+              </dl>
             </div>
 
             <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-zinc-900">Other</p>
+              <p className="text-sm font-semibold text-zinc-900">Bio</p>
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-800">
+                {dash(app.bio)}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <p className="text-sm font-semibold text-zinc-900">
+                Focus & business
+              </p>
               <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    Photography focus / specialty
+                  </dt>
+                  <dd className="mt-1 text-zinc-900">
+                    {dash(app.photographyFocus)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    Starting hourly rate
+                  </dt>
+                  <dd className="mt-1 text-zinc-900">
+                    {formatHourlyRate(app.startingHourlyRate)}
+                  </dd>
+                </div>
                 <div>
                   <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
                     Interested in client work
@@ -175,19 +278,62 @@ export default function AdminApplicationDetailPage() {
                     {app.interestedInClientWork ? 'Yes' : 'No'}
                   </dd>
                 </div>
+              </dl>
+            </div>
+
+            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <p className="text-sm font-semibold text-zinc-900">
+                Region & service area
+              </p>
+              <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
                 <div className="sm:col-span-2">
                   <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                    How they heard
+                    Primary service region / area
+                  </dt>
+                  <dd className="mt-1 whitespace-pre-wrap text-zinc-900">
+                    {dash(app.serviceArea)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    Open to other areas
                   </dt>
                   <dd className="mt-1 text-zinc-900">
-                    {app.howDidYouHear || '—'}
+                    {app.openToOtherAreas ? 'Yes' : 'No'}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+
+            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <p className="text-sm font-semibold text-zinc-900">
+                Links & portfolio
+              </p>
+              <div className="mt-4 space-y-3 text-sm">
+                <LinkRow label="Instagram" value={app.instagram} />
+                <LinkRow label="X (Twitter)" value={app.twitter} />
+                <LinkRow label="Facebook" value={app.facebook} />
+                <LinkRow label="Website" value={app.website} />
+                <PortfolioLinks value={app.portfolioLinks} />
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <p className="text-sm font-semibold text-zinc-900">Other</p>
+              <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    How they heard about Fotomatic
+                  </dt>
+                  <dd className="mt-1 text-zinc-900">
+                    {dash(app.howDidYouHear)}
                   </dd>
                 </div>
                 <div className="sm:col-span-2">
                   <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
                     Applicant UID
                   </dt>
-                  <dd className="mt-1 font-mono text-xs text-zinc-600">
+                  <dd className="mt-1 break-all font-mono text-xs text-zinc-600">
                     {app.applicantUserId}
                   </dd>
                 </div>
