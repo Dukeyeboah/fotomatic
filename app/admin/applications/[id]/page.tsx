@@ -14,7 +14,7 @@ import {
   adminApprovePhotographerApplication,
   adminDeclinePhotographerApplication,
 } from '@/lib/firebase/admin-actions';
-import { ExternalLink, Loader2 } from 'lucide-react';
+import { ExternalLink, Handshake, Loader2, X } from 'lucide-react';
 
 function normalizeUrl(s: string): string {
   const t = (s ?? '').trim();
@@ -47,11 +47,19 @@ function formatHourlyRate(n: number | undefined): string {
   }).format(n);
 }
 
+type DecisionDialog =
+  | null
+  | { kind: 'confirm'; action: 'approve' | 'decline' }
+  | { kind: 'success'; action: 'approve' | 'decline' }
+  | { kind: 'error'; message: string };
+
 export default function AdminApplicationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user, userData, loading } = useAuth();
   const { openLoginModal } = useLoginModal();
   const [app, setApp] = useState<PhotographerApplication | null>(null);
+  const [decisionDialog, setDecisionDialog] = useState<DecisionDialog>(null);
+  const [decisionSubmitting, setDecisionSubmitting] = useState(false);
   const isAdmin = userData?.role === 'admin';
 
   useEffect(() => {
@@ -67,7 +75,33 @@ export default function AdminApplicationDetailPage() {
     void markPhotographerAdminEventsReadForApplication(id);
   }, [isAdmin, id]);
 
+  async function runDecision(action: 'approve' | 'decline') {
+    if (!app?.id) return;
+    setDecisionSubmitting(true);
+    const res =
+      action === 'approve'
+        ? await adminApprovePhotographerApplication({
+            applicationId: app.id,
+            applicantUserId: app.applicantUserId,
+            applicantName: app.name,
+          })
+        : await adminDeclinePhotographerApplication({
+            applicationId: app.id,
+            applicantUserId: app.applicantUserId,
+            applicantName: app.name,
+          });
+    setDecisionSubmitting(false);
+    if (res.ok) {
+      const refreshed = await getApplicationById(id);
+      setApp(refreshed);
+      setDecisionDialog({ kind: 'success', action });
+    } else {
+      setDecisionDialog({ kind: 'error', message: res.message });
+    }
+  }
+
   return (
+    <>
     <div className="mx-auto max-w-3xl px-4 py-8 md:py-10">
         <p className="text-[11px] font-semibold tracking-[0.2em] text-amber-900/70">
           ADMIN
@@ -137,34 +171,18 @@ export default function AdminApplicationDetailPage() {
                     <button
                       type="button"
                       className="rounded-full bg-zinc-900 px-4 py-2 text-xs font-semibold text-white hover:bg-zinc-800"
-                      onClick={async () => {
-                        const ok = confirm(
-                          `Approve ${app.name} as a photographer?`,
-                        );
-                        if (!ok) return;
-                        const res = await adminApprovePhotographerApplication({
-                          applicationId: app.id!,
-                          applicantUserId: app.applicantUserId,
-                          applicantName: app.name,
-                        });
-                        if (!res.ok) alert(res.message);
-                      }}
+                      onClick={() =>
+                        setDecisionDialog({ kind: 'confirm', action: 'approve' })
+                      }
                     >
                       Approve
                     </button>
                     <button
                       type="button"
                       className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-xs font-semibold text-zinc-800 hover:bg-zinc-50"
-                      onClick={async () => {
-                        const ok = confirm(`Decline ${app.name}'s application?`);
-                        if (!ok) return;
-                        const res = await adminDeclinePhotographerApplication({
-                          applicationId: app.id!,
-                          applicantUserId: app.applicantUserId,
-                          applicantName: app.name,
-                        });
-                        if (!res.ok) alert(res.message);
-                      }}
+                      onClick={() =>
+                        setDecisionDialog({ kind: 'confirm', action: 'decline' })
+                      }
                     >
                       Decline
                     </button>
@@ -342,6 +360,147 @@ export default function AdminApplicationDetailPage() {
           </div>
         )}
     </div>
+
+    {decisionDialog && app ? (
+      <div
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 p-4"
+        role="presentation"
+        onClick={(e) => {
+          if (e.target !== e.currentTarget) return;
+          if (decisionSubmitting) return;
+          if (decisionDialog.kind === 'confirm') setDecisionDialog(null);
+        }}
+      >
+        <div
+          className="relative w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="decision-dialog-title"
+        >
+          {!decisionSubmitting &&
+          (decisionDialog.kind === 'confirm' ||
+            decisionDialog.kind === 'success' ||
+            decisionDialog.kind === 'error') ? (
+            <button
+              type="button"
+              className="absolute right-3 top-3 rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
+              aria-label="Close"
+              onClick={() => setDecisionDialog(null)}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          ) : null}
+
+          {decisionDialog.kind === 'confirm' ? (
+            <>
+              <h2
+                id="decision-dialog-title"
+                className="pr-10 font-serif text-xl font-medium text-zinc-900"
+              >
+                {decisionDialog.action === 'approve'
+                  ? 'Approve photographer?'
+                  : 'Decline application?'}
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-zinc-600">
+                {decisionDialog.action === 'approve'
+                  ? `${app.name} will get photographer access, appear in the directory, and receive a notification to finish their profile.`
+                  : `${app.name} will receive a message that their application was not approved at this time.`}
+              </p>
+              <div className="mt-6 flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={decisionSubmitting}
+                  className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-50"
+                  onClick={() => setDecisionDialog(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={decisionSubmitting}
+                  className={[
+                    'inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white disabled:opacity-60',
+                    decisionDialog.action === 'approve'
+                      ? 'bg-zinc-900 hover:bg-zinc-800'
+                      : 'bg-zinc-700 hover:bg-zinc-600',
+                  ].join(' ')}
+                  onClick={() => void runDecision(decisionDialog.action)}
+                >
+                  {decisionSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Working…
+                    </>
+                  ) : decisionDialog.action === 'approve' ? (
+                    'Approve'
+                  ) : (
+                    'Decline'
+                  )}
+                </button>
+              </div>
+            </>
+          ) : null}
+
+          {decisionDialog.kind === 'success' ? (
+            <div className="text-center">
+              {decisionDialog.action === 'approve' ? (
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-800">
+                  <Handshake className="h-8 w-8" strokeWidth={1.75} />
+                </div>
+              ) : (
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-zinc-100 text-zinc-600">
+                  <span className="text-2xl font-light" aria-hidden>
+                    ✓
+                  </span>
+                </div>
+              )}
+              <h2
+                id="decision-dialog-title"
+                className="mt-5 font-serif text-xl font-medium text-zinc-900"
+              >
+                {decisionDialog.action === 'approve'
+                  ? 'Approved successfully'
+                  : 'Decline recorded'}
+              </h2>
+              <p className="mt-2 text-sm text-zinc-600">
+                {decisionDialog.action === 'approve'
+                  ? 'They can now sign in as a photographer and complete their public profile.'
+                  : 'The applicant has been notified in the app.'}
+              </p>
+              <button
+                type="button"
+                className="mt-8 w-full rounded-full bg-zinc-900 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
+                onClick={() => setDecisionDialog(null)}
+              >
+                Done
+              </button>
+            </div>
+          ) : null}
+
+          {decisionDialog.kind === 'error' ? (
+            <>
+              <h2
+                id="decision-dialog-title"
+                className="pr-10 font-serif text-xl font-medium text-zinc-900"
+              >
+                Something went wrong
+              </h2>
+              <p className="mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-900">
+                {decisionDialog.message}
+              </p>
+              <button
+                type="button"
+                className="mt-6 w-full rounded-full border border-zinc-200 bg-white py-3 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                onClick={() => setDecisionDialog(null)}
+              >
+                Close
+              </button>
+            </>
+          ) : null}
+        </div>
+      </div>
+    ) : null}
+    </>
   );
 }
 

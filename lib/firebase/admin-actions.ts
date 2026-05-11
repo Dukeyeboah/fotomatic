@@ -97,32 +97,36 @@ export async function adminApprovePhotographerApplication(args: {
       [firstName, lastName].filter(Boolean).join(' ').trim() ||
       args.applicantName.trim();
 
+    // Firestore rejects `undefined` anywhere in the payload (including nested maps).
+    const photographerSeed: Record<string, unknown> = {
+      directoryId,
+      hourlyRate: rate,
+      city: city || null,
+      state: state || null,
+      country: country || null,
+      bio: str(app.bio) || undefined,
+      instagram: str(app.instagram) || undefined,
+      website: str(app.website) || undefined,
+      twitter: str(app.twitter) || undefined,
+      facebook: str(app.facebook) || undefined,
+      portfolioUrl: str(app.portfolioLinks) || undefined,
+      photographyFocus: str(app.photographyFocus) || undefined,
+      serviceArea: str(app.serviceArea) || undefined,
+      openToOtherAreas: app.openToOtherAreas === true,
+      phone: str(app.phone) || undefined,
+      phoneContact: app.phoneContact === true,
+      emailContact: app.emailContact === true,
+      showProfileSetupModal: true,
+    };
+    const photographer = omitUndefinedDeep(photographerSeed);
+
     // 1) Promote role + seed photographer profile on user doc
     await setDoc(
       doc(db, 'users', args.applicantUserId),
       {
         role: 'photographer',
         displayName,
-        photographer: {
-          directoryId,
-          hourlyRate: rate,
-          city: city || null,
-          state: state || null,
-          country: country || null,
-          bio: str(app.bio) || undefined,
-          instagram: str(app.instagram) || undefined,
-          website: str(app.website) || undefined,
-          twitter: str(app.twitter) || undefined,
-          facebook: str(app.facebook) || undefined,
-          portfolioUrl: str(app.portfolioLinks) || undefined,
-          photographyFocus: str(app.photographyFocus) || undefined,
-          serviceArea: str(app.serviceArea) || undefined,
-          openToOtherAreas: app.openToOtherAreas === true,
-          phone: str(app.phone) || undefined,
-          phoneContact: app.phoneContact === true,
-          emailContact: app.emailContact === true,
-          showProfileSetupModal: true,
-        },
+        photographer,
         updatedAt: serverTimestamp(),
       },
       { merge: true },

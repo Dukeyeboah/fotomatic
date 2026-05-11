@@ -1,3 +1,10 @@
+// Firebase Storage security rules for Fotomatic.
+// Deploy (Firebase CLI): firebase deploy --only storage
+// Paths must match lib/firebase/upload.ts → photographer-media/{uid}/...
+//
+// Photographers may upload images only under their own uid; max 8MB; images only.
+// Public read allows directory / profile pages to show photos via download URLs.
+
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
