@@ -1,31 +1,20 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { SiteHeader } from '@/components/site-header';
 import { ProfileSettingsForm } from '@/components/profile-settings-form';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
-import {
-  defaultUserDataFromAuth,
-  promoteToPhotographerRole,
-} from '@/lib/firebase/user-profile';
+import { defaultUserDataFromAuth } from '@/lib/firebase/user-profile';
 import { Loader2 } from 'lucide-react';
 
 export default function PhotoAdminSetupPage() {
   const { user, userData, loading, refreshUserData } = useAuth();
   const { openLoginModal } = useLoginModal();
-  const promotedRef = useRef(false);
 
-  useEffect(() => {
-    if (!user) return;
-    if (promotedRef.current) return;
-    promotedRef.current = true;
-    (async () => {
-      await promoteToPhotographerRole(user.uid);
-      await refreshUserData();
-    })();
-  }, [user, refreshUserData]);
+  const canEdit =
+    userData?.role === 'photographer' || userData?.role === 'admin';
 
   useEffect(() => {
     if (loading || user) return;
@@ -44,11 +33,15 @@ export default function PhotoAdminSetupPage() {
         </h1>
         <p className="mt-1 text-sm text-zinc-600">
           Add images, bio, links, and location. This information is stored on your
-          Fotomatic account.
+          Fotomatic account and synced to the public photographer directory.
         </p>
         <p className="mt-2 text-xs text-zinc-500">
-          <Link href="/photo-admin" className="underline">
-            Studio gate
+          <Link href="/photographer" className="underline">
+            Photographer dashboard
+          </Link>
+          {' · '}
+          <Link href="/profile" className="underline">
+            Profile (same editor)
           </Link>
         </p>
 
@@ -60,6 +53,24 @@ export default function PhotoAdminSetupPage() {
           <p className="mt-12 text-center text-sm text-zinc-600">
             Sign in to edit your photographer profile.
           </p>
+        ) : !canEdit ? (
+          <div className="mt-8 rounded-2xl border border-amber-200/80 bg-amber-50/90 px-5 py-4 text-sm text-amber-950">
+            <p className="font-medium">This page is for approved photographers.</p>
+            <p className="mt-2 text-amber-900/90">
+              Submit an application from the home page. After an admin approves
+              you, you can return here or use{' '}
+              <Link href="/profile" className="font-semibold underline">
+                Profile
+              </Link>{' '}
+              to finish your portfolio.
+            </p>
+            <Link
+              href="/"
+              className="mt-4 inline-block text-sm font-semibold text-amber-950 underline"
+            >
+              ← Back to home
+            </Link>
+          </div>
         ) : (
           <div className="mt-8">
             {!userData ? (

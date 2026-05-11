@@ -18,6 +18,8 @@ export interface PhotographerProfileFields {
   portfolioUrl?: string;
   bannerImageUrl?: string;
   profileImageUrl?: string;
+  /** Portfolio images shown on the public directory (synced to `photographers`). */
+  galleryImageUrls?: string[];
   /**
    * Directory id like `dir-12` or `p-{uid}` so bookings from the public directory
    * can be shown in this photographer admin UI.

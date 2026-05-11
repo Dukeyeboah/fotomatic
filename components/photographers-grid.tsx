@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { BookingRequestModal } from '@/components/booking-request-modal';
 import {
   type DirectoryPhotographer,
+  directoryPhotographerHeroImageUrl,
   photographerPlaceholderImagePath,
 } from '@/lib/photographers-directory';
 import { useAuth } from '@/contexts/AuthContext';
@@ -133,7 +134,7 @@ export function PhotographersGrid({
       ) : (
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((p) => {
-            const photo = p.photoUrl?.trim();
+            const photo = directoryPhotographerHeroImageUrl(p);
             const ig = p.instagram?.trim();
             const web = p.website?.trim();
             const tw = p.twitter?.trim();

@@ -6,11 +6,15 @@ import {
   updateUserDocument,
   type UserData,
 } from '@/lib/firebase/user-profile';
-import { uploadPhotographerMedia } from '@/lib/firebase/upload';
+import {
+  uploadPhotographerGalleryImage,
+  uploadPhotographerMedia,
+} from '@/lib/firebase/upload';
+import { DIRECTORY_GALLERY_MAX } from '@/lib/photographers-directory';
 import { COUNTRY_NAMES } from '@/lib/countries';
 import { PHOTOGRAPHY_FOCUS_OPTIONS } from '@/lib/photography-focus';
 import { syncPhotographerPublicDirectory } from '@/lib/firebase/sync-photographer-directory';
-import { Loader2 } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 
 const FIELD_INPUT_CLASS =
   'w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-500 caret-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20';
@@ -72,10 +76,15 @@ export function ProfileSettingsForm({
   const [profileImageUrl, setProfileImageUrl] = useState(
     ph.profileImageUrl ?? '',
   );
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState<'banner' | 'profile' | null>(
-    null,
+  const [galleryImageUrls, setGalleryImageUrls] = useState<string[]>(() =>
+    Array.isArray(ph.galleryImageUrls)
+      ? ph.galleryImageUrls.filter((u) => typeof u === 'string' && u.trim()).slice(0, DIRECTORY_GALLERY_MAX)
+      : [],
   );
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState<
+    'banner' | 'profile' | 'gallery' | null
+  >(null);
   const [message, setMessage] = useState<string | null>(null);
 
   const isPhotographer = userData.role === 'photographer';
@@ -95,10 +104,47 @@ export function ProfileSettingsForm({
     else setProfileImageUrl(url);
   };
 
+  const onGalleryAdd = async (file: File | null) => {
+    if (!file || !showMediaUploads) return;
+    if (galleryImageUrls.length >= DIRECTORY_GALLERY_MAX) {
+      setMessage(`Portfolio is limited to ${DIRECTORY_GALLERY_MAX} images.`);
+      return;
+    }
+    setUploading('gallery');
+    setMessage(null);
+    const url = await uploadPhotographerGalleryImage(user.uid, file);
+    setUploading(null);
+    if (!url) {
+      setMessage('Upload failed. Check Storage rules and bucket in Firebase.');
+      return;
+    }
+    setGalleryImageUrls((prev) =>
+      [...prev, url].slice(0, DIRECTORY_GALLERY_MAX),
+    );
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setMessage(null);
+
+    const galleryClean = galleryImageUrls
+      .map((u) => u.trim())
+      .filter(Boolean)
+      .slice(0, DIRECTORY_GALLERY_MAX);
+    if (
+      isPhotographer &&
+      showMediaUploads &&
+      galleryClean.length > 0 &&
+      galleryClean.length < 3
+    ) {
+      setSaving(false);
+      setMessage(
+        'Portfolio: add at least 3 images or remove them all for now (maximum 15).',
+      );
+      return;
+    }
+
     const patch: Partial<UserData> = {
       displayName: displayName.trim() || null,
       username: username.trim() || null,
@@ -132,6 +178,7 @@ export function ProfileSettingsForm({
         hourlyRate: typeof hourlyRate === 'number' ? hourlyRate : undefined,
         bannerImageUrl: bannerImageUrl.trim() || undefined,
         profileImageUrl: profileImageUrl.trim() || undefined,
+        galleryImageUrls: galleryClean,
         city: city.trim() || undefined,
         state: state.trim() || undefined,
         country: country.trim() || undefined,
@@ -369,6 +416,59 @@ export function ProfileSettingsForm({
                   <p className="mt-1 truncate text-xs text-zinc-500">{profileImageUrl}</p>
                 ) : null}
               </label>
+              <div className="space-y-2 sm:col-span-2">
+                <span className="text-xs font-medium text-zinc-600">
+                  Portfolio gallery
+                </span>
+                <p className="text-[11px] leading-snug text-zinc-500">
+                  Add 3–15 images for your public listing. Directory cards use
+                  your profile image first, then the first gallery shot if needed.
+                </p>
+                <label className="block space-y-1">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="text-sm text-zinc-600"
+                    disabled={galleryImageUrls.length >= DIRECTORY_GALLERY_MAX}
+                    onChange={(e) =>
+                      onGalleryAdd(e.target.files?.[0] ?? null)
+                    }
+                  />
+                  {uploading === 'gallery' ? (
+                    <Loader2 className="mt-2 h-4 w-4 animate-spin text-zinc-400" />
+                  ) : null}
+                </label>
+                <p className="text-[11px] text-zinc-500">
+                  {galleryImageUrls.length} / {DIRECTORY_GALLERY_MAX} · minimum 3
+                  when you include any portfolio images
+                </p>
+                {galleryImageUrls.length > 0 ? (
+                  <ul className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">
+                    {galleryImageUrls.map((url, i) => (
+                      <li key={`${url}-${i}`} className="relative aspect-square">
+                        {/* eslint-disable-next-line @next/next/no-img-element -- remote uploads */}
+                        <img
+                          src={url}
+                          alt=""
+                          className="h-full w-full rounded-lg object-cover ring-1 ring-zinc-200"
+                        />
+                        <button
+                          type="button"
+                          title="Remove"
+                          onClick={() =>
+                            setGalleryImageUrls((prev) =>
+                              prev.filter((_, j) => j !== i),
+                            )
+                          }
+                          className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-zinc-900/85 text-white shadow hover:bg-zinc-900"
+                        >
+                          <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
             </div>
           ) : null}
           <div className="mt-4 grid gap-4">

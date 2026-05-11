@@ -13,6 +13,7 @@ import { useLoginModal } from '@/contexts/LoginModalContext';
 import { NotificationBell } from '@/components/notification-bell';
 import { DashboardSidebar } from '@/components/dashboard/dashboard-sidebar';
 import { DashboardAccountMenu } from '@/components/dashboard/dashboard-account-menu';
+import { DashboardApplyPhotographerProvider } from '@/components/dashboard/dashboard-apply-photographer-context';
 import { subscribeThreadsForClient } from '@/lib/firebase/booking-threads';
 
 const COLLAPSE_KEY = 'fotomatic_dashboard_sidebar_collapsed';
@@ -107,32 +108,34 @@ export function DashboardLayoutClient({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#f4f1ec]">
-      <DashboardSidebar
-        collapsed={collapsed}
-        onToggleCollapse={toggleCollapse}
-        onNavigate={closeMobile}
-        mobileOpen={mobileOpen}
-        messagesUnreadCount={messagesUnread}
-      />
-      <div className="flex min-h-screen flex-1 flex-col lg:min-w-0">
-        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-zinc-200/80 bg-white/95 px-4 backdrop-blur sm:px-6">
-          <button
-            type="button"
-            className="inline-flex rounded-lg p-2 text-zinc-700 hover:bg-zinc-100 lg:hidden"
-            aria-label="Open menu"
-            onClick={() => setMobileOpen(true)}
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-          <div className="flex flex-1 justify-end gap-2 sm:gap-3">
-            <NotificationBell />
-            {/* Messages live in the sidebar; keep header minimal */}
-            <DashboardAccountMenu />
-          </div>
-        </header>
-        <main className="flex-1 overflow-y-auto">{children}</main>
+    <DashboardApplyPhotographerProvider>
+      <div className="flex min-h-screen bg-[#f4f1ec]">
+        <DashboardSidebar
+          collapsed={collapsed}
+          onToggleCollapse={toggleCollapse}
+          onNavigate={closeMobile}
+          mobileOpen={mobileOpen}
+          messagesUnreadCount={messagesUnread}
+        />
+        <div className="flex min-h-screen flex-1 flex-col lg:min-w-0">
+          <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-zinc-200/80 bg-white/95 px-4 backdrop-blur sm:px-6">
+            <button
+              type="button"
+              className="inline-flex rounded-lg p-2 text-zinc-700 hover:bg-zinc-100 lg:hidden"
+              aria-label="Open menu"
+              onClick={() => setMobileOpen(true)}
+            >
+              <Menu className="h-6 w-6" />
+            </button>
+            <div className="flex flex-1 justify-end gap-2 sm:gap-3">
+              <NotificationBell />
+              {/* Messages live in the sidebar; keep header minimal */}
+              <DashboardAccountMenu />
+            </div>
+          </header>
+          <main className="flex-1 overflow-y-auto">{children}</main>
+        </div>
       </div>
-    </div>
+    </DashboardApplyPhotographerProvider>
   );
 }

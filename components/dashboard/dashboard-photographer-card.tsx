@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { Heart } from 'lucide-react';
 import {
+  directoryPhotographerHeroImageUrl,
   photographerPlaceholderImagePath,
   type DirectoryPhotographer,
 } from '@/lib/photographers-directory';
@@ -25,8 +26,9 @@ function formatLocation(p: DirectoryPhotographer): string {
 }
 
 function cardImage(p: DirectoryPhotographer): string {
-  const u = p.photoUrl?.trim();
+  const u = directoryPhotographerHeroImageUrl(p);
   if (u && /^https?:\/\//i.test(u)) return u;
+  if (u && u.startsWith('/')) return u;
   return photographerPlaceholderImagePath(p.id);
 }
 

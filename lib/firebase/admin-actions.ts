@@ -135,7 +135,7 @@ export async function adminApprovePhotographerApplication(args: {
       threadId: null,
       type: 'system',
       title: 'You’re approved as a photographer',
-      body: 'Your application was approved. You can now access /photo-admin to set up your profile.',
+      body: 'Your application was approved. Open your dashboard at /photographer and edit your public profile at /profile (images, bio, portfolio).',
       read: false,
       createdAt: serverTimestamp(),
     });
@@ -173,6 +173,7 @@ export async function adminApprovePhotographerApplication(args: {
         emailContact: app.emailContact === true,
         startingHourlyRate: rate,
         photoUrl: null,
+        galleryImageUrls: null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       },

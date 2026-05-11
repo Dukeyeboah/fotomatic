@@ -7,7 +7,8 @@ export default function PhotographerProfilePage() {
         Profile
       </h1>
       <p className="mt-2 text-sm text-zinc-600">
-        Edit your public profile, portfolio links, and bio.
+        Edit your public listing: bio, links, profile image, banner, and portfolio
+        gallery (3–15 images).
       </p>
       <ul className="mt-8 space-y-3">
         <li>
@@ -15,7 +16,7 @@ export default function PhotographerProfilePage() {
             href="/profile"
             className="flex rounded-2xl border border-zinc-200 bg-white px-5 py-4 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50"
           >
-            Open profile editor →
+            Open profile & portfolio editor →
           </Link>
         </li>
         <li>
@@ -23,7 +24,7 @@ export default function PhotographerProfilePage() {
             href="/photo-admin/setup"
             className="flex rounded-2xl border border-zinc-200 bg-white px-5 py-4 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50"
           >
-            Photo admin setup (passkey) →
+            Alternate setup page (same editor) →
           </Link>
         </li>
       </ul>

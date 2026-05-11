@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   CalendarCheck,
+  Camera,
   CreditCard,
   Heart,
   HelpCircle,
@@ -15,6 +16,7 @@ import {
   Search,
   Settings,
 } from 'lucide-react';
+import { useDashboardApplyAsPhotographer } from '@/components/dashboard/dashboard-apply-photographer-context';
 
 const nav = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -39,6 +41,7 @@ export function DashboardSidebar({
   messagesUnreadCount?: number;
 }) {
   const pathname = usePathname();
+  const openApplyAsPhotographer = useDashboardApplyAsPhotographer();
 
   return (
     <>
@@ -162,29 +165,72 @@ export function DashboardSidebar({
         </nav>
 
         {!collapsed ? (
-          <div className="mx-3 mb-3 overflow-hidden rounded-2xl bg-white p-3 shadow-sm ring-1 ring-zinc-900/5">
-            <div className="relative mb-3 aspect-[16/10] overflow-hidden rounded-xl bg-zinc-100">
-              <Image
-                src="/fotomaticImages/fotomatic0.jpg"
-                alt=""
-                fill
-                className="object-cover"
-                sizes="200px"
-              />
+          <>
+            <div className="mx-3 mb-3 overflow-hidden rounded-2xl border border-amber-200/70 bg-gradient-to-br from-amber-50/95 to-white shadow-sm ring-1 ring-amber-900/10">
+              <div className="relative aspect-[16/9] w-full overflow-hidden">
+                <Image
+                  src="/fotomaticImages/photographer1.jpeg"
+                  alt=""
+                  fill
+                  className="object-cover object-top"
+                  sizes="200px"
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-amber-950/40" />
+              </div>
+              <div className="p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-900/75">
+                  For photographers
+                </p>
+                <p className="mt-1.5 text-xs font-medium leading-snug text-zinc-800">
+                  Apply to join Fotomatic and get matched with clients.
+                </p>
+              <button
+                type="button"
+                onClick={() => {
+                  openApplyAsPhotographer();
+                  onNavigate?.();
+                }}
+                className="mt-3 flex w-full cursor-pointer items-center justify-center rounded-xl border border-amber-900/25 bg-amber-900/95 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-amber-900"
+              >
+                Apply as photographer
+              </button>
+              </div>
             </div>
-            <p className="text-xs font-medium leading-snug text-zinc-800">
-              Book the perfect photographer for your special moments.
-            </p>
-            <Link
-              href="/dashboard/photographers"
-              onClick={onNavigate}
-              className="mt-3 flex w-full items-center justify-center rounded-xl bg-zinc-900 py-2.5 text-xs font-semibold text-white hover:bg-zinc-800"
-            >
-              Find Photographers
-            </Link>
-          </div>
+            <div className="mx-3 mb-3 overflow-hidden rounded-2xl bg-white p-3 shadow-sm ring-1 ring-zinc-900/5">
+              <div className="relative mb-3 aspect-[16/10] overflow-hidden rounded-xl bg-zinc-100">
+                <Image
+                  src="/fotomaticImages/fotomatic0.jpg"
+                  alt=""
+                  fill
+                  className="object-cover"
+                  sizes="200px"
+                />
+              </div>
+              <p className="text-xs font-medium leading-snug text-zinc-800">
+                Book the perfect photographer for your special moments.
+              </p>
+              <Link
+                href="/dashboard/photographers"
+                onClick={onNavigate}
+                className="mt-3 flex w-full items-center justify-center rounded-xl bg-zinc-900 py-2.5 text-xs font-semibold text-white hover:bg-zinc-800"
+              >
+                Find Photographers
+              </Link>
+            </div>
+          </>
         ) : (
-          <div className="mx-auto mb-3">
+          <div className="mx-auto mb-3 flex flex-col gap-2">
+            <button
+              type="button"
+              title="Apply as photographer"
+              onClick={() => {
+                openApplyAsPhotographer();
+                onNavigate?.();
+              }}
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-amber-900/20 bg-amber-900 text-white shadow-sm hover:bg-amber-950"
+            >
+              <Camera className="h-5 w-5" strokeWidth={1.75} />
+            </button>
             <Link
               href="/dashboard/photographers"
               title="Find Photographers"

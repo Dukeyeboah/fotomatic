@@ -64,6 +64,13 @@ export async function syncPhotographerPublicDirectory(
         emailContact: ph.emailContact === true,
         startingHourlyRate: rate,
         photoUrl: ph.profileImageUrl ?? userData.photoURL ?? null,
+        galleryImageUrls:
+          Array.isArray(ph.galleryImageUrls) && ph.galleryImageUrls.length > 0
+            ? ph.galleryImageUrls
+                .map((u) => (typeof u === 'string' ? u.trim() : ''))
+                .filter(Boolean)
+                .slice(0, 15)
+            : null,
         updatedAt: serverTimestamp(),
       },
       { merge: true },

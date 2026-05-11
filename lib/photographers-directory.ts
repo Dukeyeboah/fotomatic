@@ -16,9 +16,23 @@ export type DirectoryPhotographer = {
   state?: string;
   country?: string;
   photoUrl?: string;
+  /** Portfolio hero fallback when `photoUrl` is empty */
+  galleryImageUrls?: string[];
   /** Display hourly rate floor for booking flow */
   startingHourlyRate: number;
 };
+
+export const DIRECTORY_GALLERY_MAX = 15;
+
+/** Card / modal hero: profile image, else first gallery shot, else placeholder. */
+export function directoryPhotographerHeroImageUrl(
+  p: DirectoryPhotographer,
+): string | undefined {
+  const main = p.photoUrl?.trim();
+  if (main) return main;
+  const first = p.galleryImageUrls?.find((u) => typeof u === 'string' && u.trim());
+  return first?.trim() || undefined;
+}
 
 type JsonRow = Record<string, string | boolean | undefined>;
 
@@ -116,6 +130,16 @@ export function firestoreDocToDirectory(
     ? Math.min(9999, Math.max(0, rate))
     : 150;
 
+  let galleryImageUrls: string[] | undefined;
+  const gRaw = data.galleryImageUrls;
+  if (Array.isArray(gRaw)) {
+    const urls = gRaw
+      .filter((u): u is string => typeof u === 'string' && u.trim().length > 0)
+      .map((u) => u.trim())
+      .slice(0, DIRECTORY_GALLERY_MAX);
+    if (urls.length > 0) galleryImageUrls = urls;
+  }
+
   return {
     id: docId,
     source: 'firestore',
@@ -130,6 +154,7 @@ export function firestoreDocToDirectory(
     state: data.state != null ? str(data.state) : undefined,
     country: data.country != null ? str(data.country) : undefined,
     photoUrl: data.photoUrl != null ? str(data.photoUrl) : undefined,
+    galleryImageUrls,
     startingHourlyRate,
   };
 }

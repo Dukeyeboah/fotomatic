@@ -31,7 +31,11 @@ service cloud.firestore {
         && resource.data.applicantUserId == request.auth.uid
         && request.resource.data.applicantUserId == resource.data.applicantUserId
         && request.resource.data.listed == resource.data.listed
-        && request.resource.data.status == resource.data.status;
+        && request.resource.data.status == resource.data.status
+        && (!request.resource.data.keys().hasAny(['galleryImageUrls'])
+            || request.resource.data.galleryImageUrls == null
+            || (request.resource.data.galleryImageUrls is list
+                && request.resource.data.galleryImageUrls.size() <= 15));
     }
 
     // Booking threads (structured decision flow)

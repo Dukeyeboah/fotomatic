@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
@@ -20,14 +21,18 @@ import { DashboardBookingCard } from '@/components/dashboard/booking-card';
 import { UpdateItem } from '@/components/dashboard/update-item';
 import { DashboardPhotographerCard } from '@/components/dashboard/dashboard-photographer-card';
 import { InfoStrip } from '@/components/dashboard/info-strip';
+import { useDashboardApplyAsPhotographer } from '@/components/dashboard/dashboard-apply-photographer-context';
 import {
+  Briefcase,
   CalendarClock,
   CheckCircle2,
   Clock,
   History,
   Headphones,
-  Shield,
+  Link2,
   Lock,
+  Shield,
+  Sparkles,
 } from 'lucide-react';
 
 function firestoreMs(value: unknown): number {
@@ -81,6 +86,7 @@ function notificationDotClass(type: AppNotification['type']): string {
 export function DashboardHome() {
   const { user, userData } = useAuth();
   const { openLoginModal } = useLoginModal();
+  const openApplyAsPhotographer = useDashboardApplyAsPhotographer();
   const [threads, setThreads] = useState<BookingThread[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const directory = useMergedDirectoryPhotographers();
@@ -247,6 +253,116 @@ export function DashboardHome() {
               }}
             />
           ))}
+        </div>
+      </section>
+
+      <section className="mt-16 rounded-3xl border border-zinc-200/90 bg-[#faf8f5] shadow-sm ring-1 ring-zinc-900/5">
+        <div className="flex flex-col gap-0 lg:flex-row">
+
+          {/* Left image */}
+          <div className="relative hidden w-52 shrink-0 overflow-hidden rounded-l-3xl lg:block">
+            <Image
+              src="/fotomaticImages/photographer1.jpeg"
+              alt=""
+              fill
+              className="object-cover"
+              sizes="208px"
+            />
+          </div>
+
+          {/* Centre content */}
+          <div className="flex-1 p-8 sm:p-10">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-900/75">
+                For photographers
+              </p>
+              <h2 className="mt-2 font-serif text-2xl font-medium tracking-tight text-zinc-900 sm:text-3xl">
+                Want to be a Fotomatic photographer?
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-zinc-600 sm:text-base">
+                Apply once from your dashboard. After we review and approve your
+                application, you get a photographer account: a public profile in our
+                directory, booking requests you can accept or suggest alternatives for,
+                and tools to manage your clients.
+              </p>
+            </div>
+            <div className="mx-auto mt-8 grid max-w-2xl gap-4 sm:grid-cols-3">
+              {[
+                {
+                  icon: Link2,
+                  title: 'Join the network',
+                  desc: 'Tell us about your work and the clients you love serving.',
+                },
+                {
+                  icon: Briefcase,
+                  title: 'Get matched with clients',
+                  desc: 'We connect you with people planning shoots that fit your craft.',
+                },
+                {
+                  icon: Sparkles,
+                  title: 'Do your best work',
+                  desc: 'We handle the experience so you can stay behind the lens.',
+                },
+              ].map(({ icon: Icon, title, desc }) => (
+                <div
+                  key={title}
+                  className="rounded-2xl border border-zinc-200/80 bg-white p-5 text-left shadow-sm"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-50 text-amber-900">
+                    <Icon className="h-5 w-5" strokeWidth={1.75} />
+                  </div>
+                  <h3 className="mt-3 font-serif text-base font-semibold text-zinc-900">
+                    {title}
+                  </h3>
+                  <p className="mt-1.5 text-xs leading-relaxed text-zinc-600 sm:text-sm">
+                    {desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-8 flex justify-center">
+              <button
+                type="button"
+                onClick={openApplyAsPhotographer}
+                className="inline-flex cursor-pointer items-center justify-center rounded-xl bg-zinc-900 px-8 py-3.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-zinc-800"
+              >
+                Apply to be a Fotomatic photographer
+              </button>
+            </div>
+          </div>
+
+          {/* Right image */}
+          <div className="relative hidden w-52 shrink-0 overflow-hidden rounded-r-3xl lg:block">
+            <Image
+              src="/fotomaticImages/photographer2.jpeg"
+              alt=""
+              fill
+              className="object-cover object-top"
+              sizes="208px"
+            />
+          </div>
+
+        </div>
+        {/* Mobile: show both images below content in a 2-col strip */}
+        <div className="grid grid-cols-2 lg:hidden">
+          <div className="relative aspect-[4/3] overflow-hidden rounded-bl-3xl">
+            <Image
+              src="/fotomaticImages/photographer1.jpeg"
+              alt=""
+              fill
+              className="object-cover"
+              sizes="50vw"
+            />
+          </div>
+          <div className="relative aspect-[4/3] overflow-hidden rounded-br-3xl">
+            <Image
+              src="/fotomaticImages/photographer2.jpeg"
+              alt=""
+              fill
+              className="object-cover object-top"
+              sizes="50vw"
+            />
+          </div>
         </div>
       </section>
 
