@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { signOutUser } from '@/lib/firebase/auth';
 import {
+  Bell,
   CircleUserRound,
   ChevronDown,
   LayoutDashboard,
@@ -16,6 +17,7 @@ import {
   Inbox,
 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { subscribeUnreadNotificationCount } from '@/lib/firebase/booking-threads';
 
 function displayFirstName(
   userData: ReturnType<typeof useAuth>['userData'],
@@ -34,12 +36,14 @@ function MenuRow({
   children,
   onNavigate,
   className = '',
+  suffix,
 }: {
   href: string;
   icon: typeof CalendarCheck;
   children: ReactNode;
   onNavigate: () => void;
   className?: string;
+  suffix?: ReactNode;
 }) {
   return (
     <Link
@@ -48,7 +52,8 @@ function MenuRow({
       className={`flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-700 transition-colors hover:bg-zinc-50 ${className}`}
     >
       <Icon className="h-4 w-4 shrink-0 text-zinc-500" strokeWidth={1.75} />
-      {children}
+      <span className="min-w-0 flex-1">{children}</span>
+      {suffix ?? null}
     </Link>
   );
 }
@@ -57,7 +62,16 @@ export function DashboardAccountMenu() {
   const { user, userData, loading } = useAuth();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [notifUnread, setNotifUnread] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setNotifUnread(0);
+      return;
+    }
+    return subscribeUnreadNotificationCount(user.uid, setNotifUnread);
+  }, [user]);
 
   useEffect(() => {
     if (!open) return;
@@ -137,6 +151,20 @@ export function DashboardAccountMenu() {
             onNavigate={close}
           >
             Messages
+          </MenuRow>
+          <MenuRow
+            href="/dashboard/notifications"
+            icon={Bell}
+            onNavigate={close}
+            suffix={
+              notifUnread > 0 ? (
+                <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-amber-900 px-1.5 py-0.5 text-[11px] font-bold text-white">
+                  {notifUnread > 99 ? '99+' : notifUnread}
+                </span>
+              ) : null
+            }
+          >
+            Notifications
           </MenuRow>
           <MenuRow
             href="/dashboard/settings"

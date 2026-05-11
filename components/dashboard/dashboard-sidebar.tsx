@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  Bell,
   CalendarCheck,
   Camera,
   CreditCard,
@@ -22,6 +23,8 @@ const nav = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/dashboard/bookings', label: 'My Bookings', icon: CalendarCheck },
   { href: '/dashboard/messages', label: 'Messages', icon: MessageCircle },
+  { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
+  { href: '/dashboard/photographers', label: 'Find photographers', icon: Search },
   { href: '/dashboard/saved', label: 'Saved Photographers', icon: Heart },
   { href: '/dashboard/payments', label: 'Payments', icon: CreditCard },
   { href: '/dashboard/settings', label: 'Account Settings', icon: Settings },
@@ -33,12 +36,17 @@ export function DashboardSidebar({
   onNavigate,
   mobileOpen,
   messagesUnreadCount = 0,
+  notificationsUnreadCount = 0,
+  showApplyAsPhotographerPromo = true,
 }: {
   collapsed: boolean;
   onToggleCollapse: () => void;
   onNavigate?: () => void;
   mobileOpen: boolean;
   messagesUnreadCount?: number;
+  notificationsUnreadCount?: number;
+  /** Hide “apply as photographer” promos for photographer accounts (if ever shown). */
+  showApplyAsPhotographerPromo?: boolean;
 }) {
   const pathname = usePathname();
   const openApplyAsPhotographer = useDashboardApplyAsPhotographer();
@@ -127,6 +135,9 @@ export function DashboardSidebar({
                 : pathname === href || pathname.startsWith(`${href}/`);
             const showMsgBadge =
               href === '/dashboard/messages' && messagesUnreadCount > 0;
+            const showNotifBadge =
+              href === '/dashboard/notifications' &&
+              notificationsUnreadCount > 0;
             return (
               <Link
                 key={href}
@@ -152,6 +163,13 @@ export function DashboardSidebar({
                           : messagesUnreadCount}
                       </span>
                     ) : null}
+                    {showNotifBadge ? (
+                      <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-amber-900 px-1.5 py-0.5 text-[11px] font-bold text-white">
+                        {notificationsUnreadCount > 99
+                          ? '99+'
+                          : notificationsUnreadCount}
+                      </span>
+                    ) : null}
                   </span>
                 ) : null}
                 {collapsed && showMsgBadge ? (
@@ -159,12 +177,19 @@ export function DashboardSidebar({
                     {messagesUnreadCount > 9 ? '9+' : messagesUnreadCount}
                   </span>
                 ) : null}
+                {collapsed && showNotifBadge && !showMsgBadge ? (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-900 px-0.5 text-[9px] font-bold text-white">
+                    {notificationsUnreadCount > 9
+                      ? '9+'
+                      : notificationsUnreadCount}
+                  </span>
+                ) : null}
               </Link>
             );
           })}
         </nav>
 
-        {!collapsed ? (
+        {!collapsed && showApplyAsPhotographerPromo ? (
           <>
             <div className="mx-3 mb-3 overflow-hidden rounded-2xl border border-amber-200/70 bg-gradient-to-br from-amber-50/95 to-white shadow-sm ring-1 ring-amber-900/10">
               <div className="relative aspect-[16/9] w-full overflow-hidden">
@@ -218,7 +243,8 @@ export function DashboardSidebar({
               </Link>
             </div>
           </>
-        ) : (
+        ) : null}
+        {collapsed && showApplyAsPhotographerPromo ? (
           <div className="mx-auto mb-3 flex flex-col gap-2">
             <button
               type="button"
@@ -240,7 +266,18 @@ export function DashboardSidebar({
               <Search className="h-5 w-5" />
             </Link>
           </div>
-        )}
+        ) : collapsed ? (
+          <div className="mx-auto mb-3">
+            <Link
+              href="/dashboard/photographers"
+              title="Find Photographers"
+              onClick={onNavigate}
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-900 text-white hover:bg-zinc-800"
+            >
+              <Search className="h-5 w-5" />
+            </Link>
+          </div>
+        ) : null}
 
         <div className="mt-auto border-t border-zinc-200/80 px-4 py-4">
           {!collapsed ? (

@@ -105,22 +105,39 @@ export function NotificationsView({
                     {formatWhen(n)}
                   </p>
                 </div>
-                {n.threadId ? (
-                  <button
-                    type="button"
-                    className="shrink-0 rounded-full bg-zinc-900 px-4 py-2 text-xs font-semibold text-white hover:bg-zinc-800"
-                    onClick={async () => {
-                      if (n.id && !n.read) {
-                        await markNotificationsRead([n.id]);
-                      }
-                      router.push(
-                        `${threadMessagesBaseHref}?thread=${encodeURIComponent(n.threadId!)}`,
-                      );
-                    }}
-                  >
-                    View
-                  </button>
-                ) : null}
+                <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-start">
+                  {n.ctaHref?.trim() ? (
+                    <button
+                      type="button"
+                      className="rounded-full bg-amber-900 px-4 py-2 text-center text-xs font-semibold text-white hover:bg-amber-950"
+                      onClick={async () => {
+                        const href = n.ctaHref!.trim();
+                        if (n.id && !n.read) {
+                          await markNotificationsRead([n.id]);
+                        }
+                        router.push(href);
+                      }}
+                    >
+                      {n.ctaLabel?.trim() || 'Open'}
+                    </button>
+                  ) : null}
+                  {n.threadId ? (
+                    <button
+                      type="button"
+                      className="rounded-full bg-zinc-900 px-4 py-2 text-xs font-semibold text-white hover:bg-zinc-800"
+                      onClick={async () => {
+                        if (n.id && !n.read) {
+                          await markNotificationsRead([n.id]);
+                        }
+                        router.push(
+                          `${threadMessagesBaseHref}?thread=${encodeURIComponent(n.threadId!)}`,
+                        );
+                      }}
+                    >
+                      View
+                    </button>
+                  ) : null}
+                </div>
               </div>
               {!n.read && n.id ? (
                 <div className="mt-3">

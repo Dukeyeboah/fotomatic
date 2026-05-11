@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
 import {
   updateUserDocument,
@@ -14,7 +14,16 @@ import { DIRECTORY_GALLERY_MAX } from '@/lib/photographers-directory';
 import { COUNTRY_NAMES } from '@/lib/countries';
 import { PHOTOGRAPHY_FOCUS_OPTIONS } from '@/lib/photography-focus';
 import { syncPhotographerPublicDirectory } from '@/lib/firebase/sync-photographer-directory';
-import { Loader2, X } from 'lucide-react';
+import {
+  isReservedProfileSlug,
+  isValidPublicProfileSlug,
+  normalizePublicProfileSlug,
+} from '@/lib/public-profile-slug';
+import {
+  isUsernameClaimAvailable,
+  syncUsernameClaimForUser,
+} from '@/lib/firebase/username-claim';
+import { Loader2, Upload, X } from 'lucide-react';
 
 const FIELD_INPUT_CLASS =
   'w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-500 caret-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20';
@@ -61,7 +70,6 @@ export function ProfileSettingsForm({
   const [linkedin, setLinkedin] = useState(ph.linkedin ?? '');
   const [website, setWebsite] = useState(ph.website ?? '');
   const [portfolioUrl, setPortfolioUrl] = useState(ph.portfolioUrl ?? '');
-  const [directoryId, setDirectoryId] = useState(ph.directoryId ?? '');
   const [phone, setPhone] = useState(ph.phone ?? '');
   const [phoneContact, setPhoneContact] = useState(ph.phoneContact === true);
   const [emailContact, setEmailContact] = useState(ph.emailContact === true);
@@ -86,6 +94,10 @@ export function ProfileSettingsForm({
     'banner' | 'profile' | 'gallery' | null
   >(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [usernameHint, setUsernameHint] = useState<string | null>(null);
+  const bannerFileRef = useRef<HTMLInputElement>(null);
+  const profileFileRef = useRef<HTMLInputElement>(null);
+  const galleryFilesRef = useRef<HTMLInputElement>(null);
 
   const isPhotographer = userData.role === 'photographer';
   const isAdmin = userData.role === 'admin';
@@ -104,23 +116,39 @@ export function ProfileSettingsForm({
     else setProfileImageUrl(url);
   };
 
-  const onGalleryAdd = async (file: File | null) => {
-    if (!file || !showMediaUploads) return;
-    if (galleryImageUrls.length >= DIRECTORY_GALLERY_MAX) {
+  const onGalleryPickMultiple = async (files: FileList | null) => {
+    if (!files?.length || !showMediaUploads) return;
+    const list = Array.from(files).filter((f) => f.type.startsWith('image/'));
+    if (list.length === 0) return;
+    let room = DIRECTORY_GALLERY_MAX - galleryImageUrls.length;
+    if (room <= 0) {
       setMessage(`Portfolio is limited to ${DIRECTORY_GALLERY_MAX} images.`);
       return;
     }
     setUploading('gallery');
     setMessage(null);
-    const url = await uploadPhotographerGalleryImage(user.uid, file);
+    const nextUrls: string[] = [];
+    for (const file of list) {
+      if (room <= 0) break;
+      const url = await uploadPhotographerGalleryImage(user.uid, file);
+      if (url) {
+        nextUrls.push(url);
+        room -= 1;
+      }
+    }
     setUploading(null);
-    if (!url) {
+    if (nextUrls.length === 0) {
       setMessage('Upload failed. Check Storage rules and bucket in Firebase.');
       return;
     }
     setGalleryImageUrls((prev) =>
-      [...prev, url].slice(0, DIRECTORY_GALLERY_MAX),
+      [...prev, ...nextUrls].slice(0, DIRECTORY_GALLERY_MAX),
     );
+    if (list.length > nextUrls.length && room === 0) {
+      setMessage(
+        `Only the first images that fit within the ${DIRECTORY_GALLERY_MAX} image limit were added.`,
+      );
+    }
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -145,9 +173,40 @@ export function ProfileSettingsForm({
       return;
     }
 
+    const rawUsername = username.trim();
+    if (rawUsername) {
+      const check = normalizePublicProfileSlug(rawUsername);
+      if (!isValidPublicProfileSlug(check) || isReservedProfileSlug(check)) {
+        setSaving(false);
+        setMessage(
+          'Username must be 3–40 characters (letters, numbers, underscore, hyphen) and cannot be a reserved word.',
+        );
+        return;
+      }
+    }
+
+    const normalizedUsername = rawUsername
+      ? normalizePublicProfileSlug(rawUsername)
+      : null;
+    const prevNormalized =
+      userData.username?.trim()
+        ? normalizePublicProfileSlug(userData.username.trim())
+        : null;
+
+    const claim = await syncUsernameClaimForUser(
+      user.uid,
+      prevNormalized,
+      username.trim(),
+    );
+    if (!claim.ok) {
+      setSaving(false);
+      setMessage(claim.reason);
+      return;
+    }
+
     const patch: Partial<UserData> = {
       displayName: displayName.trim() || null,
-      username: username.trim() || null,
+      username: normalizedUsername,
       city: city.trim() || null,
       state: state.trim() || null,
       country: country.trim() || null,
@@ -169,7 +228,6 @@ export function ProfileSettingsForm({
         linkedin: linkedin.trim() || undefined,
         website: website.trim() || undefined,
         portfolioUrl: portfolioUrl.trim() || undefined,
-        directoryId: directoryId.trim() || undefined,
         phone: phone.trim() || undefined,
         phoneContact,
         emailContact,
@@ -236,9 +294,40 @@ export function ProfileSettingsForm({
             <input
               className={FIELD_INPUT_CLASS}
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Letters before @ in your email by default"
+              onChange={(e) => {
+                setUsername(e.target.value);
+                setUsernameHint(null);
+              }}
+              onBlur={async () => {
+                const raw = username.trim();
+                if (!raw || raw.length < 3) {
+                  setUsernameHint(null);
+                  return;
+                }
+                const n = normalizePublicProfileSlug(raw);
+                if (
+                  !isValidPublicProfileSlug(n) ||
+                  isReservedProfileSlug(n)
+                ) {
+                  setUsernameHint(null);
+                  return;
+                }
+                const avail = await isUsernameClaimAvailable(raw, user.uid);
+                setUsernameHint(
+                  avail ? null : 'That username is already taken.',
+                );
+              }}
+              placeholder="e.g. aureon9 — fotomatic.app/photographers/aureon9"
             />
+            {usernameHint ? (
+              <p className="mt-1 text-[11px] font-medium text-red-700">
+                {usernameHint}
+              </p>
+            ) : null}
+            <span className="text-[11px] leading-snug text-zinc-500">
+              Used for your shareable profile link. Lowercase; 3–40 characters;
+              letters, numbers, underscore, or hyphen. Must be unique.
+            </span>
           </label>
           <div className="sm:col-span-2">
             <span className="text-xs font-medium text-zinc-600">Account type</span>
@@ -290,20 +379,6 @@ export function ProfileSettingsForm({
         <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <h2 className="text-sm font-semibold text-zinc-900">Photographer profile</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <label className="block space-y-1">
-              <span className="text-xs font-medium text-zinc-600">
-                Directory id <span className="font-normal text-zinc-400">(e.g. p-yourUid)</span>
-              </span>
-              <input
-                className={FIELD_INPUT_CLASS}
-                value={directoryId}
-                onChange={(e) => setDirectoryId(e.target.value)}
-                placeholder={`p-${user.uid.slice(0, 8)}…`}
-              />
-              <span className="text-[11px] leading-snug text-zinc-500">
-                Approved photographers use <code className="rounded bg-zinc-100 px-1">p-{'{your account id}'}</code>. This keeps your public listing in sync with bookings.
-              </span>
-            </label>
             <label className="block space-y-1">
               <span className="text-xs font-medium text-zinc-600">
                 Hourly rate <span className="font-normal text-zinc-400">(optional)</span>
@@ -377,67 +452,150 @@ export function ProfileSettingsForm({
             </label>
           </div>
           {showMediaUploads ? (
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <label className="block space-y-1 sm:col-span-2">
+            <div className="mt-4 space-y-8">
+              <input
+                ref={bannerFileRef}
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={(e) => {
+                  void onUpload('banner', e.target.files?.[0] ?? null);
+                  e.target.value = '';
+                }}
+              />
+              <div>
                 <span className="text-xs font-medium text-zinc-600">
                   Banner image
                 </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="text-sm text-zinc-600"
-                  onChange={(e) =>
-                    onUpload('banner', e.target.files?.[0] ?? null)
-                  }
-                />
-                {uploading === 'banner' ? (
-                  <Loader2 className="mt-2 h-4 w-4 animate-spin text-zinc-400" />
-                ) : null}
-                {bannerImageUrl ? (
-                  <p className="mt-1 truncate text-xs text-zinc-500">{bannerImageUrl}</p>
-                ) : null}
-              </label>
-              <label className="block space-y-1 sm:col-span-2">
+                <p className="mt-1 text-[11px] leading-snug text-zinc-500">
+                  Wide image across the top of your public profile. JPG, PNG,
+                  or WebP up to 8MB.
+                </p>
+                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start">
+                  <div className="relative aspect-[21/9] w-full max-w-xl overflow-hidden rounded-xl bg-zinc-100 ring-1 ring-zinc-200">
+                    {bannerImageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- Firebase Storage URL
+                      <img
+                        src={bannerImageUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full min-h-[120px] items-center justify-center text-sm text-zinc-400">
+                        No banner yet
+                      </div>
+                    )}
+                    {uploading === 'banner' ? (
+                      <div className="absolute inset-0 flex items-center justify-center bg-white/70">
+                        <Loader2 className="h-8 w-8 animate-spin text-zinc-500" />
+                      </div>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => bannerFileRef.current?.click()}
+                    disabled={uploading !== null}
+                    className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50 disabled:opacity-50"
+                  >
+                    <Upload className="h-4 w-4" />
+                    {bannerImageUrl ? 'Replace banner' : 'Upload banner'}
+                  </button>
+                </div>
+              </div>
+
+              <input
+                ref={profileFileRef}
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={(e) => {
+                  void onUpload('profile', e.target.files?.[0] ?? null);
+                  e.target.value = '';
+                }}
+              />
+              <div>
                 <span className="text-xs font-medium text-zinc-600">
                   Profile image
                 </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="text-sm text-zinc-600"
-                  onChange={(e) =>
-                    onUpload('profile', e.target.files?.[0] ?? null)
-                  }
-                />
-                {uploading === 'profile' ? (
-                  <Loader2 className="mt-2 h-4 w-4 animate-spin text-zinc-400" />
-                ) : null}
-                {profileImageUrl ? (
-                  <p className="mt-1 truncate text-xs text-zinc-500">{profileImageUrl}</p>
-                ) : null}
-              </label>
-              <div className="space-y-2 sm:col-span-2">
+                <p className="mt-1 text-[11px] leading-snug text-zinc-500">
+                  Square-ish photo works best; shown on directory cards and your
+                  public page.
+                </p>
+                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full bg-zinc-100 ring-2 ring-zinc-200">
+                    {profileImageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={profileImageUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-xs text-zinc-400">
+                        Photo
+                      </div>
+                    )}
+                    {uploading === 'profile' ? (
+                      <div className="absolute inset-0 flex items-center justify-center rounded-full bg-white/70">
+                        <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
+                      </div>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => profileFileRef.current?.click()}
+                    disabled={uploading !== null}
+                    className="inline-flex items-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50 disabled:opacity-50"
+                  >
+                    <Upload className="h-4 w-4" />
+                    {profileImageUrl ? 'Replace photo' : 'Upload profile photo'}
+                  </button>
+                </div>
+              </div>
+
+              <input
+                ref={galleryFilesRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="sr-only"
+                disabled={galleryImageUrls.length >= DIRECTORY_GALLERY_MAX}
+                onChange={(e) => {
+                  void onGalleryPickMultiple(e.target.files);
+                  e.target.value = '';
+                }}
+              />
+              <div className="space-y-2">
                 <span className="text-xs font-medium text-zinc-600">
                   Portfolio gallery
                 </span>
                 <p className="text-[11px] leading-snug text-zinc-500">
-                  Add 3–15 images for your public listing. Directory cards use
-                  your profile image first, then the first gallery shot if needed.
+                  Add 3–15 images for your public listing. You can select{' '}
+                  <strong>multiple files at once</strong> (up to your remaining
+                  slots). Cards use your profile image first, then gallery shots.
                 </p>
-                <label className="block space-y-1">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="text-sm text-zinc-600"
-                    disabled={galleryImageUrls.length >= DIRECTORY_GALLERY_MAX}
-                    onChange={(e) =>
-                      onGalleryAdd(e.target.files?.[0] ?? null)
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => galleryFilesRef.current?.click()}
+                    disabled={
+                      uploading !== null ||
+                      galleryImageUrls.length >= DIRECTORY_GALLERY_MAX
                     }
-                  />
+                    className="inline-flex items-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50 disabled:opacity-50"
+                  >
+                    <Upload className="h-4 w-4" />
+                    {galleryImageUrls.length >= DIRECTORY_GALLERY_MAX
+                      ? 'Gallery full'
+                      : 'Upload images'}
+                  </button>
                   {uploading === 'gallery' ? (
-                    <Loader2 className="mt-2 h-4 w-4 animate-spin text-zinc-400" />
+                    <span className="inline-flex items-center gap-2 text-sm text-zinc-500">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Uploading…
+                    </span>
                   ) : null}
-                </label>
+                </div>
                 <p className="text-[11px] text-zinc-500">
                   {galleryImageUrls.length} / {DIRECTORY_GALLERY_MAX} · minimum 3
                   when you include any portfolio images

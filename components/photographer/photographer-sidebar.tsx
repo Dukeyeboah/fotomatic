@@ -4,10 +4,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  Bell,
   Calendar,
   CalendarCheck,
   CircleDollarSign,
-  ExternalLink,
   HelpCircle,
   LayoutDashboard,
   MessageCircle,
@@ -19,6 +19,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import { MOCK_SIDEBAR_BADGES } from '@/lib/photographer-dashboard-mock';
+import { PhotographerShareProfileMenu } from '@/components/photographer/photographer-share-profile-menu';
 
 const nav: Array<{
   href: string;
@@ -27,6 +28,7 @@ const nav: Array<{
   badge?: number;
 }> = [
   { href: '/photographer', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/photographer/directory', label: 'Find photographers', icon: Search },
   {
     href: '/photographer/requests',
     label: 'Requests',
@@ -40,10 +42,11 @@ const nav: Array<{
     icon: MessageCircle,
     badge: MOCK_SIDEBAR_BADGES.messages,
   },
+  { href: '/photographer/notifications', label: 'Notifications', icon: Bell },
   { href: '/photographer/calendar', label: 'Calendar', icon: Calendar },
   { href: '/photographer/earnings', label: 'Earnings', icon: CircleDollarSign },
   { href: '/photographer/reviews', label: 'Reviews', icon: Star },
-  { href: '/photographer/profile', label: 'Profile', icon: UserRound },
+  { href: '/photographer/profile', label: 'Photographer profile', icon: UserRound },
   { href: '/photographer/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -52,11 +55,15 @@ export function PhotographerSidebar({
   onToggleCollapse,
   onNavigate,
   mobileOpen,
+  notificationsUnreadCount = 0,
+  profilePublicSlug,
 }: {
   collapsed: boolean;
   onToggleCollapse: () => void;
   onNavigate?: () => void;
   mobileOpen: boolean;
+  notificationsUnreadCount?: number;
+  profilePublicSlug?: string | null;
 }) {
   const pathname = usePathname();
 
@@ -138,6 +145,10 @@ export function PhotographerSidebar({
 
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 pb-4">
           {nav.map(({ href, label, icon: Icon, badge }) => {
+            const effectiveBadge =
+              href === '/photographer/notifications'
+                ? notificationsUnreadCount
+                : badge ?? 0;
             const active =
               href === '/photographer'
                 ? pathname === '/photographer'
@@ -158,16 +169,19 @@ export function PhotographerSidebar({
               >
                 <Icon className="h-5 w-5 shrink-0" strokeWidth={1.75} />
                 {!collapsed ? <span>{label}</span> : null}
-                {badge != null && badge > 0 ? (
+                {effectiveBadge > 0 ? (
                   <span
                     className={[
-                      'inline-flex min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-bold text-white',
+                      'inline-flex min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold text-white',
+                      href === '/photographer/notifications'
+                        ? 'bg-amber-900'
+                        : 'bg-red-600',
                       collapsed
                         ? 'absolute -right-0.5 -top-0.5'
                         : 'ml-auto',
                     ].join(' ')}
                   >
-                    {badge > 99 ? '99+' : badge}
+                    {effectiveBadge > 99 ? '99+' : effectiveBadge}
                   </span>
                 ) : null}
               </Link>
@@ -189,24 +203,20 @@ export function PhotographerSidebar({
             <p className="text-xs font-medium leading-snug text-zinc-100">
               Share your work. Grow your business.
             </p>
-            <Link
-              href="/profile"
-              onClick={onNavigate}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white px-3 py-2.5 text-xs font-semibold text-zinc-900 hover:bg-zinc-100"
-            >
-              View My Profile
-              <ExternalLink className="h-3.5 w-3.5" />
-            </Link>
+            <PhotographerShareProfileMenu
+              profileSlug={profilePublicSlug}
+              onNavigate={onNavigate}
+            />
           </div>
         ) : (
           <div className="mx-auto mb-3">
             <Link
-              href="/profile"
-              title="View My Profile"
+              href="/photographer/directory"
+              title="Find photographers"
               onClick={onNavigate}
               className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-900 text-white hover:bg-zinc-800"
             >
-              <UserRound className="h-5 w-5" />
+              <Search className="h-5 w-5" />
             </Link>
           </div>
         )}

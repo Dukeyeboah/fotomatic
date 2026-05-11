@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   CalendarClock,
@@ -9,6 +10,13 @@ import {
   MessageCircle,
   CheckCircle2,
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useLoginModal } from '@/contexts/LoginModalContext';
+import { useMergedDirectoryPhotographers } from '@/lib/hooks/use-merged-directory-photographers';
+import { useSavedPhotographerIds } from '@/lib/hooks/use-saved-photographer-ids';
+import { BookingRequestModal } from '@/components/booking-request-modal';
+import { PhotographerPublicDetailModal } from '@/components/photographer-public-detail-modal';
+import { DashboardPhotographerCard } from '@/components/dashboard/dashboard-photographer-card';
 import {
   MOCK_ACTIVITY,
   MOCK_PHOTOGRAPHER_STATS,
@@ -24,6 +32,22 @@ import { PhotographerQuickActionGrid } from '@/components/photographer/photograp
 
 export function PhotographerHome() {
   const s = MOCK_PHOTOGRAPHER_STATS;
+  const { user, userData } = useAuth();
+  const { openLoginModal } = useLoginModal();
+  const directory = useMergedDirectoryPhotographers();
+  const { toggle, isSaved } = useSavedPhotographerIds();
+  const [detailPhotographer, setDetailPhotographer] = useState<
+    (typeof directory)[number] | null
+  >(null);
+  const [bookingPhotographer, setBookingPhotographer] = useState<
+    (typeof directory)[number] | null
+  >(null);
+
+  const suggested = useMemo(() => {
+    if (!user) return directory.slice(0, 8);
+    const selfId = `p-${user.uid}`;
+    return directory.filter((p) => p.id !== selfId).slice(0, 8);
+  }, [directory, user]);
 
   return (
     <div className="px-4 py-8 sm:px-6 lg:px-10">
@@ -240,6 +264,55 @@ export function PhotographerHome() {
       </div>
 
       <section className="mt-14">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <h2 className="font-serif text-xl font-medium text-zinc-900">
+            Find a photographer
+          </h2>
+          <Link
+            href="/photographer/directory"
+            className="text-sm font-semibold text-amber-900 hover:underline"
+          >
+            Browse all photographers →
+          </Link>
+        </div>
+        <p className="mt-2 max-w-2xl text-sm text-zinc-600">
+          Discover other professionals on Fotomatic—open a profile for details or
+          request a booking.
+        </p>
+        <div className="mt-6 flex gap-4 overflow-x-auto pb-2 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {suggested.length === 0 ? (
+            <div className="min-w-0 flex-1 rounded-2xl border border-dashed border-zinc-300 bg-white/60 px-6 py-10 text-center text-sm text-zinc-600">
+              No other photographers are listed yet.{' '}
+              <Link
+                href="/photographer/directory"
+                className="font-semibold text-amber-900 underline"
+              >
+                Open the directory
+              </Link>
+              .
+            </div>
+          ) : (
+            suggested.map((p) => (
+              <DashboardPhotographerCard
+                key={p.id}
+                photographer={p}
+                saved={isSaved(p.id)}
+                onToggleSave={() => toggle(p.id)}
+                onOpenDetail={() => setDetailPhotographer(p)}
+                onRequestBooking={() => {
+                  if (!user) {
+                    openLoginModal({ redirectTo: '/photographer' });
+                    return;
+                  }
+                  setBookingPhotographer(p);
+                }}
+              />
+            ))
+          )}
+        </div>
+      </section>
+
+      <section className="mt-14">
         <h2 className="font-serif text-xl font-medium text-zinc-900">
           Quick actions
         </h2>
@@ -270,6 +343,35 @@ export function PhotographerHome() {
           View My Profile
         </Link>
       </div>
+
+      <PhotographerPublicDetailModal
+        photographer={detailPhotographer}
+        open={detailPhotographer != null}
+        onClose={() => setDetailPhotographer(null)}
+        onRequestBooking={(p) => {
+          setDetailPhotographer(null);
+          if (!user) {
+            openLoginModal({ redirectTo: '/photographer' });
+            return;
+          }
+          setBookingPhotographer(p);
+        }}
+        saved={detailPhotographer ? isSaved(detailPhotographer.id) : false}
+        onToggleSave={() => {
+          if (detailPhotographer) toggle(detailPhotographer.id);
+        }}
+        user={user}
+        openLoginModal={(o) => openLoginModal(o)}
+      />
+
+      {user && bookingPhotographer ? (
+        <BookingRequestModal
+          photographer={bookingPhotographer}
+          user={user}
+          userData={userData}
+          onClose={() => setBookingPhotographer(null)}
+        />
+      ) : null}
     </div>
   );
 }

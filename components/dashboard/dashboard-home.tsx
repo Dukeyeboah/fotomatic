@@ -15,6 +15,7 @@ import { computeClientBookingStats } from '@/lib/client-booking-stats';
 import { useMergedDirectoryPhotographers } from '@/lib/hooks/use-merged-directory-photographers';
 import { useSavedPhotographerIds } from '@/lib/hooks/use-saved-photographer-ids';
 import { BookingRequestModal } from '@/components/booking-request-modal';
+import { PhotographerPublicDetailModal } from '@/components/photographer-public-detail-modal';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { DashboardWelcomeHeader } from '@/components/dashboard/dashboard-welcome-header';
 import { DashboardBookingCard } from '@/components/dashboard/booking-card';
@@ -91,6 +92,9 @@ export function DashboardHome() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const directory = useMergedDirectoryPhotographers();
   const [bookingPhotographer, setBookingPhotographer] = useState<
+    (typeof directory)[number] | null
+  >(null);
+  const [detailPhotographer, setDetailPhotographer] = useState<
     (typeof directory)[number] | null
   >(null);
   const { toggle, isSaved } = useSavedPhotographerIds();
@@ -244,6 +248,7 @@ export function DashboardHome() {
               photographer={p}
               saved={isSaved(p.id)}
               onToggleSave={() => toggle(p.id)}
+              onOpenDetail={() => setDetailPhotographer(p)}
               onRequestBooking={() => {
                 if (!user) {
                   openLoginModal({ redirectTo: '/dashboard' });
@@ -256,6 +261,7 @@ export function DashboardHome() {
         </div>
       </section>
 
+      {userData?.role !== 'photographer' ? (
       <section className="mt-16 rounded-3xl border border-zinc-200/90 bg-[#faf8f5] shadow-sm ring-1 ring-zinc-900/5">
         <div className="flex flex-col gap-0 lg:flex-row">
 
@@ -365,6 +371,7 @@ export function DashboardHome() {
           </div>
         </div>
       </section>
+      ) : null}
 
       <InfoStrip
         items={[
@@ -387,6 +394,26 @@ export function DashboardHome() {
               'Reach our team anytime—visit Help / Support in your account menu.',
           },
         ]}
+      />
+
+      <PhotographerPublicDetailModal
+        photographer={detailPhotographer}
+        open={detailPhotographer != null}
+        onClose={() => setDetailPhotographer(null)}
+        onRequestBooking={(p) => {
+          setDetailPhotographer(null);
+          if (!user) {
+            openLoginModal({ redirectTo: '/dashboard' });
+            return;
+          }
+          setBookingPhotographer(p);
+        }}
+        saved={detailPhotographer ? isSaved(detailPhotographer.id) : false}
+        onToggleSave={() => {
+          if (detailPhotographer) toggle(detailPhotographer.id);
+        }}
+        user={user}
+        openLoginModal={(o) => openLoginModal(o)}
       />
 
       {user && bookingPhotographer ? (

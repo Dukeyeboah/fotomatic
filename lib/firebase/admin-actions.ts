@@ -147,6 +147,8 @@ export async function adminApprovePhotographerApplication(args: {
       body: 'Congratulations — your application was approved. Complete your public profile: add a profile photo, 3–15 portfolio images, and review your bio and links so clients can book you. A setup window will open when you visit your photographer dashboard.',
       read: false,
       createdAt: serverTimestamp(),
+      ctaHref: '/photographer/profile',
+      ctaLabel: 'Complete my profile',
     });
 
     // 3b) Public directory listing (clients browse this collection)

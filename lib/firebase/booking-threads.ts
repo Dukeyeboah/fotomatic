@@ -88,6 +88,9 @@ export type AppNotification = {
   body: string;
   read: boolean;
   createdAt?: unknown;
+  /** Optional in-app navigation (e.g. complete profile after approval). */
+  ctaHref?: string | null;
+  ctaLabel?: string | null;
 };
 
 export type Result<T> = { ok: true; value: T } | { ok: false; message: string };

@@ -20,6 +20,19 @@ export type DirectoryPhotographer = {
   galleryImageUrls?: string[];
   /** Display hourly rate floor for booking flow */
   startingHourlyRate: number;
+  /** From Firestore directory doc after profile sync */
+  bio?: string;
+  interests?: string;
+  bannerImageUrl?: string;
+  photographyFocus?: string;
+  serviceArea?: string;
+  portfolioLinks?: string;
+  openToOtherAreas?: boolean;
+  /** Public URL path `/photographers/{profileSlug}` when synced from account username. */
+  profileSlug?: string;
+  phone?: string;
+  phoneContact?: boolean;
+  emailContact?: boolean;
 };
 
 export const DIRECTORY_GALLERY_MAX = 15;
@@ -140,6 +153,22 @@ export function firestoreDocToDirectory(
     if (urls.length > 0) galleryImageUrls = urls;
   }
 
+  const bio = data.bio != null ? str(data.bio) : '';
+  const interests = data.interests != null ? str(data.interests) : '';
+  const bannerImageUrl =
+    data.bannerImageUrl != null ? str(data.bannerImageUrl) : '';
+  const photographyFocus =
+    data.photographyFocus != null ? str(data.photographyFocus) : '';
+  const serviceArea = data.serviceArea != null ? str(data.serviceArea) : '';
+  const portfolioLinks =
+    data.portfolioLinks != null ? str(data.portfolioLinks) : '';
+  const profileSlugRaw =
+    data.profileSlug != null ? str(data.profileSlug) : '';
+  const profileSlug = profileSlugRaw || undefined;
+  const phone = data.phone != null ? str(data.phone) : '';
+  const phoneContact = data.phoneContact === true;
+  const emailContact = data.emailContact === true;
+
   return {
     id: docId,
     source: 'firestore',
@@ -156,5 +185,17 @@ export function firestoreDocToDirectory(
     photoUrl: data.photoUrl != null ? str(data.photoUrl) : undefined,
     galleryImageUrls,
     startingHourlyRate,
+    bio: bio || undefined,
+    interests: interests || undefined,
+    bannerImageUrl: bannerImageUrl || undefined,
+    photographyFocus: photographyFocus || undefined,
+    serviceArea: serviceArea || undefined,
+    portfolioLinks: portfolioLinks || undefined,
+    openToOtherAreas:
+      data.openToOtherAreas === true ? true : undefined,
+    profileSlug,
+    phone: phone || undefined,
+    phoneContact: phoneContact ? true : undefined,
+    emailContact: emailContact ? true : undefined,
   };
 }

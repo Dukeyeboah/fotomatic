@@ -3,6 +3,7 @@
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from './config';
 import type { UserData } from './user-profile';
+import { normalizePublicProfileSlug } from '@/lib/public-profile-slug';
 
 /**
  * Pushes the photographer’s profile into the public `photographers` collection
@@ -35,6 +36,11 @@ export async function syncPhotographerPublicDirectory(
   const rate =
     typeof ph.hourlyRate === 'number' && ph.hourlyRate > 0 ? ph.hourlyRate : 150;
 
+  const profileSlugRaw = normalizePublicProfileSlug(
+    (userData.username ?? '').trim(),
+  );
+  const profileSlug = profileSlugRaw.length >= 3 ? profileSlugRaw : null;
+
   try {
     await setDoc(
       doc(db, 'photographers', docId),
@@ -42,6 +48,7 @@ export async function syncPhotographerPublicDirectory(
         applicantUserId: uid,
         listed: true,
         status: 'approved',
+        profileSlug,
         firstName,
         lastName: lastName ?? null,
         name: displayName,
@@ -51,6 +58,8 @@ export async function syncPhotographerPublicDirectory(
         country: country || null,
         location,
         bio: ph.bio ?? null,
+        interests: ph.interests ?? null,
+        bannerImageUrl: ph.bannerImageUrl ?? null,
         website: ph.website ?? null,
         instagram: ph.instagram ?? null,
         twitter: ph.twitter ?? null,

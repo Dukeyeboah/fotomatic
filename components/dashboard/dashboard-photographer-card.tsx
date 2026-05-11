@@ -39,17 +39,38 @@ export function DashboardPhotographerCard({
   saved,
   onToggleSave,
   onRequestBooking,
+  onOpenDetail,
 }: {
   photographer: DirectoryPhotographer;
   saved: boolean;
   onToggleSave: () => void;
   onRequestBooking: () => void;
+  onOpenDetail?: () => void;
 }) {
   const tag = TAGS[photographer.id.length % TAGS.length]!;
   const imgSrc = cardImage(photographer);
   const remoteImg = /^https?:\/\//i.test(imgSrc);
   return (
-    <div className="flex w-[260px] shrink-0 flex-col overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-sm">
+    <div
+      className={[
+        'flex w-[260px] shrink-0 flex-col overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-sm',
+        onOpenDetail ? 'cursor-pointer' : '',
+      ].join(' ')}
+      onClick={(e) => {
+        if (!onOpenDetail) return;
+        if ((e.target as HTMLElement).closest('button')) return;
+        onOpenDetail();
+      }}
+      onKeyDown={(e) => {
+        if (!onOpenDetail) return;
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        if ((e.target as HTMLElement).closest('button')) return;
+        e.preventDefault();
+        onOpenDetail();
+      }}
+      role={onOpenDetail ? 'button' : undefined}
+      tabIndex={onOpenDetail ? 0 : undefined}
+    >
       <div className="relative aspect-[4/3] w-full bg-zinc-100">
         {remoteImg ? (
           // eslint-disable-next-line @next/next/no-img-element -- remote profile URLs

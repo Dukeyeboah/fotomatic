@@ -11,6 +11,7 @@ import { PhotographerSidebar } from '@/components/photographer/photographer-side
 import { PhotographerWelcomeHeader } from '@/components/photographer/photographer-welcome-header';
 import { PhotographerAccountMenu } from '@/components/photographer/photographer-account-menu';
 import { PhotographerProfileSetupModal } from '@/components/photographer-profile-setup-modal';
+import { subscribeUnreadNotificationCount } from '@/lib/firebase/booking-threads';
 
 const COLLAPSE_KEY = 'fotomatic_photographer_sidebar_collapsed';
 
@@ -37,6 +38,7 @@ export function PhotographerLayoutClient({
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [notificationsUnread, setNotificationsUnread] = useState(0);
 
   useEffect(() => {
     try {
@@ -60,6 +62,14 @@ export function PhotographerLayoutClient({
   }, []);
 
   const closeMobile = useCallback(() => setMobileOpen(false), []);
+
+  useEffect(() => {
+    if (!user) {
+      setNotificationsUnread(0);
+      return;
+    }
+    return subscribeUnreadNotificationCount(user.uid, setNotificationsUnread);
+  }, [user]);
 
   useEffect(() => {
     if (loading || !user || !userData) return;
@@ -122,6 +132,12 @@ export function PhotographerLayoutClient({
         onToggleCollapse={toggleCollapse}
         onNavigate={closeMobile}
         mobileOpen={mobileOpen}
+        notificationsUnreadCount={notificationsUnread}
+        profilePublicSlug={
+          userData.username?.trim()
+            ? userData.username.trim().toLowerCase()
+            : null
+        }
       />
       <div className="flex min-h-screen flex-1 flex-col lg:min-w-0">
         <header className="sticky top-0 z-30 shrink-0 border-b border-zinc-200/80 bg-white/95 backdrop-blur">
@@ -134,20 +150,19 @@ export function PhotographerLayoutClient({
             >
               <Menu className="h-6 w-6" />
             </button>
-            <div className="hidden min-w-0 flex-1 lg:block">
-              <PhotographerWelcomeHeader firstName={greet} />
-            </div>
-            <div className="flex flex-1 justify-end gap-2 sm:gap-3 lg:flex-initial">
+            <div className="flex flex-1 justify-end gap-2 sm:gap-3">
               <NotificationBell />
               <DashboardMessagesNavLink href="/photographer/messages" />
               <PhotographerAccountMenu />
             </div>
           </div>
-          <div className="border-t border-zinc-100 px-4 py-4 lg:hidden">
+        </header>
+        <main className="flex-1 overflow-y-auto">
+          <div className="border-b border-zinc-200/80 bg-gradient-to-b from-white to-[#faf8f5] px-4 pb-6 pt-6 sm:px-6 sm:pb-8 sm:pt-8 lg:px-10">
             <PhotographerWelcomeHeader firstName={greet} />
           </div>
-        </header>
-        <main className="flex-1 overflow-y-auto">{children}</main>
+          {children}
+        </main>
       </div>
       <PhotographerProfileSetupModal />
     </div>

@@ -10,7 +10,9 @@ import {
 } from '@/lib/photographers-directory';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
-import { MapPin, AtSign, ArrowUpRight, Heart } from 'lucide-react';
+import { MapPin, Heart } from 'lucide-react';
+import { PhotographerSocialIconButtons } from '@/components/photographer-social-icon-buttons';
+import { PhotographerPublicDetailModal } from '@/components/photographer-public-detail-modal';
 import { useSavedPhotographerIds } from '@/lib/hooks/use-saved-photographer-ids';
 import { useMergedDirectoryPhotographers } from '@/lib/hooks/use-merged-directory-photographers';
 
@@ -35,17 +37,6 @@ function formatLocation(p: DirectoryPhotographer): string {
   return 'Location coming soon';
 }
 
-function normalizeUrl(href: string, kind: 'web' | 'ig'): string {
-  const t = href.trim();
-  if (!t) return '';
-  if (t.startsWith('http://') || t.startsWith('https://')) return t;
-  if (kind === 'ig') {
-    const handle = t.replace(/^@/, '');
-    return `https://instagram.com/${handle}`;
-  }
-  return `https://${t.replace(/^\/\//, '')}`;
-}
-
 export function PhotographersGrid({
   promoLabel,
   variant = 'marketing',
@@ -58,6 +49,8 @@ export function PhotographersGrid({
   const list = useMergedDirectoryPhotographers();
   const [q, setQ] = useState('');
   const [bookingPhotographer, setBookingPhotographer] =
+    useState<DirectoryPhotographer | null>(null);
+  const [detailPhotographer, setDetailPhotographer] =
     useState<DirectoryPhotographer | null>(null);
   const { user, userData } = useAuth();
   const { openLoginModal } = useLoginModal();
@@ -135,19 +128,25 @@ export function PhotographersGrid({
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((p) => {
             const photo = directoryPhotographerHeroImageUrl(p);
-            const ig = p.instagram?.trim();
-            const web = p.website?.trim();
-            const tw = p.twitter?.trim();
-            const fb = p.facebook?.trim();
-            const igHref = ig ? normalizeUrl(ig, 'ig') : '';
-            const webHref = web ? normalizeUrl(web, 'web') : '';
-            const twHref = tw ? normalizeUrl(tw, 'web') : '';
-            const fbHref = fb ? normalizeUrl(fb, 'web') : '';
-
             return (
               <article
                 key={p.id}
-                className="group flex flex-col overflow-hidden rounded-2xl bg-[#faf8f5] shadow-sm ring-1 ring-zinc-900/5 transition-shadow hover:shadow-md"
+                role="button"
+                tabIndex={0}
+                onClick={(e) => {
+                  const t = e.target as HTMLElement;
+                  if (t.closest('button, a')) return;
+                  setDetailPhotographer(p);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    const t = e.target as HTMLElement;
+                    if (t.closest('button, a')) return;
+                    setDetailPhotographer(p);
+                  }
+                }}
+                className="group flex cursor-pointer flex-col overflow-hidden rounded-2xl bg-[#faf8f5] shadow-sm ring-1 ring-zinc-900/5 transition-shadow hover:shadow-md"
               >
                 <div className="relative aspect-[4/5] bg-gradient-to-br from-stone-200/80 to-stone-100">
                   <button
@@ -212,53 +211,23 @@ export function PhotographersGrid({
                       {formatLocation(p)}
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {igHref ? (
-                      <a
-                        href={igHref}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200/80 bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 transition-colors hover:border-zinc-300"
-                      >
-                        <AtSign className="h-3.5 w-3.5" />
-                        Instagram
-                        <ArrowUpRight className="h-3 w-3 opacity-50" />
-                      </a>
-                    ) : null}
-                    {webHref ? (
-                      <a
-                        href={webHref}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200/80 bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 transition-colors hover:border-zinc-300"
-                      >
-                        Website
-                        <ArrowUpRight className="h-3 w-3 opacity-50" />
-                      </a>
-                    ) : null}
-                    {twHref ? (
-                      <a
-                        href={twHref}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200/80 bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 transition-colors hover:border-zinc-300"
-                      >
-                        X / Twitter
-                        <ArrowUpRight className="h-3 w-3 opacity-50" />
-                      </a>
-                    ) : null}
-                    {fbHref ? (
-                      <a
-                        href={fbHref}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200/80 bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 transition-colors hover:border-zinc-300"
-                      >
-                        Facebook
-                        <ArrowUpRight className="h-3 w-3 opacity-50" />
-                      </a>
-                    ) : null}
-                    {!igHref && !webHref && !twHref && !fbHref ? (
+                  <div
+                    className="flex flex-wrap gap-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <PhotographerSocialIconButtons
+                      size="sm"
+                      instagram={p.instagram}
+                      website={p.website}
+                      twitter={p.twitter}
+                      facebook={p.facebook}
+                      portfolioLinks={p.portfolioLinks}
+                    />
+                    {!p.instagram?.trim() &&
+                    !p.website?.trim() &&
+                    !p.twitter?.trim() &&
+                    !p.facebook?.trim() &&
+                    !(p.portfolioLinks ?? '').trim() ? (
                       <span className="text-xs text-zinc-400">
                         Links coming soon
                       </span>
@@ -266,7 +235,10 @@ export function PhotographersGrid({
                   </div>
                   <button
                     type="button"
-                    onClick={() => openBooking(p)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openBooking(p);
+                    }}
                     className="mt-auto w-full cursor-pointer rounded-xl bg-zinc-900 py-3 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
                   >
                     Request booking
@@ -277,6 +249,22 @@ export function PhotographersGrid({
           })}
         </div>
       )}
+
+      <PhotographerPublicDetailModal
+        photographer={detailPhotographer}
+        open={detailPhotographer != null}
+        onClose={() => setDetailPhotographer(null)}
+        onRequestBooking={(p) => {
+          setDetailPhotographer(null);
+          openBooking(p);
+        }}
+        saved={detailPhotographer ? isSaved(detailPhotographer.id) : false}
+        onToggleSave={() => {
+          if (detailPhotographer) toggle(detailPhotographer.id);
+        }}
+        user={user}
+        openLoginModal={() => openLoginModal()}
+      />
 
       {bookingPhotographer && user ? (
         <BookingRequestModal

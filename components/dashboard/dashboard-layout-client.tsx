@@ -14,7 +14,10 @@ import { NotificationBell } from '@/components/notification-bell';
 import { DashboardSidebar } from '@/components/dashboard/dashboard-sidebar';
 import { DashboardAccountMenu } from '@/components/dashboard/dashboard-account-menu';
 import { DashboardApplyPhotographerProvider } from '@/components/dashboard/dashboard-apply-photographer-context';
-import { subscribeThreadsForClient } from '@/lib/firebase/booking-threads';
+import {
+  subscribeThreadsForClient,
+  subscribeUnreadNotificationCount,
+} from '@/lib/firebase/booking-threads';
 
 const COLLAPSE_KEY = 'fotomatic_dashboard_sidebar_collapsed';
 
@@ -25,6 +28,7 @@ export function DashboardLayoutClient({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [messagesUnread, setMessagesUnread] = useState(0);
+  const [notificationsUnread, setNotificationsUnread] = useState(0);
 
   useEffect(() => {
     if (loading || !user || !userData) return;
@@ -72,6 +76,14 @@ export function DashboardLayoutClient({ children }: { children: ReactNode }) {
     });
   }, [user]);
 
+  useEffect(() => {
+    if (!user) {
+      setNotificationsUnread(0);
+      return;
+    }
+    return subscribeUnreadNotificationCount(user.uid, setNotificationsUnread);
+  }, [user]);
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#faf8f5]">
@@ -116,6 +128,8 @@ export function DashboardLayoutClient({ children }: { children: ReactNode }) {
           onNavigate={closeMobile}
           mobileOpen={mobileOpen}
           messagesUnreadCount={messagesUnread}
+          notificationsUnreadCount={notificationsUnread}
+          showApplyAsPhotographerPromo
         />
         <div className="flex min-h-screen flex-1 flex-col lg:min-w-0">
           <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-zinc-200/80 bg-white/95 px-4 backdrop-blur sm:px-6">
