@@ -20,6 +20,7 @@ import {
   Inbox,
   PanelLeftClose,
   PanelLeft,
+  X,
 } from 'lucide-react';
 import { subscribeUnreadNotificationCount } from '@/lib/firebase/booking-threads';
 import { subscribeUnreadAdminEventCount } from '@/lib/firebase/admin';
@@ -151,6 +152,21 @@ export function AdminSidebar({
             />
           </Link>
         )}
+        {onNavigate ? (
+          <button
+            type="button"
+            onClick={onNavigate}
+            aria-label="Close menu"
+            className={[
+              'inline-flex rounded-lg p-2 text-zinc-300 hover:bg-zinc-800 hover:text-white lg:hidden',
+              collapsed
+                ? 'absolute right-2 top-1/2 -translate-y-1/2'
+                : 'ml-auto shrink-0',
+            ].join(' ')}
+          >
+            <X className="h-5 w-5" strokeWidth={2} />
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={onToggleCollapse}

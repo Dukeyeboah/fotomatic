@@ -1,45 +1,43 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import {
   firestoreDocToDirectory,
-  getDirectoryPhotographers,
   type DirectoryPhotographer,
 } from '@/lib/photographers-directory';
 
 /**
- * Live Firestore `photographers` docs (approved / listed) plus JSON seed rows
- * that do not collide on `id`.
+ * Live Firestore `photographers` directory. Rows with `listed: false` are omitted
+ * via `firestoreDocToDirectory`.
+ *
+ * We intentionally do **not** merge `data/photographers.json` here: after a doc is
+ * permanently deleted, the same `dir-*` id could otherwise reappear from the
+ * bundled JSON. Use Admin → Photographers → “Sync from JSON” to import seed rows
+ * into Firestore when you want that data live.
  */
 export function useMergedDirectoryPhotographers(): DirectoryPhotographer[] {
-  const jsonSeed = useMemo(() => getDirectoryPhotographers(), []);
-  const [fromFirestore, setFromFirestore] = useState<DirectoryPhotographer[]>(
-    [],
-  );
+  const [rows, setRows] = useState<DirectoryPhotographer[]>([]);
 
   useEffect(() => {
     const col = collection(db, 'photographers');
     return onSnapshot(
       col,
       (snap) => {
-        const rows: DirectoryPhotographer[] = [];
+        const out: DirectoryPhotographer[] = [];
         for (const d of snap.docs) {
           const mapped = firestoreDocToDirectory(d.id, d.data());
-          if (mapped) rows.push(mapped);
+          if (mapped) out.push(mapped);
         }
-        setFromFirestore(rows);
+        setRows(out);
       },
       (e) => {
         console.error('photographers directory subscription', e);
-        setFromFirestore([]);
+        setRows([]);
       },
     );
   }, []);
 
-  return useMemo(() => {
-    const ids = new Set(fromFirestore.map((p) => p.id));
-    return [...fromFirestore, ...jsonSeed.filter((j) => !ids.has(j.id))];
-  }, [fromFirestore, jsonSeed]);
+  return rows;
 }

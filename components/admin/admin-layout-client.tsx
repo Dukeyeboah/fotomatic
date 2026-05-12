@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { Loader2, Menu, X } from 'lucide-react';
+import { Loader2, Menu } from 'lucide-react';
 
 const ADMIN_SIDEBAR_COLLAPSED_KEY = 'fotomatic_admin_sidebar_collapsed';
 import { useRouter } from 'next/navigation';
@@ -89,7 +89,7 @@ export function AdminLayoutClient({ children }: { children: ReactNode }) {
     <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 w-full overflow-hidden bg-zinc-100">
       <div
         className={[
-          'fixed inset-0 z-40 bg-zinc-950/60 lg:hidden',
+          'fixed inset-0 z-40 bg-zinc-950/60 backdrop-blur-sm transition-opacity lg:hidden',
           mobileNav ? 'block' : 'hidden',
         ].join(' ')}
         aria-hidden
@@ -98,7 +98,10 @@ export function AdminLayoutClient({ children }: { children: ReactNode }) {
       <div
         className={[
           'fixed inset-y-0 left-0 z-50 flex h-full min-h-0 flex-col lg:static lg:h-full',
-          mobileNav ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+          'pl-[env(safe-area-inset-left)] lg:pl-0',
+          mobileNav
+            ? 'translate-x-0 shadow-2xl shadow-black/25'
+            : '-translate-x-full shadow-none lg:translate-x-0',
         ].join(' ')}
       >
         <AdminSidebar
@@ -108,7 +111,7 @@ export function AdminLayoutClient({ children }: { children: ReactNode }) {
         />
       </div>
       <div className="flex min-h-0 flex-1 flex-col lg:min-w-0">
-        <div className="flex items-center gap-2 border-b border-zinc-200 bg-zinc-950 px-3 py-2 lg:hidden">
+        <div className="flex items-center gap-2 border-b border-zinc-200 bg-zinc-950 px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] lg:hidden">
           <button
             type="button"
             className="rounded-lg p-2 text-zinc-100 hover:bg-zinc-800"
@@ -117,20 +120,14 @@ export function AdminLayoutClient({ children }: { children: ReactNode }) {
           >
             <Menu className="h-6 w-6" />
           </button>
-          <span className="text-sm font-semibold text-zinc-100">Admin</span>
-          {mobileNav ? (
-            <button
-              type="button"
-              className="ml-auto rounded-lg p-2 text-zinc-100"
-              aria-label="Close menu"
-              onClick={() => setMobileNav(false)}
-            >
-              <X className="h-5 w-5" />
-            </button>
-          ) : null}
+          <span className="min-w-0 truncate text-sm font-semibold text-zinc-100">
+            Admin
+          </span>
         </div>
         <AdminHeader />
-        <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
+          {children}
+        </main>
       </div>
     </div>
   );

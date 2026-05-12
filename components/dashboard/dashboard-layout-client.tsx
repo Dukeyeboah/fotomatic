@@ -140,7 +140,7 @@ export function DashboardLayoutClient({
           showApplyAsPhotographerPromo
         />
         <div className="flex min-h-0 flex-1 flex-col lg:min-w-0">
-          <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-zinc-200/80 bg-white/95 px-4 backdrop-blur sm:px-6">
+          <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-zinc-200/80 bg-white/95 px-4 pt-[max(0px,env(safe-area-inset-top))] backdrop-blur sm:px-6">
             <button
               type="button"
               className="inline-flex rounded-lg p-2 text-zinc-700 hover:bg-zinc-100 lg:hidden"
@@ -155,7 +155,9 @@ export function DashboardLayoutClient({
               <DashboardAccountMenu />
             </div>
           </header>
-          <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
+          <main className="min-h-0 flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
+            {children}
+          </main>
         </div>
       </div>
     </DashboardApplyPhotographerProvider>

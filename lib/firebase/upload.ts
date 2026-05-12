@@ -39,3 +39,11 @@ export async function uploadPhotographerGalleryImage(
     return null;
   }
 }
+
+/** Account avatar for clients/admins; same storage path rules as photographer profile uploads. */
+export async function uploadUserProfileAvatar(
+  uid: string,
+  file: File,
+): Promise<string | null> {
+  return uploadPhotographerMedia(uid, 'profile', file);
+}

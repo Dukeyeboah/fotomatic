@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
+import { updateProfile } from 'firebase/auth';
 import {
   updateUserDocument,
   type UserData,
@@ -9,6 +10,7 @@ import {
 import {
   uploadPhotographerGalleryImage,
   uploadPhotographerMedia,
+  uploadUserProfileAvatar,
 } from '@/lib/firebase/upload';
 import { DIRECTORY_GALLERY_MAX } from '@/lib/photographers-directory';
 import { COUNTRY_NAMES } from '@/lib/countries';
@@ -23,6 +25,7 @@ import {
   isUsernameClaimAvailable,
   syncUsernameClaimForUser,
 } from '@/lib/firebase/username-claim';
+import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, Upload, X } from 'lucide-react';
 
 const FIELD_INPUT_CLASS =
@@ -45,6 +48,7 @@ export function ProfileSettingsForm({
   onSaved,
   showMediaUploads = false,
 }: Props) {
+  const { refreshAuthUser } = useAuth();
   const ph = userData.photographer ?? {};
   const [displayName, setDisplayName] = useState(
     userData.displayName ?? user.displayName ?? '',
@@ -101,16 +105,37 @@ export function ProfileSettingsForm({
   );
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<
-    'banner' | 'profile' | 'gallery' | null
+    'banner' | 'profile' | 'gallery' | 'clientAvatar' | null
   >(null);
   const [message, setMessage] = useState<string | null>(null);
   const [usernameHint, setUsernameHint] = useState<string | null>(null);
   const bannerFileRef = useRef<HTMLInputElement>(null);
   const profileFileRef = useRef<HTMLInputElement>(null);
   const galleryFilesRef = useRef<HTMLInputElement>(null);
+  const clientAvatarFileRef = useRef<HTMLInputElement>(null);
 
   const isPhotographer = userData.role === 'photographer';
   const isAdmin = userData.role === 'admin';
+  const showClientProfilePhoto =
+    userData.role === 'user' || userData.role === 'admin';
+  const [clientProfilePhotoUrl, setClientProfilePhotoUrl] = useState(() =>
+    showClientProfilePhoto
+      ? (userData.photoURL ?? user.photoURL ?? '').trim()
+      : '',
+  );
+
+  const onClientAvatarUpload = async (file: File | null) => {
+    if (!file || !showClientProfilePhoto) return;
+    setUploading('clientAvatar');
+    setMessage(null);
+    const url = await uploadUserProfileAvatar(user.uid, file);
+    setUploading(null);
+    if (!url) {
+      setMessage('Upload failed. Check Storage rules and bucket in Firebase.');
+      return;
+    }
+    setClientProfilePhotoUrl(url);
+  };
 
   const onUpload = async (kind: 'banner' | 'profile', file: File | null) => {
     if (!file) return;
@@ -254,10 +279,22 @@ export function ProfileSettingsForm({
         country: country.trim() || undefined,
       };
     }
+    if (showClientProfilePhoto) {
+      patch.photoURL = clientProfilePhotoUrl.trim() || null;
+    }
     const ok = await updateUserDocument(user.uid, patch);
     setSaving(false);
     if (ok) {
       setMessage('Saved.');
+      if (showClientProfilePhoto) {
+        try {
+          const u = clientProfilePhotoUrl.trim();
+          await updateProfile(user, { photoURL: u || undefined });
+          await refreshAuthUser();
+        } catch (e) {
+          console.error('updateProfile', e);
+        }
+      }
       if (isPhotographer) {
         const merged: UserData = {
           ...userData,
@@ -301,6 +338,73 @@ export function ProfileSettingsForm({
               onChange={(e) => setDisplayName(e.target.value)}
             />
           </label>
+          {showClientProfilePhoto ? (
+            <>
+              <input
+                ref={clientAvatarFileRef}
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={(e) => {
+                  void onClientAvatarUpload(e.target.files?.[0] ?? null);
+                  e.target.value = '';
+                }}
+              />
+              <div className="sm:col-span-2">
+                <span className="text-xs font-medium text-zinc-600">
+                  Profile photo
+                </span>
+                <p className="mt-1 text-[11px] leading-snug text-zinc-500">
+                  Shown in the menu and anywhere your account appears. JPG, PNG,
+                  or WebP.
+                </p>
+                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full bg-zinc-100 ring-2 ring-zinc-200">
+                    {clientProfilePhotoUrl.trim() ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- Firebase Storage URL
+                      <img
+                        src={clientProfilePhotoUrl.trim()}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-xs text-zinc-400">
+                        No photo
+                      </div>
+                    )}
+                    {uploading === 'clientAvatar' ? (
+                      <div className="absolute inset-0 flex items-center justify-center rounded-full bg-white/70">
+                        <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => clientAvatarFileRef.current?.click()}
+                      disabled={uploading !== null}
+                      className="inline-flex items-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50 disabled:opacity-50"
+                    >
+                      <Upload className="h-4 w-4" />
+                      {clientProfilePhotoUrl.trim()
+                        ? 'Replace photo'
+                        : 'Upload photo'}
+                    </button>
+                    {clientProfilePhotoUrl.trim() ? (
+                      <button
+                        type="button"
+                        disabled={uploading !== null}
+                        onClick={() => setClientProfilePhotoUrl('')}
+                        className="rounded-xl px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-50"
+                      >
+                        Remove
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : null}
           <label className="block space-y-1 sm:col-span-2">
             <span className="text-xs font-medium text-zinc-600">Username</span>
             <input

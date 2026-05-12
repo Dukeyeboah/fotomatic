@@ -5,10 +5,14 @@ import Link from 'next/link';
 import type { Photographer } from '@/lib/firebase/firestore';
 import {
   adminDeletePhotographer,
+  adminPermanentlyDeletePhotographerDoc,
   adminSyncPhotographersFromJson,
   adminUpsertPhotographer,
   subscribePhotographersDirectory,
 } from '@/lib/firebase/photographers-directory-admin';
+
+/** Bulk JSON import is kept in code for rare use; hide from UI until you remove it entirely. */
+const ADMIN_JSON_DIRECTORY_SYNC_ENABLED = false;
 
 export default function AdminPhotographersPage() {
   const [directoryPhotographers, setDirectoryPhotographers] = useState<
@@ -29,21 +33,28 @@ export default function AdminPhotographersPage() {
             Photographers
           </h1>
           <p className="mt-1 text-sm text-zinc-600">
-            Firestore directory — sync from <code className="text-xs">data/photographers.json</code>.
+            Firestore directory. Photographers are expected to sign up through the app;
+            JSON bulk import is disabled here to avoid accidental merges.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            disabled={syncing}
+            disabled={!ADMIN_JSON_DIRECTORY_SYNC_ENABLED || syncing}
+            title={
+              ADMIN_JSON_DIRECTORY_SYNC_ENABLED
+                ? undefined
+                : 'JSON directory sync is turned off. Enable ADMIN_JSON_DIRECTORY_SYNC_ENABLED in code if you need a one-off import.'
+            }
             onClick={async () => {
+              if (!ADMIN_JSON_DIRECTORY_SYNC_ENABLED) return;
               setSyncing(true);
               const res = await adminSyncPhotographersFromJson();
               setSyncing(false);
               if (!res.ok) alert(res.message);
               else alert(`Synced ${res.value.count} photographers.`);
             }}
-            className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
+            className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {syncing ? 'Syncing…' : 'Sync from JSON'}
           </button>
@@ -59,7 +70,8 @@ export default function AdminPhotographersPage() {
       <div className="mt-8 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {directoryPhotographers.length === 0 ? (
           <p className="text-sm text-zinc-600 md:col-span-2">
-            No directory entries. Run sync from JSON.
+            No directory entries yet. New photographers appear here when they complete
+            onboarding and publish to the directory.
           </p>
         ) : (
           directoryPhotographers.map((p) => (
@@ -77,20 +89,25 @@ export default function AdminPhotographersPage() {
                 {p.city || p.address || '—'}
                 {p.state ? `, ${p.state}` : ''}
               </p>
+              {p.listed === false ? (
+                <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-amber-800">
+                  Hidden from public directory
+                </p>
+              ) : null}
             </button>
           ))
         )}
       </div>
 
       {selectedDir ? (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] flex items-end justify-center p-0 sm:items-center sm:p-4">
           <button
             type="button"
             className="absolute inset-0 bg-zinc-900/50"
             aria-label="Close"
             onClick={() => setSelectedDir(null)}
           />
-          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl">
+          <div className="relative max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-zinc-200 border-b-0 bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-xl sm:rounded-2xl sm:border-b sm:p-6 sm:pb-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
@@ -100,6 +117,12 @@ export default function AdminPhotographersPage() {
                   {(selectedDir.firstName + ' ' + (selectedDir.lastName ?? '')).trim()}
                 </p>
                 <p className="mt-1 text-xs text-zinc-500">ID: {selectedDir.id}</p>
+                {selectedDir.listed === false ? (
+                  <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+                    Hidden from the public directory. You can publish again, or
+                    permanently remove this Firestore document (see actions below).
+                  </p>
+                ) : null}
               </div>
               <button
                 type="button"
@@ -183,20 +206,73 @@ export default function AdminPhotographersPage() {
                   }}
                 />
               </label>
-              <div className="flex items-center justify-between gap-3 pt-2">
-                <button
-                  type="button"
-                  className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-800 hover:bg-red-100"
-                  onClick={async () => {
-                    const ok = confirm('Delete this photographer from the directory?');
-                    if (!ok) return;
-                    const res = await adminDeletePhotographer(selectedDir.id!);
-                    if (!res.ok) alert(res.message);
-                    else setSelectedDir(null);
-                  }}
-                >
-                  Delete
-                </button>
+              <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                  {selectedDir.listed === false ? (
+                    <>
+                      <button
+                        type="button"
+                        className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-100"
+                        onClick={async () => {
+                          const res = await adminUpsertPhotographer(
+                            selectedDir.id!,
+                            {
+                              listed: true,
+                            },
+                          );
+                          if (!res.ok) {
+                            alert(res.message);
+                            return;
+                          }
+                          setSelectedDir(null);
+                        }}
+                      >
+                        Show in directory again
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded-xl border border-red-300 bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                        onClick={async () => {
+                          const ok = confirm(
+                            [
+                              'Permanently delete this Firestore document?',
+                              '',
+                              'This cannot be undone. The directory row will be removed completely.',
+                              'If this person is still an active photographer on Fotomatic, their app may create a new listing the next time they use it.',
+                            ].join('\n'),
+                          );
+                          if (!ok) return;
+                          const res = await adminPermanentlyDeletePhotographerDoc(
+                            selectedDir.id!,
+                          );
+                          if (!res.ok) {
+                            alert(res.message);
+                            return;
+                          }
+                          setSelectedDir(null);
+                        }}
+                      >
+                        Permanently delete from database
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-800 hover:bg-red-100"
+                      onClick={async () => {
+                        const ok = confirm(
+                          'Remove this photographer from the public directory? Their Firestore row will stay (delisted) so it does not reappear when they next use the app.',
+                        );
+                        if (!ok) return;
+                        const res = await adminDeletePhotographer(selectedDir.id!);
+                        if (!res.ok) alert(res.message);
+                        else setSelectedDir(null);
+                      }}
+                    >
+                      Remove from directory
+                    </button>
+                  )}
+                </div>
                 <button
                   type="button"
                   className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800"

@@ -6,6 +6,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   onSnapshot,
   serverTimestamp,
   setDoc,
@@ -134,10 +135,51 @@ export async function adminUpsertPhotographer(
 
 export async function adminDeletePhotographer(id: string): Promise<Result<true>> {
   try {
-    await deleteDoc(doc(photographersCol, id));
+    /**
+     * Soft-delists instead of deleting the document. A hard delete was being
+     * undone by `syncPhotographerPublicDirectory` on the photographer’s next
+     * session (merge `setDoc` recreates the row). `listed: false` is respected by
+     * sync and filtered out of the public directory UI.
+     */
+    await setDoc(
+      doc(photographersCol, id),
+      { listed: false, updatedAt: serverTimestamp() },
+      { merge: true },
+    );
     return { ok: true, value: true };
   } catch (e) {
     console.error('adminDeletePhotographer', e);
+    return { ok: false, message: firebaseErrMessage(e) };
+  }
+}
+
+/**
+ * Hard-deletes the `photographers/{id}` document. Only allowed after the row
+ * has been delisted (`listed: false`) so we never wipe an active listing by
+ * accident. If the account is still a photographer, sync may recreate a fresh
+ * doc the next time they use the app.
+ */
+export async function adminPermanentlyDeletePhotographerDoc(
+  id: string,
+): Promise<Result<true>> {
+  try {
+    const ref = doc(photographersCol, id);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      return { ok: true, value: true };
+    }
+    const data = snap.data() as { listed?: unknown };
+    if (data.listed !== false) {
+      return {
+        ok: false,
+        message:
+          'Remove this listing from the directory first. Permanent delete is only available for delisted rows.',
+      };
+    }
+    await deleteDoc(ref);
+    return { ok: true, value: true };
+  } catch (e) {
+    console.error('adminPermanentlyDeletePhotographerDoc', e);
     return { ok: false, message: firebaseErrMessage(e) };
   }
 }

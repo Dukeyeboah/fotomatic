@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { onAuthStateChanged, type User } from 'firebase/auth';
+import { onAuthStateChanged, reload, type User } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import {
   ensureUserProfile,
@@ -46,6 +46,8 @@ interface AuthContextType {
   userData: UserData | null;
   loading: boolean;
   refreshUserData: () => Promise<void>;
+  /** Reload Firebase Auth user (e.g. after `updateProfile`) so `user.photoURL` updates in UI. */
+  refreshAuthUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -53,6 +55,7 @@ const AuthContext = createContext<AuthContextType>({
   userData: null,
   loading: true,
   refreshUserData: async () => {},
+  refreshAuthUser: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -68,6 +71,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const data = await loadUserProfileWithRetry(u);
     setUserData(data);
+  }, []);
+
+  const refreshAuthUser = useCallback(async () => {
+    const u = auth.currentUser;
+    if (!u) return;
+    try {
+      await reload(u);
+      setUser(auth.currentUser);
+    } catch (e) {
+      console.error('refreshAuthUser', e);
+    }
   }, []);
 
   useEffect(() => {
@@ -86,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, userData, loading, refreshUserData }}
+      value={{ user, userData, loading, refreshUserData, refreshAuthUser }}
     >
       {children}
     </AuthContext.Provider>

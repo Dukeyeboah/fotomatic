@@ -1,6 +1,6 @@
 'use client';
 
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from './config';
 import type { UserData } from './user-profile';
 import { normalizePublicProfileSlug } from '@/lib/public-profile-slug';
@@ -27,6 +27,16 @@ export async function syncPhotographerPublicDirectory(
   const docId = (ph.directoryId?.trim() || `p-${uid}`).trim();
   if (!docId.startsWith('p-')) return true;
 
+  const listingRef = doc(db, 'photographers', docId);
+  const existingSnap = await getDoc(listingRef);
+  if (existingSnap.exists()) {
+    const cur = existingSnap.data() as { listed?: unknown };
+    if (cur.listed === false) {
+      // Admin removed this listing from the public directory; do not recreate it.
+      return true;
+    }
+  }
+
   const city = (ph.city ?? userData.city ?? '').trim();
   const state = (ph.state ?? userData.state ?? '').trim();
   const country = (ph.country ?? userData.country ?? '').trim();
@@ -52,7 +62,7 @@ export async function syncPhotographerPublicDirectory(
 
   try {
     await setDoc(
-      doc(db, 'photographers', docId),
+      listingRef,
       {
         applicantUserId: uid,
         listed: true,

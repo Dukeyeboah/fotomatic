@@ -1,19 +1,6 @@
 [
   {
     "Contact Stage": "Interested - Follow Up",
-    "First Name": "Lia",
-    "Email": "liasphotography2011@gmail.com",
-    "Website": "https://liasphotography.com/",
-    "Instagram": "https://www.instagram.com/liasphotography2011/",
-    "Phone Number": "602(503)8019",
-    "Address": "phoenix ",
-    "State": "Arizona",
-    "Instagram-contact": false,
-    "Email-contact": false,
-    "Phone-contact": false
-  },
-  {
-    "Contact Stage": "Interested - Follow Up",
     "First Name": "Tolga",
     "Email": "tolga@hollywoodphotostudiosaz.com",
     "Website": "https://www.hollywoodphotostudiosaz.com/about.html",
@@ -278,20 +265,6 @@
     "Phone Number": "408-828-2812",
     "Address": "3728 North Fratney Street, Milwaukee, WI",
     "State": "Wisconsin",
-    "Instagram-contact": false,
-    "Email-contact": false,
-    "Phone-contact": false
-  },
-  {
-    "Contact Stage": "Interested - Follow Up",
-    "First Name": "Liz",
-    "Last Name": "Putman",
-    "Email": "liz@lizputnam.com",
-    "Website": "https://lizputnam.com/cheyenne-senior-photographer/",
-    "Instagram": "https://www.instagram.com/liz_putnam_",
-    "Phone Number": "(307) 316-2001",
-    "Address": "Chenyenne, WY",
-    "State": "Wyoming",
     "Instagram-contact": false,
     "Email-contact": false,
     "Phone-contact": false

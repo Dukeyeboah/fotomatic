@@ -1,9 +1,7 @@
-import raw from '@/data/photographers.json';
-
-/** Normalized photographer for the public directory (Firestore + optional JSON seed). */
+/** Normalized photographer for the public directory (Firestore `photographers` docs). */
 export type DirectoryPhotographer = {
   id: string;
-  source: 'firestore' | 'json';
+  source: 'firestore';
   firstName: string;
   lastName?: string;
   email?: string;
@@ -51,21 +49,9 @@ export function directoryPhotographerHeroImageUrl(
   return first?.trim() || undefined;
 }
 
-type JsonRow = Record<string, string | boolean | undefined>;
-
 function str(v: unknown): string {
   if (typeof v !== 'string') return '';
   return v.trim();
-}
-
-function titleCaseWords(s: string): string {
-  if (!s) return '';
-  return s
-    .split(/\s+/)
-    .map((w) =>
-      w.length === 0 ? w : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase(),
-    )
-    .join(' ');
 }
 
 /** Stable placeholder image index `1`…`26` for `dir-*` or Firestore `p-*` ids. */
@@ -85,41 +71,6 @@ export function placeholderImageIndexFromDirectoryId(id: string): number {
 export function photographerPlaceholderImagePath(id: string): string {
   const n = placeholderImageIndexFromDirectoryId(id);
   return `/photographerImages/${n}.jpg`;
-}
-
-/**
- * Maps spreadsheet-style JSON rows to directory entries. IDs are stable (`dir-0`, `dir-1`, …)
- * for booking requests keyed off list order.
- */
-export function getDirectoryPhotographers(): DirectoryPhotographer[] {
-  const rows = raw as JsonRow[];
-  return rows.map((row, index) => {
-    const first = str(row['First Name']);
-    const last = str(row['Last Name']);
-    const stateRaw = str(row['State']);
-    const address = str(row['Address']);
-    const website = str(row['Website']);
-    const instagram = str(row['Instagram']);
-    const email = str(row['Email']);
-    const state = stateRaw.length > 0 ? titleCaseWords(stateRaw) : '';
-
-    const rates = [150, 200, 250] as const;
-    const startingHourlyRate = rates[index % rates.length]!;
-
-    return {
-      id: `dir-${index}`,
-      source: 'json',
-      firstName: first || 'Photographer',
-      lastName: last || undefined,
-      email: email || undefined,
-      website: website || undefined,
-      instagram: instagram || undefined,
-      city: address || undefined,
-      state: state || undefined,
-      country: state ? 'United States' : undefined,
-      startingHourlyRate,
-    };
-  });
 }
 
 /** Map a public `photographers/{docId}` document to directory shape. */

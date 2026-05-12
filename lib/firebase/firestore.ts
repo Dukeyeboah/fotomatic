@@ -39,6 +39,8 @@ export interface Photographer {
   location?: string | null;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
+  /** When false, hidden from the public directory (admin delist). */
+  listed?: boolean | null;
 }
 
 export interface PhotographerBooking {
