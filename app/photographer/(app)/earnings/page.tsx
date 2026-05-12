@@ -23,9 +23,9 @@ export default function PhotographerEarningsPage() {
         Earnings
       </h1>
       <p className="mt-2 max-w-xl text-sm text-zinc-600">
-        Figures are derived from accepted quote totals on your booking threads
-        (this month vs last month). Payouts are not wired yet—this is for
-        visibility only.
+        Totals include only bookings in <strong>Confirmed</strong> status
+        (treated as successfully paid until Stripe adds explicit payment
+        fields). Pending payment is excluded.
       </p>
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -49,7 +49,7 @@ export default function PhotographerEarningsPage() {
         </div>
         <dl className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <div className="flex justify-between border-b border-zinc-100 pb-3">
-            <dt className="text-zinc-600">Lifetime (accepted quotes)</dt>
+            <dt className="text-zinc-600">Lifetime (confirmed)</dt>
             <dd className="font-semibold text-zinc-900">
               {loading ? '…' : `$${lifetime.toLocaleString()}`}
             </dd>

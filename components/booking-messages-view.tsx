@@ -35,6 +35,7 @@ export function BookingMessagesView({
   const [messages, setMessages] = useState<BookingThreadMessage[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [payModalOpen, setPayModalOpen] = useState(false);
   const activeThread = useMemo(
     () => threads.find((t) => t.id === activeThreadId) ?? null,
     [threads, activeThreadId],
@@ -140,10 +141,10 @@ export function BookingMessagesView({
                     type="button"
                     onClick={() => selectThread(t.id)}
                     className={[
-                      'w-full rounded-xl px-3 py-3 text-left text-sm transition-colors',
+                      'w-full cursor-pointer rounded-xl px-3 py-3 text-left text-sm transition-colors',
                       t.id === activeThreadId
-                        ? 'bg-amber-50 text-zinc-900 ring-1 ring-amber-200/80'
-                        : 'text-zinc-800 hover:bg-zinc-50',
+                        ? 'bg-amber-100 text-zinc-950 shadow-sm ring-2 ring-amber-500/80'
+                        : 'text-zinc-800 hover:bg-zinc-100',
                     ].join(' ')}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -192,11 +193,7 @@ export function BookingMessagesView({
                       <button
                         type="button"
                         className="rounded-full border border-amber-200/80 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-950 hover:bg-amber-100"
-                        onClick={() =>
-                          alert(
-                            'Confirm & Pay is coming next (Stripe). Your booking is accepted and awaiting payment.',
-                          )
-                        }
+                        onClick={() => setPayModalOpen(true)}
                       >
                         Confirm & Pay
                       </button>
@@ -274,6 +271,39 @@ export function BookingMessagesView({
           </section>
         </div>
       )}
+
+      {payModalOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-4 backdrop-blur-[2px]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="pay-modal-title"
+          onClick={() => setPayModalOpen(false)}
+        >
+          <div
+            className="max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              id="pay-modal-title"
+              className="font-serif text-lg font-medium text-zinc-900"
+            >
+              Payment coming soon
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-600">
+              Confirm & Pay is coming next (Stripe). Your booking is accepted
+              and awaiting payment.
+            </p>
+            <button
+              type="button"
+              className="mt-6 w-full rounded-xl bg-zinc-900 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800"
+              onClick={() => setPayModalOpen(false)}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

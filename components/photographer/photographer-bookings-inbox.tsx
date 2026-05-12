@@ -61,7 +61,7 @@ export function PhotographerBookingsInbox() {
   const searchParams = useSearchParams();
   const threadParam = searchParams.get('thread');
   const { user, userData, loading: authLoading, refreshUserData } = useAuth();
-  const { threads, directoryId, loading: threadsLoading } =
+  const { threads, loading: threadsLoading } =
     usePhotographerBookingThreads();
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -187,8 +187,7 @@ export function PhotographerBookingsInbox() {
       </h1>
       <p className="mt-2 max-w-2xl text-sm text-zinc-600">
         Review each request, reply in the thread, then accept, suggest an
-        alternative, or decline. Listing:{' '}
-        <code className="rounded bg-zinc-100 px-1 text-xs">{directoryId}</code>
+        alternative, or decline.
       </p>
 
       {banner ? (
@@ -217,6 +216,7 @@ export function PhotographerBookingsInbox() {
           threads.map((t) => {
             const open = expandedId === t.id;
             const photo = clientBookingAvatarUrl(t);
+            const actionsLocked = t.status !== 'requested';
             return (
               <div
                 key={t.id}
@@ -265,6 +265,15 @@ export function PhotographerBookingsInbox() {
 
                 {open && t.id ? (
                   <div className="space-y-6 border-t border-zinc-100 px-4 pb-6 pt-4">
+                    {actionsLocked ? (
+                      <p className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-700">
+                        Accept, suggest alternative, and decline are only
+                        available while this booking is{' '}
+                        <strong>Requested</strong>. You can still message the
+                        client in this thread.
+                      </p>
+                    ) : null}
+
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold text-zinc-900">
@@ -368,6 +377,7 @@ export function PhotographerBookingsInbox() {
                           <input
                             inputMode="numeric"
                             className={FIELD}
+                            disabled={actionsLocked}
                             value={acceptRate}
                             onChange={(e) => {
                               const v = e.target.value.trim();
@@ -378,7 +388,11 @@ export function PhotographerBookingsInbox() {
                         </label>
                         <button
                           type="button"
-                          disabled={saving || typeof acceptRate !== 'number'}
+                          disabled={
+                            saving ||
+                            typeof acceptRate !== 'number' ||
+                            actionsLocked
+                          }
                           className="mt-3 w-full rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
                           onClick={async () => {
                             if (!t.id || typeof acceptRate !== 'number' || !user)
@@ -421,6 +435,7 @@ export function PhotographerBookingsInbox() {
                           <input
                             type="date"
                             className={FIELD}
+                            disabled={actionsLocked}
                             value={suggestDate}
                             onChange={(e) => setSuggestDate(e.target.value)}
                           />
@@ -431,6 +446,7 @@ export function PhotographerBookingsInbox() {
                           </span>
                           <input
                             className={FIELD}
+                            disabled={actionsLocked}
                             value={suggestTimeframe}
                             onChange={(e) => setSuggestTimeframe(e.target.value)}
                             placeholder="e.g. 10am"
@@ -442,13 +458,14 @@ export function PhotographerBookingsInbox() {
                           </span>
                           <input
                             className={FIELD}
+                            disabled={actionsLocked}
                             value={suggestMessage}
                             onChange={(e) => setSuggestMessage(e.target.value)}
                           />
                         </label>
                         <button
                           type="button"
-                          disabled={saving || !suggestDate}
+                          disabled={saving || !suggestDate || actionsLocked}
                           className="mt-3 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-60"
                           onClick={async () => {
                             if (!t.id || !user || !suggestDate) return;
@@ -486,13 +503,14 @@ export function PhotographerBookingsInbox() {
                           </span>
                           <input
                             className={FIELD}
+                            disabled={actionsLocked}
                             value={declineReason}
                             onChange={(e) => setDeclineReason(e.target.value)}
                           />
                         </label>
                         <button
                           type="button"
-                          disabled={saving}
+                          disabled={saving || actionsLocked}
                           className="mt-3 w-full rounded-xl bg-red-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-800 disabled:opacity-60"
                           onClick={async () => {
                             if (!t.id || !user) return;

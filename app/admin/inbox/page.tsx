@@ -181,7 +181,7 @@ export default function AdminInboxPage() {
                         <p className="mt-2 text-xs">
                           <Link
                             className="font-semibold text-amber-900 underline"
-                            href={`/messages?thread=${encodeURIComponent(e.threadId)}`}
+                            href={`/admin/bookings?thread=${encodeURIComponent(e.threadId)}`}
                           >
                             View thread
                           </Link>

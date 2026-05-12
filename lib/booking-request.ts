@@ -16,7 +16,7 @@ export const BOOKING_DURATION_PRESETS = [
   '1 hour',
   '2 hours',
   'Half day (up to 4 hours)',
-  'Full day',
+  'Full day (8 hours)',
   'Multi-day',
   'Not sure yet',
   'Other (describe in notes)',

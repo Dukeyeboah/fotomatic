@@ -147,7 +147,7 @@ export function clientAvatarForThread(thread: { clientUserId: string }): string 
   return photographerPlaceholderImagePath(`c-${thread.clientUserId}`);
 }
 
-/** Earnings from accepted / confirmed threads this calendar month (approximation). */
+/** Earnings: only threads that are paid/confirmed (`confirmed`). Pending payment is excluded until checkout succeeds. */
 function earningsInMonth(
   threads: BookingThread[],
   year: number,
@@ -155,11 +155,7 @@ function earningsInMonth(
 ): number {
   let sum = 0;
   for (const t of threads) {
-    if (
-      t.status !== 'accepted_pending_payment' &&
-      t.status !== 'confirmed' &&
-      t.status !== 'pending_client_response'
-    ) {
+    if (t.status !== 'confirmed') {
       continue;
     }
     const price =
@@ -178,7 +174,7 @@ export function earningsThisMonthFromThreads(threads: BookingThread[]): number {
   return earningsInMonth(threads, now.getFullYear(), now.getMonth());
 }
 
-/** Month-over-month % change from accepted totals (0 if no prior month). */
+/** Month-over-month % change from confirmed (paid) totals (0 if no prior month). */
 export function earningsMonthOverMonthDeltaPct(threads: BookingThread[]): number {
   const now = new Date();
   const cur = earningsInMonth(threads, now.getFullYear(), now.getMonth());
@@ -191,11 +187,7 @@ export function earningsMonthOverMonthDeltaPct(threads: BookingThread[]): number
 export function lifetimeEarningsFromThreads(threads: BookingThread[]): number {
   let sum = 0;
   for (const t of threads) {
-    if (
-      t.status !== 'accepted_pending_payment' &&
-      t.status !== 'confirmed' &&
-      t.status !== 'pending_client_response'
-    ) {
+    if (t.status !== 'confirmed') {
       continue;
     }
     const price =
@@ -216,11 +208,7 @@ export function earningsChartPointsFromThreads(
     const y = d.getFullYear();
     const m = d.getMonth();
     for (const t of threads) {
-      if (
-        t.status !== 'accepted_pending_payment' &&
-        t.status !== 'confirmed' &&
-        t.status !== 'pending_client_response'
-      ) {
+      if (t.status !== 'confirmed') {
         continue;
       }
       const price =

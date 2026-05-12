@@ -5,7 +5,7 @@ import { AdminNotificationsView } from '@/components/admin/admin-notifications-v
 export default function AdminNotificationsPage() {
   return (
     <AdminNotificationsView
-      threadMessagesBaseHref="/messages"
+      threadMessagesBaseHref="/admin/bookings"
       loginRedirectTo="/admin/notifications"
     />
   );

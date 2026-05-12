@@ -27,7 +27,7 @@ export function AdminBookingRequestItem({
         </span>
         {threadId ? (
           <Link
-            href={`/messages?thread=${encodeURIComponent(threadId)}`}
+            href={`/admin/bookings?thread=${encodeURIComponent(threadId)}`}
             className="text-xs font-semibold text-amber-900 underline"
           >
             View

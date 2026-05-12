@@ -142,7 +142,7 @@ export function PhotographerHome() {
           valueDisplay={
             threadsLoading ? '…' : `$${earningsMonth.toLocaleString()}`
           }
-          subtext="From accepted quotes"
+          subtext="Confirmed (paid) bookings only"
           icon={DollarSign}
           tintClass="bg-sky-50/90"
           viewHref="/photographer/earnings"
@@ -150,10 +150,11 @@ export function PhotographerHome() {
           modalTitle="Earnings this month"
           modalBody={
             <p>
-              Total of accepted quote amounts (this calendar month) from your
-              booking threads:{' '}
-              <strong>${earningsMonth.toLocaleString()}</strong>. Payouts will
-              reconcile here when payments go live.
+              Total of confirmed booking amounts (this calendar month). Quotes
+              that are only accepted or awaiting payment are not counted until
+              checkout marks the booking as confirmed:{' '}
+              <strong>${earningsMonth.toLocaleString()}</strong>. When Stripe is
+              live, confirmed will align with successful payment.
             </p>
           }
         />

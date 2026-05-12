@@ -52,7 +52,7 @@ export function computeAdminDashboardMetrics(
     .filter(
       (t) =>
         threadMs(t) >= thisStart &&
-        (t.status === 'confirmed' || t.status === 'accepted_pending_payment'),
+        t.status === 'confirmed',
     )
     .reduce((s, t) => s + (typeof t.acceptedTotalPrice === 'number' ? t.acceptedTotalPrice : 0), 0);
 
@@ -61,7 +61,7 @@ export function computeAdminDashboardMetrics(
       (t) =>
         threadMs(t) >= prevStart &&
         threadMs(t) < thisStart &&
-        (t.status === 'confirmed' || t.status === 'accepted_pending_payment'),
+        t.status === 'confirmed',
     )
     .reduce((s, t) => s + (typeof t.acceptedTotalPrice === 'number' ? t.acceptedTotalPrice : 0), 0);
 

@@ -72,8 +72,10 @@ export type AdminEvent = {
 
 export function subscribeRecentThreads(
   cb: (threads: BookingThread[]) => void,
+  maxDocs: number = 50,
 ): Unsubscribe {
-  const q = query(threadsCol, orderBy('updatedAt', 'desc'), limit(50));
+  const cap = Math.min(Math.max(maxDocs, 1), 200);
+  const q = query(threadsCol, orderBy('updatedAt', 'desc'), limit(cap));
   return onSnapshot(
     q,
     (snap) =>
