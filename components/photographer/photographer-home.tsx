@@ -18,12 +18,19 @@ import { isOwnDirectoryPhotographerListing } from '@/lib/directory-photographer-
 import { BookingRequestModal } from '@/components/booking-request-modal';
 import { PhotographerPublicDetailModal } from '@/components/photographer-public-detail-modal';
 import { DashboardPhotographerCard } from '@/components/dashboard/dashboard-photographer-card';
+import { usePhotographerBookingThreads } from '@/contexts/PhotographerBookingThreadsContext';
+import type { BookingThread } from '@/lib/firebase/booking-threads';
 import {
-  MOCK_ACTIVITY,
-  MOCK_PHOTOGRAPHER_STATS,
-  MOCK_REQUESTS,
-  MOCK_UPCOMING_BOOKINGS,
-} from '@/lib/photographer-dashboard-mock';
+  clientBookingAvatarUrl,
+  countActiveUpcomingBookings,
+  countOpenBookingRequests,
+  earningsChartPointsFromThreads,
+  earningsMonthOverMonthDeltaPct,
+  earningsThisMonthFromThreads,
+  formatThreadDateDisplay,
+  lifetimeEarningsFromThreads,
+  threadsToActivityFeedItems,
+} from '@/lib/photographer-booking-dashboard';
 import { PhotographerStatCard } from '@/components/photographer/photographer-stat-card';
 import { PhotographerRequestCard } from '@/components/photographer/photographer-request-card';
 import { PhotographerBookingRow } from '@/components/photographer/photographer-booking-row';
@@ -33,8 +40,43 @@ import { PhotographerQuickActionGrid } from '@/components/photographer/photograp
 import { publicPhotographerProfilePath } from '@/lib/public-profile-url';
 import { isValidPublicProfileSlug } from '@/lib/public-profile-slug';
 
+function threadToBookingRowProps(thread: BookingThread) {
+  const dateTime = [
+    formatThreadDateDisplay(thread.eventDate),
+    thread.eventTimeframe,
+    thread.duration,
+  ]
+    .filter((x) => x && String(x).trim())
+    .join(' · ');
+  const status =
+    thread.status === 'accepted_pending_payment'
+      ? ('awaiting_payment' as const)
+      : thread.status === 'pending_client_response'
+        ? ('awaiting_client' as const)
+        : ('confirmed' as const);
+  const totalLabel =
+    typeof thread.acceptedTotalPrice === 'number' &&
+    thread.acceptedTotalPrice > 0
+      ? `$${thread.acceptedTotalPrice.toLocaleString()}`
+      : undefined;
+  return { dateTime, status, totalLabel };
+}
+
 export function PhotographerHome() {
-  const s = MOCK_PHOTOGRAPHER_STATS;
+  const { threads, loading: threadsLoading } = usePhotographerBookingThreads();
+  const newRequests = countOpenBookingRequests(threads);
+  const upcomingCount = countActiveUpcomingBookings(threads);
+  const earningsMonth = earningsThisMonthFromThreads(threads);
+  const earningsDeltaPct = earningsMonthOverMonthDeltaPct(threads);
+  const lifetime = lifetimeEarningsFromThreads(threads);
+  const chartPoints = earningsChartPointsFromThreads(threads);
+  const activityItems = threadsToActivityFeedItems(threads);
+  const openRequestThreads = threads.filter((t) => t.status === 'requested');
+  const upcomingThreads = threads.filter((t) =>
+    ['accepted_pending_payment', 'confirmed', 'pending_client_response'].includes(
+      t.status,
+    ),
+  );
   const { user, userData } = useAuth();
   const { openLoginModal } = useLoginModal();
   const directory = useMergedDirectoryPhotographers();
@@ -63,7 +105,7 @@ export function PhotographerHome() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <PhotographerStatCard
           label="New Requests"
-          valueDisplay={String(s.newRequests)}
+          valueDisplay={threadsLoading ? '…' : String(newRequests)}
           subtext="Awaiting your response"
           icon={Clock}
           tintClass="bg-[#f0e8dc]"
@@ -72,16 +114,16 @@ export function PhotographerHome() {
           modalTitle="New requests"
           modalBody={
             <p>
-              You have <strong>{s.newRequests}</strong> booking requests waiting
-              for a response. Review details, accept, suggest a new time, or
-              decline from the Requests page.
+              You have <strong>{newRequests}</strong> booking request
+              {newRequests === 1 ? '' : 's'} waiting for a response. Open a request
+              to accept, suggest a new time, or decline.
             </p>
           }
         />
         <PhotographerStatCard
           label="Upcoming Bookings"
-          valueDisplay={String(s.upcomingBookings)}
-          subtext="Confirmed or pending"
+          valueDisplay={threadsLoading ? '…' : String(upcomingCount)}
+          subtext="Accepted or awaiting client"
           icon={CalendarClock}
           tintClass="bg-emerald-50/90"
           viewHref="/photographer/bookings"
@@ -89,16 +131,18 @@ export function PhotographerHome() {
           modalTitle="Upcoming bookings"
           modalBody={
             <p>
-              <strong>{s.upcomingBookings}</strong> sessions are on your
-              calendar as confirmed or pending payment. Open Bookings for full
-              schedules and client notes.
+              <strong>{upcomingCount}</strong> active booking
+              {upcomingCount === 1 ? '' : 's'} (accepted, pending payment, or
+              waiting on the client). Full details are on the Bookings page.
             </p>
           }
         />
         <PhotographerStatCard
           label="Earnings This Month"
-          valueDisplay={`$${s.earningsThisMonth.toLocaleString()}`}
-          subtext="Total earnings"
+          valueDisplay={
+            threadsLoading ? '…' : `$${earningsMonth.toLocaleString()}`
+          }
+          subtext="From accepted quotes"
           icon={DollarSign}
           tintClass="bg-sky-50/90"
           viewHref="/photographer/earnings"
@@ -106,16 +150,17 @@ export function PhotographerHome() {
           modalTitle="Earnings this month"
           modalBody={
             <p>
-              Mock snapshot: <strong>${s.earningsThisMonth.toLocaleString()}</strong>{' '}
-              booked revenue this month. Connect your payout account in Earnings
-              when payouts go live.
+              Total of accepted quote amounts (this calendar month) from your
+              booking threads:{' '}
+              <strong>${earningsMonth.toLocaleString()}</strong>. Payouts will
+              reconcile here when payments go live.
             </p>
           }
         />
         <PhotographerStatCard
           label="Rating"
-          valueDisplay={`${s.rating}`}
-          subtext={`From ${s.reviewCount} reviews`}
+          valueDisplay="—"
+          subtext="Reviews not enabled yet"
           icon={Star}
           tintClass="bg-violet-50/90"
           viewHref="/photographer/reviews"
@@ -123,9 +168,8 @@ export function PhotographerHome() {
           modalTitle="Your rating"
           modalBody={
             <p>
-              Average <strong>{s.rating}</strong> across{' '}
-              <strong>{s.reviewCount}</strong> reviews (sample data). Client
-              feedback will appear here once reviews are enabled.
+              Public client reviews are not enabled yet. When they are, your
+              average rating will appear here.
             </p>
           }
         />
@@ -146,26 +190,33 @@ export function PhotographerHome() {
               </Link>
             </div>
             <div className="mt-4 space-y-4">
-              {MOCK_REQUESTS.map((r) => (
+              {threadsLoading ? (
+                <p className="text-sm text-zinc-500">Loading requests…</p>
+              ) : openRequestThreads.length === 0 ? (
+                <p className="rounded-2xl border border-dashed border-zinc-200 bg-white px-4 py-8 text-center text-sm text-zinc-600">
+                  No open requests. New client booking requests appear here and in{' '}
+                  <Link
+                    href="/photographer/bookings"
+                    className="font-semibold text-amber-900 underline"
+                  >
+                    Bookings inbox
+                  </Link>
+                  .
+                </p>
+              ) : (
+                openRequestThreads.slice(0, 4).map((t) => (
                 <PhotographerRequestCard
-                  key={r.id}
-                  clientName={r.clientName}
-                  clientImage={r.clientImage}
-                  shootType={r.shootType}
-                  location={r.location}
-                  date={r.date}
-                  duration={r.duration}
-                  onAccept={() =>
-                    alert('Accept flow will connect to your booking tools.')
-                  }
-                  onSuggest={() =>
-                    alert('Suggest time will open your scheduling flow.')
-                  }
-                  onDecline={() =>
-                    alert('Decline flow will connect to your booking tools.')
-                  }
-                />
-              ))}
+                  key={t.id}
+                  clientName={t.clientName}
+                  clientAvatarUrl={clientBookingAvatarUrl(t)}
+                  shootType={t.eventType}
+                    location={t.eventLocation}
+                    date={formatThreadDateDisplay(t.eventDate)}
+                    duration={t.duration}
+                    respondHref={`/photographer/bookings?thread=${encodeURIComponent(t.id ?? '')}`}
+                  />
+                ))
+              )}
             </div>
           </div>
 
@@ -182,21 +233,36 @@ export function PhotographerHome() {
               </Link>
             </div>
             <div className="mt-4 rounded-2xl border border-zinc-200/90 bg-white px-4 shadow-sm">
-              {MOCK_UPCOMING_BOOKINGS.map((b) => (
-                <PhotographerBookingRow
-                  key={b.id}
-                  clientName={b.clientName}
-                  shootType={b.shootType}
-                  dateTime={b.dateTime}
-                  status={b.status}
-                  totalLabel={b.totalLabel}
-                  onSendReminder={
-                    b.status === 'awaiting_payment'
-                      ? () => alert('Reminder: connect email or SMS when live.')
-                      : undefined
-                  }
-                />
-              ))}
+              {threadsLoading ? (
+                <p className="py-8 text-center text-sm text-zinc-500">
+                  Loading bookings…
+                </p>
+              ) : upcomingThreads.length === 0 ? (
+                <p className="py-8 text-center text-sm text-zinc-600">
+                  No upcoming sessions yet. Accepted bookings will show here.
+                </p>
+              ) : (
+                upcomingThreads.slice(0, 6).map((t) => {
+                  const row = threadToBookingRowProps(t);
+                  return (
+                    <PhotographerBookingRow
+                      key={t.id}
+                      clientName={t.clientName}
+                      shootType={t.eventType}
+                      dateTime={row.dateTime}
+                      status={row.status}
+                      totalLabel={row.totalLabel}
+                      onSendReminder={
+                        row.status === 'awaiting_payment'
+                          ? () => {
+                              window.location.href = `/photographer/bookings?thread=${encodeURIComponent(t.id ?? '')}`;
+                            }
+                          : undefined
+                      }
+                    />
+                  );
+                })
+              )}
             </div>
           </div>
         </section>
@@ -208,21 +274,27 @@ export function PhotographerHome() {
                 Recent activity
               </h2>
               <Link
-                href="/photographer/messages"
+                href="/photographer/bookings"
                 className="text-sm font-semibold text-amber-900 hover:underline"
               >
-                View all messages →
+                Open bookings inbox →
               </Link>
             </div>
             <div className="mt-2">
-              <PhotographerActivityFeed items={MOCK_ACTIVITY} />
+              {activityItems.length === 0 ? (
+                <p className="py-4 text-center text-sm text-zinc-500">
+                  No recent booking activity yet.
+                </p>
+              ) : (
+                <PhotographerActivityFeed items={activityItems} />
+              )}
             </div>
             <Link
-              href="/photographer/messages"
+              href="/photographer/bookings"
               className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 py-3 text-sm font-semibold text-zinc-800 hover:bg-zinc-100"
             >
               <MessageCircle className="h-4 w-4" strokeWidth={1.75} />
-              Go to Messages
+              Bookings inbox
             </Link>
           </div>
 
@@ -232,34 +304,51 @@ export function PhotographerHome() {
             </h2>
             <div className="mt-3 flex flex-wrap items-baseline justify-between gap-2">
               <p className="font-serif text-2xl font-medium text-zinc-900">
-                ${s.earningsThisMonth.toLocaleString()}
+                ${earningsMonth.toLocaleString()}
               </p>
-              <span className="text-sm font-semibold text-emerald-700">
-                +{s.earningsDeltaPct}% vs last month
+              <span
+                className={`text-sm font-semibold ${
+                  earningsDeltaPct >= 0 ? 'text-emerald-700' : 'text-red-700'
+                }`}
+              >
+                {earningsDeltaPct >= 0 ? '+' : ''}
+                {earningsDeltaPct}% vs last month
               </span>
             </div>
-            <p className="text-xs text-zinc-500">Sample trend (May)</p>
+            <p className="text-xs text-zinc-500">
+              Based on accepted totals in your booking threads
+            </p>
             <div className="mt-4 rounded-xl bg-zinc-50/80 p-3 ring-1 ring-zinc-100">
-              <PhotographerEarningsChart />
+              <PhotographerEarningsChart points={chartPoints} />
             </div>
             <dl className="mt-4 space-y-3 border-t border-zinc-100 pt-4 text-sm">
               <div className="flex justify-between gap-4">
-                <dt className="text-zinc-600">Upcoming payout</dt>
+                <dt className="text-zinc-600">Awaiting payment (quotes)</dt>
                 <dd className="font-semibold text-zinc-900">
-                  ${s.upcomingPayout.toLocaleString()}
+                  $
+                  {Math.round(
+                    threads
+                      .filter((t) => t.status === 'accepted_pending_payment')
+                      .reduce(
+                        (acc, t) =>
+                          acc +
+                          (typeof t.acceptedTotalPrice === 'number'
+                            ? t.acceptedTotalPrice
+                            : 0),
+                        0,
+                      ),
+                  ).toLocaleString()}
                 </dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-zinc-600">Completed bookings</dt>
+                <dt className="text-zinc-600">Accepted / confirmed (all time)</dt>
                 <dd className="font-semibold text-zinc-900">
-                  ${s.completedBookingsTotal.toLocaleString()}
+                  ${lifetime.toLocaleString()}
                 </dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-zinc-600">Total earnings</dt>
-                <dd className="font-semibold text-zinc-900">
-                  ${s.lifetimeEarnings.toLocaleString()}
-                </dd>
+                <dt className="text-zinc-600">Open requests</dt>
+                <dd className="font-semibold text-zinc-900">{newRequests}</dd>
               </div>
             </dl>
             <Link

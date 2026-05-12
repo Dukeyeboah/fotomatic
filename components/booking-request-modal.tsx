@@ -9,7 +9,7 @@ import {
 } from '@/lib/booking-request';
 import type { DirectoryPhotographer } from '@/lib/photographers-directory';
 import { createBookingThread } from '@/lib/firebase/booking-threads';
-import { CalendarDays, Loader2, X } from 'lucide-react';
+import { CalendarDays, CheckCircle2, Loader2, X } from 'lucide-react';
 
 function getPhotographerName(p: DirectoryPhotographer): string {
   if (p.lastName) return `${p.firstName} ${p.lastName}`.trim();
@@ -67,6 +67,8 @@ export function BookingRequestModal({
   const [agreedToContract, setAgreedToContract] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** After successful submit, show confirmation in-modal (not `alert()`). */
+  const [successForName, setSuccessForName] = useState<string | null>(null);
 
   useEffect(() => {
     if (!photographer) return;
@@ -78,16 +80,20 @@ export function BookingRequestModal({
     setNotes('');
     setAgreedToContract(false);
     setError(null);
+    setSuccessForName(null);
   }, [photographer?.id]);
 
   useEffect(() => {
-    if (!photographer) return;
+    if (!photographer && !successForName) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        if (successForName) setSuccessForName(null);
+        onClose();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [photographer, onClose]);
+  }, [photographer, successForName, onClose]);
 
   if (!photographer) return null;
 
@@ -128,17 +134,67 @@ export function BookingRequestModal({
       clientMessage: notes.trim(),
       agreedToContract,
       promoNote: promoNote ?? null,
+      clientPhotoURL: user.photoURL?.trim() || null,
     });
     setSending(false);
     if (result.ok) {
-      alert(
-        `Request sent for ${getPhotographerName(photographer)}. Our team will follow up.`,
-      );
-      onClose();
+      setSuccessForName(getPhotographerName(photographer));
     } else {
       setError(result.message);
     }
   };
+
+  if (successForName) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="booking-success-title"
+      >
+        <button
+          type="button"
+          className="absolute inset-0 cursor-default bg-zinc-900/50"
+          aria-label="Close"
+          onClick={() => {
+            setSuccessForName(null);
+            onClose();
+          }}
+        />
+        <div className="relative w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl">
+          <div className="flex flex-col items-center text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-800">
+              <CheckCircle2 className="h-8 w-8" strokeWidth={1.75} />
+            </div>
+            <h2
+              id="booking-success-title"
+              className="mt-4 font-serif text-xl font-medium text-zinc-900"
+            >
+              Request sent
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+              Your booking request for{' '}
+              <span className="font-semibold text-zinc-900">{successForName}</span>{' '}
+              was submitted. The photographer will be notified and can reply from
+              their dashboard. You can track the conversation under{' '}
+              <span className="font-medium text-zinc-900">My Bookings</span> in your
+              account.
+            </p>
+            <button
+              type="button"
+              className="mt-6 w-full rounded-xl bg-zinc-900 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
+              onClick={() => {
+                setSuccessForName(null);
+                onClose();
+              }}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

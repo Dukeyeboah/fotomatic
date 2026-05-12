@@ -5,9 +5,9 @@ import {
   MessageCircle,
   Star,
 } from 'lucide-react';
-import type { MockActivityItem } from '@/lib/photographer-dashboard-mock';
+import type { PhotographerActivityFeedItem } from '@/lib/photographer-booking-dashboard';
 
-function ActivityIcon({ kind }: { kind: MockActivityItem['icon'] }) {
+function ActivityIcon({ kind }: { kind: PhotographerActivityFeedItem['icon'] }) {
   const cls = 'h-4 w-4';
   switch (kind) {
     case 'inbox':
@@ -23,7 +23,7 @@ function ActivityIcon({ kind }: { kind: MockActivityItem['icon'] }) {
   }
 }
 
-const ringForIcon: Record<MockActivityItem['icon'], string> = {
+const ringForIcon: Record<PhotographerActivityFeedItem['icon'], string> = {
   inbox: 'bg-amber-50 text-amber-900 ring-amber-200/80',
   calendar: 'bg-emerald-50 text-emerald-900 ring-emerald-200/80',
   credit: 'bg-sky-50 text-sky-900 ring-sky-200/80',
@@ -34,7 +34,7 @@ const ringForIcon: Record<MockActivityItem['icon'], string> = {
 export function PhotographerActivityFeed({
   items,
 }: {
-  items: MockActivityItem[];
+  items: PhotographerActivityFeedItem[];
 }) {
   return (
     <ul className="divide-y divide-zinc-100">

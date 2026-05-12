@@ -2,12 +2,18 @@
 
 import { MOCK_EARNINGS_CHART_POINTS } from '@/lib/photographer-dashboard-mock';
 
-/** Lightweight SVG line chart (mock series). */
-export function PhotographerEarningsChart() {
+/** Lightweight SVG line chart. Pass `points` (0–1 per month) from booking data, or uses a soft placeholder when empty. */
+export function PhotographerEarningsChart({
+  points: pointsProp,
+}: {
+  /** Normalized 0–1 values (e.g. 12 months); empty uses a gentle placeholder curve. */
+  points?: number[];
+}) {
   const w = 280;
   const h = 100;
   const pad = 8;
-  const points = MOCK_EARNINGS_CHART_POINTS;
+  const points =
+    pointsProp && pointsProp.length > 0 ? pointsProp : MOCK_EARNINGS_CHART_POINTS;
   const n = points.length;
   const coords = points.map((y, i) => {
     const x = pad + (i / Math.max(1, n - 1)) * (w - pad * 2);

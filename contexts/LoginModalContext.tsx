@@ -245,7 +245,7 @@ function LoginModal({
                   Name
                 </label>
                 <input
-                  className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-900/20"
+                  className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-500 caret-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
@@ -258,7 +258,7 @@ function LoginModal({
               </label>
               <input
                 type="email"
-                className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-900/20"
+                className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-500 caret-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -270,7 +270,7 @@ function LoginModal({
               </label>
               <input
                 type="password"
-                className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-amber-900/20"
+                className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-500 caret-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required

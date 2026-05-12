@@ -6,6 +6,7 @@ import {
   signOut,
   updateProfile,
 } from 'firebase/auth';
+import { firebaseAuthErrorMessage } from '@/lib/firebase/auth-errors';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from './config';
 import {
@@ -26,8 +27,7 @@ export async function signInEmailPassword(email: string, password: string) {
     }
     return { user: cred.user, error: null as string | null };
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Sign in failed';
-    return { user: null, error: message };
+    return { user: null, error: firebaseAuthErrorMessage(e) };
   }
 }
 
@@ -55,8 +55,7 @@ export async function signUpEmailPassword(
     await setDoc(doc(db, 'users', cred.user.uid), userData);
     return { user: cred.user, error: null as string | null };
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Sign up failed';
-    return { user: null, error: message };
+    return { user: null, error: firebaseAuthErrorMessage(e) };
   }
 }
 
@@ -65,8 +64,7 @@ export async function signOutUser() {
     await signOut(auth);
     return { error: null as string | null };
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Sign out failed';
-    return { error: message };
+    return { error: firebaseAuthErrorMessage(e) };
   }
 }
 
@@ -82,7 +80,6 @@ export async function signInWithGoogle() {
     }
     return { user: cred.user, error: null as string | null };
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Google sign-in failed';
-    return { user: null, error: message };
+    return { user: null, error: firebaseAuthErrorMessage(e) };
   }
 }

@@ -9,8 +9,8 @@ import {
   CalendarCheck,
   CircleDollarSign,
   HelpCircle,
+  Inbox,
   LayoutDashboard,
-  MessageCircle,
   PanelLeft,
   PanelLeftClose,
   Search,
@@ -18,30 +18,23 @@ import {
   Star,
   UserRound,
 } from 'lucide-react';
-import { MOCK_SIDEBAR_BADGES } from '@/lib/photographer-dashboard-mock';
+import { usePhotographerBookingThreads } from '@/contexts/PhotographerBookingThreadsContext';
 import { PhotographerShareProfileMenu } from '@/components/photographer/photographer-share-profile-menu';
+import { countOpenBookingRequests } from '@/lib/photographer-booking-dashboard';
 
 const nav: Array<{
   href: string;
   label: string;
   icon: typeof LayoutDashboard;
-  badge?: number;
 }> = [
   { href: '/photographer', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/photographer/directory', label: 'Find photographers', icon: Search },
   {
     href: '/photographer/requests',
     label: 'Requests',
-    icon: Search,
-    badge: MOCK_SIDEBAR_BADGES.requests,
+    icon: Inbox,
   },
   { href: '/photographer/bookings', label: 'Bookings', icon: CalendarCheck },
-  {
-    href: '/photographer/messages',
-    label: 'Messages',
-    icon: MessageCircle,
-    badge: MOCK_SIDEBAR_BADGES.messages,
-  },
   { href: '/photographer/notifications', label: 'Notifications', icon: Bell },
   { href: '/photographer/calendar', label: 'Calendar', icon: Calendar },
   { href: '/photographer/earnings', label: 'Earnings', icon: CircleDollarSign },
@@ -66,6 +59,8 @@ export function PhotographerSidebar({
   profilePublicSlug?: string | null;
 }) {
   const pathname = usePathname();
+  const { threads } = usePhotographerBookingThreads();
+  const openRequestsCount = countOpenBookingRequests(threads);
 
   return (
     <>
@@ -144,11 +139,13 @@ export function PhotographerSidebar({
         )}
 
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 pb-4">
-          {nav.map(({ href, label, icon: Icon, badge }) => {
+          {nav.map(({ href, label, icon: Icon }) => {
             const effectiveBadge =
               href === '/photographer/notifications'
                 ? notificationsUnreadCount
-                : badge ?? 0;
+                : href === '/photographer/requests'
+                  ? openRequestsCount
+                  : 0;
             const active =
               href === '/photographer'
                 ? pathname === '/photographer'

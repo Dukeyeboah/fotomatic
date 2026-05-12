@@ -14,6 +14,34 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    /** Directory doc id for a photographer account (matches `photographers` doc id used in bookings). */
+    function photographerEffectiveDirectoryId(uid) {
+      let u = get(/databases/$(database)/documents/users/$(uid)).data;
+      return ('photographer' in u && u.photographer is map
+          && 'directoryId' in u.photographer
+          && u.photographer.directoryId is string
+          && u.photographer.directoryId.size() > 0)
+        ? u.photographer.directoryId
+        : ('p-' + uid);
+    }
+
+    function photographerListingMatchesDirectory(uid, directoryId) {
+      return exists(/databases/$(database)/documents/users/$(uid))
+        && get(/databases/$(database)/documents/users/$(uid)).data.role == 'photographer'
+        && directoryId == photographerEffectiveDirectoryId(uid);
+    }
+
+    function bookingThreadData(threadId) {
+      return get(/databases/$(database)/documents/bookingThreads/$(threadId)).data;
+    }
+
+    function currentUserCanAccessBookingThread(threadId) {
+      let t = bookingThreadData(threadId);
+      return t.clientUserId == request.auth.uid
+        || t.photographerUserId == request.auth.uid
+        || photographerListingMatchesDirectory(request.auth.uid, t.photographerDirectoryId);
+    }
+
     // Client accounts
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
@@ -65,7 +93,11 @@ service cloud.firestore {
     match /bookingThreads/{id} {
       allow read: if isAuthenticated()
         && (resource.data.clientUserId == request.auth.uid
-            || resource.data.photographerUserId == request.auth.uid);
+            || resource.data.photographerUserId == request.auth.uid
+            || photographerListingMatchesDirectory(
+              request.auth.uid,
+              resource.data.photographerDirectoryId
+            ));
       allow read: if isAdmin();
 
       // Client creates a booking request thread
@@ -110,7 +142,11 @@ service cloud.firestore {
         && (!request.resource.data.keys().hasAny(['promoNote'])
             || request.resource.data.promoNote == null
             || (request.resource.data.promoNote is string
-                && request.resource.data.promoNote.size() < 500));
+                && request.resource.data.promoNote.size() < 500))
+        && (!request.resource.data.keys().hasAny(['clientPhotoURL'])
+            || request.resource.data.clientPhotoURL == null
+            || (request.resource.data.clientPhotoURL is string
+                && request.resource.data.clientPhotoURL.size() < 800));
 
       // Client can update only a limited set of fields (future: pay / confirm)
       allow update: if isAuthenticated()
@@ -127,10 +163,21 @@ service cloud.firestore {
           'expired'
         ];
 
-      // Photographer can update status once claimed (accept/suggest/decline)
+      // Photographer: claim thread (null → uid) or update after claimed
       allow update: if isAuthenticated()
-        && resource.data.photographerUserId == request.auth.uid
-        && request.resource.data.photographerUserId == resource.data.photographerUserId
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'photographer'
+        && request.resource.data.photographerUserId == request.auth.uid
+        && request.resource.data.clientUserId == resource.data.clientUserId
+        && request.resource.data.photographerDirectoryId == resource.data.photographerDirectoryId
+        && request.resource.data.photographerName == resource.data.photographerName
+        && (
+             resource.data.photographerUserId == request.auth.uid
+             || (resource.data.photographerUserId == null
+                 && photographerListingMatchesDirectory(
+                   request.auth.uid,
+                   resource.data.photographerDirectoryId
+                 ))
+           )
         && request.resource.data.status in [
           'requested',
           'accepted_pending_payment',
@@ -139,6 +186,7 @@ service cloud.firestore {
           'declined',
           'expired'
         ];
+
       allow update: if isAdmin();
 
       allow delete: if false;
@@ -147,10 +195,7 @@ service cloud.firestore {
     match /bookingThreadMessages/{id} {
       allow read: if isAuthenticated()
         && exists(/databases/$(database)/documents/bookingThreads/$(resource.data.threadId))
-        && (
-          get(/databases/$(database)/documents/bookingThreads/$(resource.data.threadId)).data.clientUserId == request.auth.uid
-          || get(/databases/$(database)/documents/bookingThreads/$(resource.data.threadId)).data.photographerUserId == request.auth.uid
-        );
+        && currentUserCanAccessBookingThread(resource.data.threadId);
       allow read: if isAdmin();
 
       allow create: if isAuthenticated()
@@ -165,6 +210,10 @@ service cloud.firestore {
         && (
           get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.clientUserId == request.auth.uid
           || get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.photographerUserId == request.auth.uid
+          || photographerListingMatchesDirectory(
+            request.auth.uid,
+            get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.photographerDirectoryId
+          )
         );
 
       // System timeline messages (senderUserId "system") — used by createBookingThread and photographer actions
@@ -180,6 +229,10 @@ service cloud.firestore {
         && (
           get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.clientUserId == request.auth.uid
           || get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.photographerUserId == request.auth.uid
+          || photographerListingMatchesDirectory(
+            request.auth.uid,
+            get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.photographerDirectoryId
+          )
         );
 
       allow update, delete: if false;
@@ -202,6 +255,53 @@ service cloud.firestore {
         && request.resource.data.body is string
         && request.resource.data.body.size() > 0
         && request.resource.data.body.size() < 1000;
+      // Client notifies the listing photographer (see `photographers.applicantUserId`) for a new booking thread.
+      allow create: if isAuthenticated()
+        && request.resource.data.read == false
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() < 220
+        && request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && request.resource.data.body.size() < 1000
+        && request.resource.data.userId is string
+        && request.resource.data.userId.size() > 0
+        && request.resource.data.userId != request.auth.uid
+        && request.resource.data.type == 'booking_requested'
+        && request.resource.data.threadId is string
+        && request.resource.data.threadId.size() > 0
+        && exists(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId))
+        && get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.clientUserId == request.auth.uid
+        && exists(/databases/$(database)/documents/photographers/$(get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.photographerDirectoryId))
+        && get(/databases/$(database)/documents/photographers/$(get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.photographerDirectoryId)).data.applicantUserId == request.resource.data.userId;
+      // Photographer notifies the client (accept / suggest / decline) for a thread they own or match by directory.
+      allow create: if isAuthenticated()
+        && request.resource.data.read == false
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() < 220
+        && request.resource.data.body is string
+        && request.resource.data.body.size() > 0
+        && request.resource.data.body.size() < 1000
+        && request.resource.data.userId is string
+        && request.resource.data.userId.size() > 0
+        && request.resource.data.userId != request.auth.uid
+        && request.resource.data.type in [
+          'booking_accepted',
+          'booking_suggested',
+          'booking_declined'
+        ]
+        && request.resource.data.threadId is string
+        && request.resource.data.threadId.size() > 0
+        && exists(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId))
+        && get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.clientUserId == request.resource.data.userId
+        && (
+             get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.photographerUserId == request.auth.uid
+             || photographerListingMatchesDirectory(
+               request.auth.uid,
+               get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.photographerDirectoryId
+             )
+           );
       // Admin can send notifications to other users.
       allow create: if isAdmin()
         && request.resource.data.userId is string

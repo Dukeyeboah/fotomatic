@@ -9,7 +9,11 @@ export function PhotographerBookingRow({
   clientName: string;
   shootType: string;
   dateTime: string;
-  status: 'awaiting_payment' | 'confirmed' | 'paid';
+  status:
+    | 'awaiting_payment'
+    | 'confirmed'
+    | 'paid'
+    | 'awaiting_client';
   totalLabel?: string;
   onSendReminder?: () => void;
 }) {
@@ -19,6 +23,11 @@ export function PhotographerBookingRow({
           label: 'Awaiting Payment',
           className: 'bg-amber-100 text-amber-950 ring-amber-200/80',
         }
+      : status === 'awaiting_client'
+        ? {
+            label: 'Awaiting client',
+            className: 'bg-sky-100 text-sky-950 ring-sky-200/80',
+          }
       : status === 'confirmed'
         ? {
             label: 'Confirmed',

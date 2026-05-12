@@ -110,7 +110,7 @@ export default function PhotoAdminGatePage() {
                   Continue to profile setup
                 </Link>
                 <Link
-                  href="/photo-admin/bookings"
+                  href="/photographer/bookings"
                   className="inline-flex justify-center rounded-xl border border-zinc-200 bg-white px-6 py-3 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
                 >
                   View bookings

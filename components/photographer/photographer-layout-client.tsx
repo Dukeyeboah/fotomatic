@@ -6,10 +6,10 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
 import { NotificationBell } from '@/components/notification-bell';
-import { DashboardMessagesNavLink } from '@/components/dashboard/messages-nav-link';
 import { PhotographerSidebar } from '@/components/photographer/photographer-sidebar';
 import { PhotographerAccountMenu } from '@/components/photographer/photographer-account-menu';
 import { PhotographerProfileSetupModal } from '@/components/photographer-profile-setup-modal';
+import { PhotographerBookingThreadsProvider } from '@/contexts/PhotographerBookingThreadsContext';
 import { subscribeUnreadNotificationCount } from '@/lib/firebase/booking-threads';
 import { syncPhotographerPublicDirectory } from '@/lib/firebase/sync-photographer-directory';
 
@@ -127,42 +127,44 @@ export function PhotographerLayoutClient({
   }
 
   return (
-    <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 w-full overflow-hidden bg-[#f4f1ec]">
-      <PhotographerSidebar
-        collapsed={collapsed}
-        onToggleCollapse={toggleCollapse}
-        onNavigate={closeMobile}
-        mobileOpen={mobileOpen}
-        notificationsUnreadCount={notificationsUnread}
-        profilePublicSlug={
-          userData.username?.trim()
-            ? userData.username.trim().toLowerCase()
-            : null
-        }
-      />
-      <div className="flex min-h-0 flex-1 flex-col lg:min-w-0">
-        <header className="sticky top-0 z-30 shrink-0 border-b border-zinc-200/80 bg-white/95 backdrop-blur">
-          <div className="flex h-14 items-center justify-between gap-3 px-4 pt-[max(0px,env(safe-area-inset-top))] sm:px-6">
-            <button
-              type="button"
-              className="inline-flex rounded-lg p-2 text-zinc-700 hover:bg-zinc-100 lg:hidden"
-              aria-label="Open menu"
-              onClick={() => setMobileOpen(true)}
-            >
-              <Menu className="h-6 w-6" />
-            </button>
+    <PhotographerBookingThreadsProvider>
+      <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 w-full overflow-hidden bg-[#f4f1ec]">
+        <PhotographerSidebar
+          collapsed={collapsed}
+          onToggleCollapse={toggleCollapse}
+          onNavigate={closeMobile}
+          mobileOpen={mobileOpen}
+          notificationsUnreadCount={notificationsUnread}
+          profilePublicSlug={
+            userData.username?.trim()
+              ? userData.username.trim().toLowerCase()
+              : null
+          }
+        />
+        <div className="flex min-h-0 flex-1 flex-col lg:min-w-0">
+          <header className="sticky top-0 z-30 shrink-0 border-b border-zinc-200/80 bg-white/95 backdrop-blur">
+            <div className="flex h-14 items-center justify-between gap-3 px-4 pt-[max(0px,env(safe-area-inset-top))] sm:px-6">
+              <button
+                type="button"
+                className="inline-flex rounded-lg p-2 text-zinc-700 hover:bg-zinc-100 lg:hidden"
+                aria-label="Open menu"
+                onClick={() => setMobileOpen(true)}
+              >
+                <Menu className="h-6 w-6" />
+              </button>
             <div className="flex flex-1 justify-end gap-2 sm:gap-3">
               <NotificationBell />
-              <DashboardMessagesNavLink href="/photographer/messages" />
+              {/* <DashboardMessagesNavLink href="/photographer/messages" /> */}
               <PhotographerAccountMenu />
             </div>
-          </div>
-        </header>
-        <main className="min-h-0 flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
-          {children}
-        </main>
+            </div>
+          </header>
+          <main className="min-h-0 flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
+            {children}
+          </main>
+        </div>
+        <PhotographerProfileSetupModal />
       </div>
-      <PhotographerProfileSetupModal />
-    </div>
+    </PhotographerBookingThreadsProvider>
   );
 }

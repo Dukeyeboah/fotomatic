@@ -5,11 +5,11 @@ import {
   addDoc,
   collection,
   doc,
+  getDoc,
   getDocs,
   increment,
   limit,
   onSnapshot,
-  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -37,6 +37,8 @@ export type BookingThread = {
   clientUserId: string;
   clientName: string;
   clientEmail: string;
+  /** Client profile photo URL at request time (optional). */
+  clientPhotoURL?: string | null;
 
   photographerDirectoryId: string;
   photographerName: string;
@@ -103,12 +105,18 @@ const adminEventsCol = collection(db, 'adminEvents');
 function firebaseErrMessage(e: unknown): string {
   if (e instanceof FirebaseError) {
     if (e.code === 'permission-denied') {
-      return 'Firestore blocked this request. Publish the latest `firestore.rules` and try again.';
+      return 'You don’t have permission to do that. If you’re signed in, try again after refreshing; otherwise check that Firestore rules are deployed.';
     }
     if (e.code === 'unavailable') {
-      return 'Firestore is temporarily unavailable. Check your connection and try again.';
+      return 'The service is temporarily unavailable. Check your connection and try again.';
     }
-    return `${e.code}: ${e.message}`;
+    if (e.code === 'not-found') {
+      return 'That item could not be found. It may have been removed.';
+    }
+    if (e.code === 'failed-precondition') {
+      return 'This action can’t be completed right now. Try again in a moment.';
+    }
+    return 'Something went wrong. Please try again.';
   }
   return 'Something went wrong. Try again later.';
 }
@@ -147,7 +155,7 @@ export async function createBookingThread(
       } satisfies BookingThreadMessage);
     }
 
-    // Notification for the client (we can't reliably notify photographers yet without claiming directory ids)
+    // Notification for the client
     await addDoc(notificationsCol, {
       userId: data.clientUserId,
       threadId: threadRef.id,
@@ -157,6 +165,33 @@ export async function createBookingThread(
       read: false,
       createdAt: serverTimestamp(),
     } satisfies AppNotification);
+
+    // Notify listing owner when directory doc links to a photographer account
+    try {
+      const listingSnap = await getDoc(
+        doc(db, 'photographers', data.photographerDirectoryId),
+      );
+      if (listingSnap.exists()) {
+        const applicant = listingSnap.data()?.applicantUserId;
+        if (
+          typeof applicant === 'string' &&
+          applicant.length > 0 &&
+          applicant !== data.clientUserId
+        ) {
+          await addDoc(notificationsCol, {
+            userId: applicant,
+            threadId: threadRef.id,
+            type: 'booking_requested',
+            title: 'New booking request',
+            body: `${data.clientName} requested a ${data.eventType} session (${data.eventDate}).`,
+            read: false,
+            createdAt: serverTimestamp(),
+          } satisfies AppNotification);
+        }
+      }
+    } catch (err) {
+      console.warn('createBookingThread: photographer notification skipped', err);
+    }
 
     // Admin event feed
     await addDoc(adminEventsCol, {
@@ -395,21 +430,27 @@ export function subscribeThreadsForPhotographer(args: {
   directoryId?: string | null;
   cb: (threads: BookingThread[]) => void;
 }): Unsubscribe {
+  const emitSorted = (snap: { docs: { id: string; data: () => Record<string, unknown> }[] }) => {
+    const threads = snap.docs.map((d) => ({
+      id: d.id,
+      ...(d.data() as Omit<BookingThread, 'id'>),
+    }));
+    threads.sort(
+      (a, b) =>
+        firestoreCreatedAtMs(b.updatedAt ?? b.createdAt) -
+        firestoreCreatedAtMs(a.updatedAt ?? a.createdAt),
+    );
+    args.cb(threads);
+  };
+
   if (args.directoryId) {
     const q = query(
       threadsCol,
       where('photographerDirectoryId', '==', args.directoryId),
-      orderBy('updatedAt', 'desc'),
     );
     return onSnapshot(
       q,
-      (snap) =>
-        args.cb(
-          snap.docs.map((d) => ({
-            id: d.id,
-            ...(d.data() as Omit<BookingThread, 'id'>),
-          })),
-        ),
+      (snap) => emitSorted(snap),
       (err) => {
         console.error('subscribeThreadsForPhotographer', err);
         args.cb([]);
@@ -419,17 +460,10 @@ export function subscribeThreadsForPhotographer(args: {
   const q = query(
     threadsCol,
     where('photographerUserId', '==', args.photographerUserId),
-    orderBy('updatedAt', 'desc'),
   );
   return onSnapshot(
     q,
-    (snap) =>
-      args.cb(
-        snap.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as Omit<BookingThread, 'id'>),
-        })),
-      ),
+    (snap) => emitSorted(snap),
     (err) => {
       console.error('subscribeThreadsForPhotographer', err);
       args.cb([]);
