@@ -104,7 +104,7 @@ export function AdminSidebar({
   return (
     <aside
       className={[
-        'flex h-full shrink-0 flex-col border-r border-zinc-800 bg-zinc-950 text-zinc-100 transition-[width] duration-200',
+        'flex h-full min-h-0 shrink-0 flex-col overflow-y-auto border-r border-zinc-800 bg-zinc-950 text-zinc-100 transition-[width] duration-200',
         collapsed ? 'w-[72px]' : 'w-60',
       ].join(' ')}
     >
@@ -155,7 +155,7 @@ export function AdminSidebar({
           type="button"
           onClick={onToggleCollapse}
           className={[
-            'hidden rounded-lg p-2 text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100 lg:inline-flex',
+            'hidden rounded-xl border border-zinc-600 bg-zinc-800 p-2 text-amber-100 shadow-sm transition hover:border-amber-500/50 hover:bg-zinc-700 hover:text-white lg:inline-flex',
             collapsed ? 'absolute right-1 top-1/2 -translate-y-1/2' : '',
           ].join(' ')}
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}

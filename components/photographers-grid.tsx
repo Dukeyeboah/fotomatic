@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { BookingRequestModal } from '@/components/booking-request-modal';
 import {
   type DirectoryPhotographer,
@@ -15,6 +16,8 @@ import { PhotographerSocialIconButtons } from '@/components/photographer-social-
 import { PhotographerPublicDetailModal } from '@/components/photographer-public-detail-modal';
 import { useSavedPhotographerIds } from '@/lib/hooks/use-saved-photographer-ids';
 import { useMergedDirectoryPhotographers } from '@/lib/hooks/use-merged-directory-photographers';
+import { publicPhotographerProfilePath } from '@/lib/public-profile-url';
+import { isOwnDirectoryPhotographerListing } from '@/lib/directory-photographer-self';
 
 function getPhotographerName(p: DirectoryPhotographer) {
   if (p.lastName) return `${p.firstName} ${p.lastName}`.trim();
@@ -55,6 +58,15 @@ export function PhotographersGrid({
   const { user, userData } = useAuth();
   const { openLoginModal } = useLoginModal();
   const { toggle, isSaved } = useSavedPhotographerIds();
+
+  const viewerForSelf = useMemo(
+    () => ({
+      uid: user?.uid,
+      role: userData?.role,
+      directoryId: userData?.photographer?.directoryId,
+    }),
+    [user?.uid, userData?.role, userData?.photographer?.directoryId],
+  );
 
   const filtered = list.filter((p) => {
     if (!q) return true;
@@ -128,6 +140,7 @@ export function PhotographersGrid({
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((p) => {
             const photo = directoryPhotographerHeroImageUrl(p);
+            const canBook = !isOwnDirectoryPhotographerListing(p, viewerForSelf);
             return (
               <article
                 key={p.id}
@@ -146,6 +159,7 @@ export function PhotographersGrid({
                     setDetailPhotographer(p);
                   }
                 }}
+                aria-label={`${getPhotographerName(p)} — open details`}
                 className="group flex cursor-pointer flex-col overflow-hidden rounded-2xl bg-[#faf8f5] shadow-sm ring-1 ring-zinc-900/5 transition-shadow hover:shadow-md"
               >
                 <div className="relative aspect-[4/5] bg-gradient-to-br from-stone-200/80 to-stone-100">
@@ -233,16 +247,34 @@ export function PhotographersGrid({
                       </span>
                     ) : null}
                   </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openBooking(p);
-                    }}
-                    className="mt-auto w-full cursor-pointer rounded-xl bg-zinc-900 py-3 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
-                  >
-                    Request booking
-                  </button>
+                  <div className="mt-auto flex flex-col gap-2">
+                    {p.profileSlug ? (
+                      <Link
+                        href={publicPhotographerProfilePath(p.profileSlug)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex w-full items-center justify-center rounded-xl border border-zinc-300 bg-white py-3 text-sm font-semibold text-zinc-900 transition-colors hover:bg-zinc-50"
+                      >
+                        View full profile
+                      </Link>
+                    ) : (
+                      <p className="rounded-xl border border-dashed border-zinc-200 bg-zinc-50/80 px-3 py-2 text-center text-[11px] leading-snug text-zinc-500">
+                        No public profile URL yet—only photographers with a saved
+                        username get a shareable page.
+                      </p>
+                    )}
+                    {canBook ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openBooking(p);
+                      }}
+                      className="w-full cursor-pointer rounded-xl bg-zinc-900 py-3 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
+                    >
+                      Request booking
+                    </button>
+                    ) : null}
+                  </div>
                 </div>
               </article>
             );
@@ -264,6 +296,14 @@ export function PhotographersGrid({
         }}
         user={user}
         openLoginModal={() => openLoginModal()}
+        canRequestBooking={
+          detailPhotographer
+            ? !isOwnDirectoryPhotographerListing(
+                detailPhotographer,
+                viewerForSelf,
+              )
+            : true
+        }
       />
 
       {bookingPhotographer && user ? (

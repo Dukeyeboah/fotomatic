@@ -3,7 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev:clean": "rm -rf .next/dev",
+    "dev:kill-ports": "sh -c 'for p in 3000 3001; do lsof -ti:$p | xargs kill -9 2>/dev/null || true; done'",
+    "dev:reset": "npm run dev:kill-ports && npm run dev:clean",
+    "dev": "npm run dev:clean && next dev --webpack",
+    "dev:turbo": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

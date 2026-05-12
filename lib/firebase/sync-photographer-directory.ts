@@ -8,12 +8,21 @@ import { normalizePublicProfileSlug } from '@/lib/public-profile-slug';
 /**
  * Pushes the photographer’s profile into the public `photographers` collection
  * (doc id `p-{uid}` or their configured `photographer.directoryId`).
+ *
+ * Denormalizes `profileSlug` from `users.username` so `/photographer/{slug}` queries work
+ * without reading private `users` documents.
  */
 export async function syncPhotographerPublicDirectory(
   userData: UserData,
+  /** Prefer Auth `uid` when the user doc might omit `uid`. */
+  authUid?: string | null,
 ): Promise<boolean> {
   if (userData.role !== 'photographer') return true;
-  const uid = userData.uid;
+  const uid = (userData.uid ?? authUid ?? '').trim();
+  if (!uid) {
+    console.error('syncPhotographerPublicDirectory: missing uid');
+    return false;
+  }
   const ph = userData.photographer ?? {};
   const docId = (ph.directoryId?.trim() || `p-${uid}`).trim();
   if (!docId.startsWith('p-')) return true;
@@ -71,6 +80,14 @@ export async function syncPhotographerPublicDirectory(
         phone: ph.phone ?? null,
         phoneContact: ph.phoneContact === true,
         emailContact: ph.emailContact === true,
+        publicPhoneOnProfile:
+          typeof ph.publicPhoneOnProfile === 'boolean'
+            ? ph.publicPhoneOnProfile
+            : ph.phoneContact === true,
+        publicEmailOnProfile:
+          typeof ph.publicEmailOnProfile === 'boolean'
+            ? ph.publicEmailOnProfile
+            : ph.emailContact === true,
         startingHourlyRate: rate,
         photoUrl: ph.profileImageUrl ?? userData.photoURL ?? null,
         galleryImageUrls:

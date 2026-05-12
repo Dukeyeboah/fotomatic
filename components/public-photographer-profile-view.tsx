@@ -2,7 +2,8 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 import {
   DIRECTORY_GALLERY_MAX,
   type DirectoryPhotographer,
@@ -15,7 +16,16 @@ import {
   isValidPublicProfileSlug,
   normalizePublicProfileSlug,
 } from '@/lib/public-profile-slug';
+import {
+  hasPublicContactTabContent,
+  isEmailShownOnPublicProfile,
+  isPhoneShownOnPublicProfile,
+} from '@/lib/public-profile-contact';
 import { PhotographerSocialIconButtons } from '@/components/photographer-social-icon-buttons';
+import { PublicProfileBannerShare } from '@/components/photographer/public-profile-banner-share';
+import { useAuth } from '@/contexts/AuthContext';
+import { useLoginModal } from '@/contexts/LoginModalContext';
+import { isOwnDirectoryPhotographerListing } from '@/lib/directory-photographer-self';
 import { Loader2, MapPin, X } from 'lucide-react';
 
 function displayName(p: DirectoryPhotographer): string {
@@ -35,21 +45,17 @@ function formatLocation(p: DirectoryPhotographer): string {
   return '';
 }
 
-function splitPortfolioUrls(s: string | undefined): string[] {
-  const t = (s ?? '').trim();
-  if (!t) return [];
-  return t
-    .split(/\s+|,|\n/g)
-    .map((x) => x.trim())
-    .filter(Boolean)
-    .slice(0, 20);
-}
+type InfoTab = 'bio' | 'coverage' | 'contact';
 
 export function PublicPhotographerProfileView({ handle }: { handle: string }) {
+  const pathname = usePathname();
+  const { user, userData } = useAuth();
+  const { openLoginModal } = useLoginModal();
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [p, setP] = useState<DirectoryPhotographer | null | undefined>(
     undefined,
   );
+  const [tab, setTab] = useState<InfoTab>('bio');
 
   useEffect(() => {
     if (!lightboxUrl) return;
@@ -80,6 +86,55 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
     };
   }, [handle]);
 
+  const bookHref = useMemo(() => {
+    if (!user || !userData) return null;
+    if (userData.role === 'photographer') return '/photographer/directory';
+    return '/dashboard/photographers';
+  }, [user, userData]);
+
+  const directoryHref = useMemo(() => {
+    if (!user || !userData) return '/photographers';
+    if (userData.role === 'photographer') return '/photographer/directory';
+    if (userData.role === 'admin') return '/admin/photographers';
+    return '/dashboard/photographers';
+  }, [user, userData]);
+
+  const isSelfListing = useMemo(() => {
+    if (!p || !user || !userData) return false;
+    return isOwnDirectoryPhotographerListing(p, {
+      uid: user.uid,
+      role: userData.role,
+      directoryId: userData.photographer?.directoryId,
+    });
+  }, [p, user, userData]);
+
+  const showBioTab = useMemo(
+    () =>
+      !!p &&
+      (Boolean(p.bio?.trim()) ||
+        Boolean(p.interests?.trim()) ||
+        Boolean(p.photographyFocus?.trim())),
+    [p],
+  );
+  const showCoverageTab = useMemo(
+    () => !!p && (Boolean(p.serviceArea?.trim()) || p.openToOtherAreas === true),
+    [p],
+  );
+  const showContactTab = useMemo(
+    () => !!p && hasPublicContactTabContent(p),
+    [p],
+  );
+
+  const effectiveTab = useMemo((): InfoTab => {
+    if (tab === 'bio' && showBioTab) return 'bio';
+    if (tab === 'coverage' && showCoverageTab) return 'coverage';
+    if (tab === 'contact' && showContactTab) return 'contact';
+    if (showBioTab) return 'bio';
+    if (showCoverageTab) return 'coverage';
+    if (showContactTab) return 'contact';
+    return 'bio';
+  }, [tab, showBioTab, showCoverageTab, showContactTab]);
+
   if (p === undefined) {
     return (
       <div className="flex justify-center py-24">
@@ -95,11 +150,12 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
           Profile not found
         </h1>
         <p className="mt-3 text-sm text-zinc-600">
-          This link may be wrong, or the photographer has not published their
-          profile yet.
+          This link may be wrong, or this photographer does not have a public
+          page yet. If you are the photographer, set a username and save your
+          profile so your listing syncs.
         </p>
         <Link
-          href="/photographers"
+          href="/photographer/directory"
           className="mt-8 inline-block rounded-xl bg-zinc-900 px-6 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
         >
           Browse photographers
@@ -120,29 +176,53 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
   const gallery = (p.galleryImageUrls ?? [])
     .filter(Boolean)
     .slice(0, DIRECTORY_GALLERY_MAX);
-  const extras = splitPortfolioUrls(p.portfolioLinks);
+
+  const phonePublic = isPhoneShownOnPublicProfile(p);
+  const emailPublic = isEmailShownOnPublicProfile(p);
+
+  const tabBtn = (id: InfoTab, label: string, show: boolean) =>
+    show ? (
+      <button
+        key={id}
+        type="button"
+        role="tab"
+        aria-selected={effectiveTab === id}
+        onClick={() => setTab(id)}
+        className={[
+          'rounded-full px-4 py-2 text-sm font-semibold transition-colors',
+          effectiveTab === id
+            ? 'bg-zinc-900 text-white shadow-sm'
+            : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200',
+        ].join(' ')}
+      >
+        {label}
+      </button>
+    ) : null;
 
   return (
     <div className="pb-16">
-      <div className="relative h-[min(52vw,320px)] w-full overflow-hidden bg-zinc-900 sm:h-80">
-        {bannerRemote ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={banner}
-            alt=""
-            className="h-full w-full object-cover object-center"
-          />
-        ) : (
-          <Image
-            src={banner.startsWith('/') ? banner : `/${banner}`}
-            alt=""
-            fill
-            className="object-cover object-center"
-            priority
-            sizes="100vw"
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+      <div className="relative h-[min(52vw,320px)] w-full bg-zinc-900 sm:h-80">
+        <div className="absolute inset-0 overflow-hidden">
+          {bannerRemote ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={banner}
+              alt=""
+              className="h-full w-full object-cover object-center"
+            />
+          ) : (
+            <Image
+              src={banner.startsWith('/') ? banner : `/${banner}`}
+              alt=""
+              fill
+              className="object-cover object-center"
+              priority
+              sizes="100vw"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+        </div>
+        <PublicProfileBannerShare profileSlug={p.profileSlug} />
       </div>
 
       <div className="relative mx-auto max-w-3xl px-4 sm:px-6">
@@ -173,121 +253,128 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
               />
             )}
           </div>
-          <div className="mt-4 w-full text-center sm:mt-2 sm:flex-1 sm:text-left">
-            <h1 className="font-serif text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl">
-              {displayName(p)}
-            </h1>
-            {loc ? (
-              <p className="mt-2 flex items-center justify-center gap-1.5 text-sm text-zinc-600 sm:justify-start">
-                <MapPin className="h-4 w-4 shrink-0 text-zinc-400" />
-                {loc}
+          <div className="mt-4 w-full sm:mt-2 sm:min-w-0 sm:flex-1">
+            <div className="rounded-2xl bg-white/80 p-5 shadow-lg ring-1 ring-zinc-200/80 backdrop-blur-md sm:p-6">
+              <h1 className="text-center font-serif text-3xl font-semibold tracking-tight text-zinc-900 sm:text-left sm:text-4xl">
+                {displayName(p)}
+              </h1>
+              {loc ? (
+                <p className="mt-2 flex items-center justify-center gap-1.5 text-sm text-zinc-600 sm:justify-start">
+                  <MapPin className="h-4 w-4 shrink-0 text-zinc-400" />
+                  {loc}
+                </p>
+              ) : null}
+              <p className="mt-2 text-center text-sm font-bold text-zinc-800 sm:text-left">
+                From ${p.startingHourlyRate}/hr
               </p>
-            ) : null}
-            <p className="mt-3 text-lg font-semibold text-zinc-800">
-              From ${p.startingHourlyRate}/hr
-            </p>
-            {p.bio ? (
-              <p className="mt-5 whitespace-pre-wrap text-base leading-relaxed text-zinc-700 sm:max-w-xl">
-                {p.bio}
-              </p>
-            ) : null}
+            </div>
           </div>
         </div>
 
-        <div className="mt-8 flex justify-center sm:justify-start">
-          <PhotographerSocialIconButtons
-            instagram={p.instagram}
-            website={p.website}
-            twitter={p.twitter}
-            facebook={p.facebook}
-            portfolioLinks={p.portfolioLinks}
-          />
+        <p className="mt-6 text-center sm:text-left">
+          <Link
+            href={directoryHref}
+            className="text-sm font-medium text-amber-900 underline-offset-2 hover:underline"
+          >
+            ← Back to all photographers
+          </Link>
+        </p>
+
+        <div className="mt-8 flex flex-col gap-4 border-b border-zinc-200/80 pb-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="flex justify-center sm:justify-start">
+            <PhotographerSocialIconButtons
+              instagram={p.instagram}
+              website={p.website}
+              twitter={p.twitter}
+              facebook={p.facebook}
+              portfolioLinks={p.portfolioLinks}
+            />
+          </div>
+          {showBioTab || showCoverageTab || showContactTab ? (
+            <div
+              className="flex flex-wrap justify-center gap-2 sm:justify-end"
+              role="tablist"
+              aria-label="Profile sections"
+            >
+              {tabBtn('bio', 'Bio', showBioTab)}
+              {tabBtn('coverage', 'Coverage', showCoverageTab)}
+              {tabBtn('contact', 'Contact', showContactTab)}
+            </div>
+          ) : null}
         </div>
 
-        {p.interests ? (
-          <section className="mt-8">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Interests
-            </h2>
-            <p className="mt-3 text-base text-zinc-800">{p.interests}</p>
-          </section>
-        ) : null}
-
-        {p.photographyFocus ? (
-          <section className="mt-8">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Expertise
-            </h2>
-            <p className="mt-3 text-base text-zinc-800">{p.photographyFocus}</p>
-          </section>
-        ) : null}
-
-        {p.serviceArea || p.openToOtherAreas ? (
-          <section className="mt-8">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Coverage
-            </h2>
-            <p className="mt-3 whitespace-pre-wrap text-base text-zinc-800">
-              {p.serviceArea?.trim() || '—'}
-              {p.openToOtherAreas ? (
-                <span className="mt-2 block text-sm text-zinc-600">
-                  Open to serving other areas.
-                </span>
-              ) : null}
-            </p>
-          </section>
-        ) : null}
-
-        {(p.phoneContact && p.phone?.trim()) ||
-        (p.emailContact && p.email?.trim()) ? (
-          <section className="mt-8 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Contact
-            </h2>
-            <dl className="mt-3 space-y-2 text-sm">
-              {p.phoneContact && p.phone?.trim() ? (
-                <div>
-                  <dt className="text-zinc-500">Phone</dt>
-                  <dd className="font-medium text-zinc-900">
-                    <a href={`tel:${p.phone.replace(/\s/g, '')}`}>{p.phone}</a>
-                  </dd>
-                </div>
-              ) : null}
-              {p.emailContact && p.email?.trim() ? (
-                <div>
-                  <dt className="text-zinc-500">Email</dt>
-                  <dd className="font-medium text-zinc-900">
-                    <a href={`mailto:${p.email}`}>{p.email}</a>
-                  </dd>
-                </div>
-              ) : null}
-            </dl>
-          </section>
-        ) : null}
-
-        {extras.length > 0 ? (
-          <section className="mt-8">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Portfolio links
-            </h2>
-            <ul className="mt-3 space-y-2">
-              {extras.map((u) => (
-                <li key={u}>
-                  <a
-                    href={
-                      u.startsWith('http')
-                        ? u
-                        : `https://${u.replace(/^\/\//, '')}`
-                    }
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-base font-medium text-amber-900 underline-offset-2 hover:underline"
-                  >
-                    {u}
-                  </a>
-                </li>
-              ))}
-            </ul>
+        {showBioTab || showCoverageTab || showContactTab ? (
+          <section
+            className="mt-6 rounded-2xl border border-zinc-200/90 bg-white p-5 shadow-sm sm:p-6"
+            role="tabpanel"
+          >
+            {effectiveTab === 'bio' && showBioTab ? (
+              <div className="space-y-4 text-sm leading-relaxed text-zinc-800">
+                {p.bio?.trim() ? (
+                  <p className="whitespace-pre-wrap text-base">{p.bio}</p>
+                ) : null}
+                {p.photographyFocus?.trim() ? (
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                      Expertise
+                    </h3>
+                    <p className="mt-1">{p.photographyFocus}</p>
+                  </div>
+                ) : null}
+                {p.interests?.trim() ? (
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                      Interests
+                    </h3>
+                    <p className="mt-1">{p.interests}</p>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            {effectiveTab === 'coverage' && showCoverageTab ? (
+              <div className="text-sm text-zinc-800">
+                <p className="whitespace-pre-wrap text-base">
+                  {p.serviceArea?.trim() || '—'}
+                </p>
+                {p.openToOtherAreas ? (
+                  <p className="mt-3 text-sm text-zinc-600">
+                    Open to serving other areas.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+            {effectiveTab === 'contact' && showContactTab ? (
+              <div className="text-sm">
+                {phonePublic || emailPublic ? (
+                  <dl className="space-y-3">
+                    {phonePublic && p.phone?.trim() ? (
+                      <div>
+                        <dt className="text-zinc-500">Phone</dt>
+                        <dd className="font-medium text-zinc-900">
+                          <a href={`tel:${p.phone!.replace(/\s/g, '')}`}>
+                            {p.phone}
+                          </a>
+                        </dd>
+                      </div>
+                    ) : null}
+                    {emailPublic && p.email?.trim() ? (
+                      <div>
+                        <dt className="text-zinc-500">Email</dt>
+                        <dd className="font-medium text-zinc-900">
+                          <a href={`mailto:${p.email}`}>{p.email}</a>
+                        </dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                ) : (
+                  <p className="text-zinc-600">
+                    This photographer has chosen not to display phone or email
+                    on their public page. Reach out through Fotomatic booking when
+                    available.
+                  </p>
+                )}
+              </div>
+            ) : null}
           </section>
         ) : null}
 
@@ -326,14 +413,33 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
           </section>
         ) : null}
 
-        <div className="mt-12 flex flex-col gap-3 sm:flex-row">
-          <Link
-            href="/photographers"
-            className="inline-flex flex-1 items-center justify-center rounded-xl bg-zinc-900 px-6 py-3.5 text-center text-sm font-semibold text-white hover:bg-zinc-800"
-          >
-            Book through Fotomatic
-          </Link>
-        </div>
+        {!isSelfListing ? (
+          <div className="mt-12">
+            {!user ? (
+              <button
+                type="button"
+                onClick={() =>
+                  openLoginModal({
+                    redirectTo: pathname || undefined,
+                    introTitle: 'Sign in to book on Fotomatic',
+                    introMessage:
+                      'Create an account or log in to send booking requests and message photographers.',
+                  })
+                }
+                className="w-full rounded-xl bg-zinc-900 px-6 py-3.5 text-center text-sm font-semibold text-white hover:bg-zinc-800"
+              >
+                Book through Fotomatic
+              </button>
+            ) : bookHref ? (
+              <Link
+                href={bookHref}
+                className="flex w-full items-center justify-center rounded-xl bg-zinc-900 px-6 py-3.5 text-center text-sm font-semibold text-white hover:bg-zinc-800"
+              >
+                Request booking
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       {lightboxUrl ? (

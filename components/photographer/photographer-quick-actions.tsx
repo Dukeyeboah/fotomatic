@@ -14,7 +14,7 @@ const actions: Array<{
   href: string;
   icon: LucideIcon;
 }> = [
-  { label: 'Edit Profile', href: '/profile', icon: Pencil },
+  { label: 'Edit Profile', href: '/photographer/profile', icon: Pencil },
   { label: 'Update Pricing', href: '/photographer/earnings', icon: Tag },
   {
     label: 'Manage Availability',

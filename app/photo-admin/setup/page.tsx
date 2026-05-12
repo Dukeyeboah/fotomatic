@@ -40,7 +40,7 @@ export default function PhotoAdminSetupPage() {
             Photographer dashboard
           </Link>
           {' · '}
-          <Link href="/profile" className="underline">
+          <Link href="/photographer/profile" className="underline">
             Profile (same editor)
           </Link>
         </p>
@@ -59,7 +59,7 @@ export default function PhotoAdminSetupPage() {
             <p className="mt-2 text-amber-900/90">
               Submit an application from the home page. After an admin approves
               you, you can return here or use{' '}
-              <Link href="/profile" className="font-semibold underline">
+              <Link href="/photographer/profile" className="font-semibold underline">
                 Profile
               </Link>{' '}
               to finish your portfolio.

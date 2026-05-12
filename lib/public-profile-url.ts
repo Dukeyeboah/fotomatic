@@ -1,7 +1,7 @@
-/** Path segment for public photographer pages: `/photographers/{slug}`. */
+/** Public profile URL: `/photographer/{slug}` (not the directory listing). */
 export function publicPhotographerProfilePath(slug: string): string {
   const s = slug.trim().toLowerCase();
-  return `/photographers/${encodeURIComponent(s)}`;
+  return `/photographer/${encodeURIComponent(s)}`;
 }
 
 export function buildPublicPhotographerProfileUrl(slug: string): string {

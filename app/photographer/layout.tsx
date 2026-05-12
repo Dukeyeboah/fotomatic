@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
-import { PhotographerLayoutClient } from '@/components/photographer/photographer-layout-client';
 
-export default function PhotographerLayout({
+/** Passthrough: `(app)` uses the dashboard shell; `(public)` uses its own layout. */
+export default function PhotographerSegmentLayout({
   children,
 }: {
   children: ReactNode;
 }) {
-  return <PhotographerLayoutClient>{children}</PhotographerLayoutClient>;
+  return children;
 }

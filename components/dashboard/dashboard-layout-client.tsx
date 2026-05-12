@@ -21,7 +21,14 @@ import {
 
 const COLLAPSE_KEY = 'fotomatic_dashboard_sidebar_collapsed';
 
-export function DashboardLayoutClient({ children }: { children: ReactNode }) {
+export function DashboardLayoutClient({
+  children,
+  embedPublicProfile = false,
+}: {
+  children: ReactNode;
+  /** When true, do not redirect photographers/admins away (e.g. viewing another photographer’s public page). */
+  embedPublicProfile?: boolean;
+}) {
   const { user, userData, loading } = useAuth();
   const { openLoginModal } = useLoginModal();
   const router = useRouter();
@@ -31,13 +38,14 @@ export function DashboardLayoutClient({ children }: { children: ReactNode }) {
   const [notificationsUnread, setNotificationsUnread] = useState(0);
 
   useEffect(() => {
+    if (embedPublicProfile) return;
     if (loading || !user || !userData) return;
     if (userData.role === 'admin') {
       router.replace('/admin');
     } else if (userData.role === 'photographer') {
       router.replace('/photographer');
     }
-  }, [loading, user, userData, router]);
+  }, [embedPublicProfile, loading, user, userData, router]);
 
   useEffect(() => {
     try {
@@ -121,7 +129,7 @@ export function DashboardLayoutClient({ children }: { children: ReactNode }) {
 
   return (
     <DashboardApplyPhotographerProvider>
-      <div className="flex min-h-screen bg-[#f4f1ec]">
+      <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 w-full overflow-hidden bg-[#f4f1ec]">
         <DashboardSidebar
           collapsed={collapsed}
           onToggleCollapse={toggleCollapse}
@@ -131,7 +139,7 @@ export function DashboardLayoutClient({ children }: { children: ReactNode }) {
           notificationsUnreadCount={notificationsUnread}
           showApplyAsPhotographerPromo
         />
-        <div className="flex min-h-screen flex-1 flex-col lg:min-w-0">
+        <div className="flex min-h-0 flex-1 flex-col lg:min-w-0">
           <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-zinc-200/80 bg-white/95 px-4 backdrop-blur sm:px-6">
             <button
               type="button"
@@ -147,7 +155,7 @@ export function DashboardLayoutClient({ children }: { children: ReactNode }) {
               <DashboardAccountMenu />
             </div>
           </header>
-          <main className="flex-1 overflow-y-auto">{children}</main>
+          <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
         </div>
       </div>
     </DashboardApplyPhotographerProvider>

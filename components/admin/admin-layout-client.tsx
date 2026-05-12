@@ -86,7 +86,7 @@ export function AdminLayoutClient({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen bg-zinc-100">
+    <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 w-full overflow-hidden bg-zinc-100">
       <div
         className={[
           'fixed inset-0 z-40 bg-zinc-950/60 lg:hidden',
@@ -97,7 +97,7 @@ export function AdminLayoutClient({ children }: { children: ReactNode }) {
       />
       <div
         className={[
-          'fixed inset-y-0 left-0 z-50 lg:static',
+          'fixed inset-y-0 left-0 z-50 flex h-full min-h-0 flex-col lg:static lg:h-full',
           mobileNav ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         ].join(' ')}
       >
@@ -107,7 +107,7 @@ export function AdminLayoutClient({ children }: { children: ReactNode }) {
           onNavigate={() => setMobileNav(false)}
         />
       </div>
-      <div className="flex min-h-screen flex-1 flex-col lg:min-w-0">
+      <div className="flex min-h-0 flex-1 flex-col lg:min-w-0">
         <div className="flex items-center gap-2 border-b border-zinc-200 bg-zinc-950 px-3 py-2 lg:hidden">
           <button
             type="button"
@@ -130,7 +130,7 @@ export function AdminLayoutClient({ children }: { children: ReactNode }) {
           ) : null}
         </div>
         <AdminHeader />
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
   );

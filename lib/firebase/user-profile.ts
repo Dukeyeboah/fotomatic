@@ -33,6 +33,10 @@ export interface PhotographerProfileFields {
   phone?: string;
   phoneContact?: boolean;
   emailContact?: boolean;
+  /** Show phone on `/photographer/{username}` (separate from booking contact prefs). */
+  publicPhoneOnProfile?: boolean;
+  /** Show email on public profile page. */
+  publicEmailOnProfile?: boolean;
   serviceArea?: string;
   openToOtherAreas?: boolean;
   /**

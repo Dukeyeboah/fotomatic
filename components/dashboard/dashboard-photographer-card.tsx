@@ -1,12 +1,14 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { Heart } from 'lucide-react';
 import {
   directoryPhotographerHeroImageUrl,
   photographerPlaceholderImagePath,
   type DirectoryPhotographer,
 } from '@/lib/photographers-directory';
+import { publicPhotographerProfilePath } from '@/lib/public-profile-url';
 
 function displayName(p: DirectoryPhotographer): string {
   if (p.lastName) return `${p.firstName} ${p.lastName}`.trim();
@@ -40,12 +42,14 @@ export function DashboardPhotographerCard({
   onToggleSave,
   onRequestBooking,
   onOpenDetail,
+  showRequestBooking = true,
 }: {
   photographer: DirectoryPhotographer;
   saved: boolean;
   onToggleSave: () => void;
   onRequestBooking: () => void;
   onOpenDetail?: () => void;
+  showRequestBooking?: boolean;
 }) {
   const tag = TAGS[photographer.id.length % TAGS.length]!;
   const imgSrc = cardImage(photographer);
@@ -58,13 +62,13 @@ export function DashboardPhotographerCard({
       ].join(' ')}
       onClick={(e) => {
         if (!onOpenDetail) return;
-        if ((e.target as HTMLElement).closest('button')) return;
+        if ((e.target as HTMLElement).closest('button, a')) return;
         onOpenDetail();
       }}
       onKeyDown={(e) => {
         if (!onOpenDetail) return;
         if (e.key !== 'Enter' && e.key !== ' ') return;
-        if ((e.target as HTMLElement).closest('button')) return;
+        if ((e.target as HTMLElement).closest('button, a')) return;
         e.preventDefault();
         onOpenDetail();
       }}
@@ -114,13 +118,24 @@ export function DashboardPhotographerCard({
             {tag}
           </span>
         </p>
-        <button
-          type="button"
-          onClick={onRequestBooking}
-          className="mt-4 w-full rounded-xl bg-zinc-900 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800"
-        >
-          Request Booking
-        </button>
+        {photographer.profileSlug ? (
+          <Link
+            href={publicPhotographerProfilePath(photographer.profileSlug)}
+            onClick={(e) => e.stopPropagation()}
+            className="mt-3 flex w-full items-center justify-center rounded-xl border border-zinc-200 bg-white py-2.5 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+          >
+            View profile
+          </Link>
+        ) : null}
+        {showRequestBooking ? (
+          <button
+            type="button"
+            onClick={onRequestBooking}
+            className="mt-3 w-full rounded-xl bg-zinc-900 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800"
+          >
+            Request Booking
+          </button>
+        ) : null}
       </div>
     </div>
   );

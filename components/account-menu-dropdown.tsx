@@ -117,7 +117,7 @@ export function AccountMenuDropdown() {
               <Row href="/photographer" icon={Camera} onClick={close}>
                 Photographer dashboard
               </Row>
-              <Row href="/profile" icon={UserRound} onClick={close}>
+              <Row href="/photographer/profile" icon={UserRound} onClick={close}>
                 My profile
               </Row>
               <Row
@@ -167,7 +167,7 @@ export function AccountMenuDropdown() {
               <Row href="/dashboard/photographers" icon={Search} onClick={close}>
                 Find photographer
               </Row>
-              <Row href="/profile" icon={UserRound} onClick={close}>
+              <Row href="/dashboard/profile" icon={UserRound} onClick={close}>
                 Profile
               </Row>
               <Row href="/dashboard/notifications" icon={Bell} onClick={close}>

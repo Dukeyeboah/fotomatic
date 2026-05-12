@@ -33,6 +33,10 @@ function firebaseConfigUserMessage(): string {
 export type OpenLoginOptions = {
   /** After successful sign-in, navigate here (e.g. `/photo-admin/setup`). */
   redirectTo?: string;
+  /** Optional headline shown above the form (e.g. booking CTA). */
+  introTitle?: string;
+  /** Optional supporting line under the headline. */
+  introMessage?: string;
 };
 
 type LoginModalContextValue = {
@@ -54,10 +58,14 @@ function LoginModal({
   open,
   onClose,
   redirectTo,
+  introTitle,
+  introMessage,
 }: {
   open: boolean;
   onClose: () => void;
   redirectTo: string | null;
+  introTitle: string | null;
+  introMessage: string | null;
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -166,10 +174,16 @@ function LoginModal({
               id="login-modal-title"
               className="font-serif text-xl font-medium text-zinc-900"
             >
-              {mode === 'login' ? 'Log in' : 'Create an account'}
+              {introTitle?.trim()
+                ? introTitle.trim()
+                : mode === 'login'
+                  ? 'Log in'
+                  : 'Create an account'}
             </h2>
             <p className="mt-1 text-sm text-zinc-600">
-              Book photographers and manage your requests.
+              {introMessage?.trim()
+                ? introMessage.trim()
+                : 'Book photographers and manage your requests.'}
             </p>
           </div>
           <button
@@ -300,14 +314,20 @@ function LoginModal({
 export function LoginModalProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [redirectTo, setRedirectTo] = useState<string | null>(null);
+  const [introTitle, setIntroTitle] = useState<string | null>(null);
+  const [introMessage, setIntroMessage] = useState<string | null>(null);
 
   const openLoginModal = useCallback((opts?: OpenLoginOptions) => {
     setRedirectTo(opts?.redirectTo ?? null);
+    setIntroTitle(opts?.introTitle?.trim() ? opts.introTitle.trim() : null);
+    setIntroMessage(opts?.introMessage?.trim() ? opts.introMessage.trim() : null);
     setOpen(true);
   }, []);
   const closeLoginModal = useCallback(() => {
     setOpen(false);
     setRedirectTo(null);
+    setIntroTitle(null);
+    setIntroMessage(null);
   }, []);
 
   return (
@@ -317,6 +337,8 @@ export function LoginModalProvider({ children }: { children: ReactNode }) {
         open={open}
         onClose={closeLoginModal}
         redirectTo={redirectTo}
+        introTitle={introTitle}
+        introMessage={introMessage}
       />
     </LoginModalContext.Provider>
   );

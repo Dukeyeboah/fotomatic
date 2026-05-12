@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
 import { useMergedDirectoryPhotographers } from '@/lib/hooks/use-merged-directory-photographers';
 import { useSavedPhotographerIds } from '@/lib/hooks/use-saved-photographer-ids';
+import { isOwnDirectoryPhotographerListing } from '@/lib/directory-photographer-self';
 import { BookingRequestModal } from '@/components/booking-request-modal';
 import { PhotographerPublicDetailModal } from '@/components/photographer-public-detail-modal';
 import { DashboardPhotographerCard } from '@/components/dashboard/dashboard-photographer-card';
@@ -29,6 +30,8 @@ import { PhotographerBookingRow } from '@/components/photographer/photographer-b
 import { PhotographerActivityFeed } from '@/components/photographer/photographer-activity-feed';
 import { PhotographerEarningsChart } from '@/components/photographer/photographer-earnings-chart';
 import { PhotographerQuickActionGrid } from '@/components/photographer/photographer-quick-actions';
+import { publicPhotographerProfilePath } from '@/lib/public-profile-url';
+import { isValidPublicProfileSlug } from '@/lib/public-profile-slug';
 
 export function PhotographerHome() {
   const s = MOCK_PHOTOGRAPHER_STATS;
@@ -48,6 +51,12 @@ export function PhotographerHome() {
     const selfId = `p-${user.uid}`;
     return directory.filter((p) => p.id !== selfId).slice(0, 8);
   }, [directory, user]);
+
+  const myPublicProfileHref = useMemo(() => {
+    const raw = userData?.username?.trim();
+    if (!raw || !isValidPublicProfileSlug(raw)) return '/photographer/profile';
+    return publicPhotographerProfilePath(raw.toLowerCase());
+  }, [userData?.username]);
 
   return (
     <div className="px-4 py-8 sm:px-6 lg:px-10">
@@ -299,6 +308,13 @@ export function PhotographerHome() {
                 saved={isSaved(p.id)}
                 onToggleSave={() => toggle(p.id)}
                 onOpenDetail={() => setDetailPhotographer(p)}
+                showRequestBooking={
+                  !isOwnDirectoryPhotographerListing(p, {
+                    uid: user?.uid,
+                    role: userData?.role,
+                    directoryId: userData?.photographer?.directoryId,
+                  })
+                }
                 onRequestBooking={() => {
                   if (!user) {
                     openLoginModal({ redirectTo: '/photographer' });
@@ -337,7 +353,7 @@ export function PhotographerHome() {
           </div>
         </div>
         <Link
-          href="/profile"
+          href={myPublicProfileHref}
           className="shrink-0 rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800"
         >
           View My Profile
@@ -362,6 +378,15 @@ export function PhotographerHome() {
         }}
         user={user}
         openLoginModal={(o) => openLoginModal(o)}
+        canRequestBooking={
+          detailPhotographer
+            ? !isOwnDirectoryPhotographerListing(detailPhotographer, {
+                uid: user?.uid,
+                role: userData?.role,
+                directoryId: userData?.photographer?.directoryId,
+              })
+            : true
+        }
       />
 
       {user && bookingPhotographer ? (

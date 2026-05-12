@@ -73,6 +73,16 @@ export function ProfileSettingsForm({
   const [phone, setPhone] = useState(ph.phone ?? '');
   const [phoneContact, setPhoneContact] = useState(ph.phoneContact === true);
   const [emailContact, setEmailContact] = useState(ph.emailContact === true);
+  const [publicPhoneOnProfile, setPublicPhoneOnProfile] = useState(() => {
+    if (ph.publicPhoneOnProfile === false) return false;
+    if (ph.publicPhoneOnProfile === true) return true;
+    return ph.phoneContact === true;
+  });
+  const [publicEmailOnProfile, setPublicEmailOnProfile] = useState(() => {
+    if (ph.publicEmailOnProfile === false) return false;
+    if (ph.publicEmailOnProfile === true) return true;
+    return ph.emailContact === true;
+  });
   const [serviceArea, setServiceArea] = useState(ph.serviceArea ?? '');
   const [openToOtherAreas, setOpenToOtherAreas] = useState(
     ph.openToOtherAreas === true,
@@ -231,6 +241,8 @@ export function ProfileSettingsForm({
         phone: phone.trim() || undefined,
         phoneContact,
         emailContact,
+        publicPhoneOnProfile,
+        publicEmailOnProfile,
         serviceArea: serviceArea.trim() || undefined,
         openToOtherAreas,
         hourlyRate: typeof hourlyRate === 'number' ? hourlyRate : undefined,
@@ -256,7 +268,7 @@ export function ProfileSettingsForm({
             ...patch.photographer,
           },
         };
-        const synced = await syncPhotographerPublicDirectory(merged);
+        const synced = await syncPhotographerPublicDirectory(merged, user.uid);
         if (!synced) {
           setMessage('Saved profile, but directory sync failed. Try again.');
         }
@@ -317,7 +329,7 @@ export function ProfileSettingsForm({
                   avail ? null : 'That username is already taken.',
                 );
               }}
-              placeholder="e.g. aureon9 — fotomatic.app/photographers/aureon9"
+              placeholder="e.g. aureon9 — fotomatic.app/photographer/aureon9"
             />
             {usernameHint ? (
               <p className="mt-1 text-[11px] font-medium text-red-700">
@@ -427,6 +439,29 @@ export function ProfileSettingsForm({
                 <span>
                   I’m OK with clients reaching me by email for booking-related
                   questions.
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-3 text-sm text-zinc-700">
+                <input
+                  type="checkbox"
+                  className="mt-1 rounded border-zinc-300 text-amber-900 focus:ring-amber-900/30"
+                  checked={publicPhoneOnProfile}
+                  onChange={(e) => setPublicPhoneOnProfile(e.target.checked)}
+                />
+                <span>
+                  Show my phone on my public profile page (only when a number is
+                  saved above).
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-3 text-sm text-zinc-700">
+                <input
+                  type="checkbox"
+                  className="mt-1 rounded border-zinc-300 text-amber-900 focus:ring-amber-900/30"
+                  checked={publicEmailOnProfile}
+                  onChange={(e) => setPublicEmailOnProfile(e.target.checked)}
+                />
+                <span>
+                  Show my account email on my public profile page.
                 </span>
               </label>
             </div>

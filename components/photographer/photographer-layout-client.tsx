@@ -8,25 +8,12 @@ import { useLoginModal } from '@/contexts/LoginModalContext';
 import { NotificationBell } from '@/components/notification-bell';
 import { DashboardMessagesNavLink } from '@/components/dashboard/messages-nav-link';
 import { PhotographerSidebar } from '@/components/photographer/photographer-sidebar';
-import { PhotographerWelcomeHeader } from '@/components/photographer/photographer-welcome-header';
 import { PhotographerAccountMenu } from '@/components/photographer/photographer-account-menu';
 import { PhotographerProfileSetupModal } from '@/components/photographer-profile-setup-modal';
 import { subscribeUnreadNotificationCount } from '@/lib/firebase/booking-threads';
+import { syncPhotographerPublicDirectory } from '@/lib/firebase/sync-photographer-directory';
 
 const COLLAPSE_KEY = 'fotomatic_photographer_sidebar_collapsed';
-
-function photographerFirstName(
-  userData: ReturnType<typeof useAuth>['userData'],
-  displayName: string | null,
-  email: string | null,
-): string {
-  const raw =
-    userData?.displayName?.trim() ||
-    displayName?.trim() ||
-    email?.split('@')[0] ||
-    'there';
-  return raw.split(/\s+/)[0] || 'there';
-}
 
 export function PhotographerLayoutClient({
   children,
@@ -78,6 +65,26 @@ export function PhotographerLayoutClient({
     }
   }, [loading, user, userData, router]);
 
+  /** Keep `photographers` in sync with `users` (incl. `username` → `profileSlug`) after login or refresh. */
+  useEffect(() => {
+    if (!user || !userData || userData.role !== 'photographer') return;
+    let cancelled = false;
+    (async () => {
+      const ok = await syncPhotographerPublicDirectory(
+        { ...userData, uid: userData.uid ?? user.uid },
+        user.uid,
+      );
+      if (!ok && !cancelled) {
+        console.warn(
+          'Fotomatic: directory sync failed (check Firestore rules and network).',
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, userData]);
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#faf8f5]">
@@ -119,14 +126,8 @@ export function PhotographerLayoutClient({
     );
   }
 
-  const greet = photographerFirstName(
-    userData,
-    user.displayName,
-    user.email,
-  );
-
   return (
-    <div className="flex min-h-screen bg-[#f4f1ec]">
+    <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 w-full overflow-hidden bg-[#f4f1ec]">
       <PhotographerSidebar
         collapsed={collapsed}
         onToggleCollapse={toggleCollapse}
@@ -139,7 +140,7 @@ export function PhotographerLayoutClient({
             : null
         }
       />
-      <div className="flex min-h-screen flex-1 flex-col lg:min-w-0">
+      <div className="flex min-h-0 flex-1 flex-col lg:min-w-0">
         <header className="sticky top-0 z-30 shrink-0 border-b border-zinc-200/80 bg-white/95 backdrop-blur">
           <div className="flex h-14 items-center justify-between gap-3 px-4 sm:px-6">
             <button
@@ -157,12 +158,7 @@ export function PhotographerLayoutClient({
             </div>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto">
-          <div className="border-b border-zinc-200/80 bg-gradient-to-b from-white to-[#faf8f5] px-4 pb-6 pt-6 sm:px-6 sm:pb-8 sm:pt-8 lg:px-10">
-            <PhotographerWelcomeHeader firstName={greet} />
-          </div>
-          {children}
-        </main>
+        <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
       </div>
       <PhotographerProfileSetupModal />
     </div>

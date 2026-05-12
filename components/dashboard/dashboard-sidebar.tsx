@@ -16,6 +16,7 @@ import {
   PanelLeft,
   Search,
   Settings,
+  UserRound,
 } from 'lucide-react';
 import { useDashboardApplyAsPhotographer } from '@/components/dashboard/dashboard-apply-photographer-context';
 
@@ -27,6 +28,7 @@ const nav = [
   { href: '/dashboard/photographers', label: 'Find photographers', icon: Search },
   { href: '/dashboard/saved', label: 'Saved Photographers', icon: Heart },
   { href: '/dashboard/payments', label: 'Payments', icon: CreditCard },
+  { href: '/dashboard/profile', label: 'Profile', icon: UserRound },
   { href: '/dashboard/settings', label: 'Account Settings', icon: Settings },
 ] as const;
 
@@ -63,7 +65,7 @@ export function DashboardSidebar({
       />
       <aside
         className={[
-          'fixed left-0 top-0 z-50 flex h-full flex-col border-r border-zinc-200 bg-[#faf8f5] transition-[width,transform] duration-200 lg:static lg:translate-x-0',
+          'fixed left-0 top-0 z-50 flex h-full max-h-[100dvh] min-h-0 flex-col overflow-y-auto border-r border-zinc-200 bg-[#faf8f5] transition-[width,transform] duration-200 lg:static lg:max-h-none lg:shrink-0 lg:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
           collapsed ? 'w-[72px] lg:w-[72px]' : 'w-64',
         ].join(' ')}
@@ -108,7 +110,7 @@ export function DashboardSidebar({
           <button
             type="button"
             onClick={onToggleCollapse}
-            className="hidden rounded-lg p-2 text-zinc-500 hover:bg-zinc-200/80 hover:text-zinc-900 lg:inline-flex"
+            className="hidden rounded-xl border border-zinc-300/90 bg-white p-2 text-zinc-700 shadow-sm ring-1 ring-zinc-900/5 transition hover:border-amber-900/25 hover:bg-amber-50 hover:text-amber-950 lg:inline-flex"
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {collapsed ? (

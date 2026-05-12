@@ -12,6 +12,7 @@ import {
 import { publicPhotographerProfilePath } from '@/lib/public-profile-url';
 import Link from 'next/link';
 import { PhotographerSocialIconButtons } from '@/components/photographer-social-icon-buttons';
+import { ProfileShareDropdown } from '@/components/photographer/profile-share-dropdown';
 import { ExternalLink, Heart, X } from 'lucide-react';
 
 function displayName(p: DirectoryPhotographer): string {
@@ -29,16 +30,6 @@ function formatLocation(p: DirectoryPhotographer): string {
   if (state) return `${state}, United States`;
   if (city) return city;
   return 'Location coming soon';
-}
-
-function splitPortfolioUrls(s: string | undefined): string[] {
-  const t = (s ?? '').trim();
-  if (!t) return [];
-  return t
-    .split(/\s+|,|\n/g)
-    .map((x) => x.trim())
-    .filter(Boolean)
-    .slice(0, 15);
 }
 
 function heroSrc(p: DirectoryPhotographer): string {
@@ -64,6 +55,7 @@ export function PhotographerPublicDetailModal({
   onToggleSave,
   user,
   openLoginModal,
+  canRequestBooking = true,
 }: {
   photographer: DirectoryPhotographer | null;
   open: boolean;
@@ -73,6 +65,8 @@ export function PhotographerPublicDetailModal({
   onToggleSave: () => void;
   user: User | null;
   openLoginModal: (opts?: { redirectTo?: string }) => void;
+  /** When false, hides the primary booking CTA (e.g. photographer viewing their own listing). */
+  canRequestBooking?: boolean;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -91,7 +85,8 @@ export function PhotographerPublicDetailModal({
   const gallery = (p.galleryImageUrls ?? [])
     .filter(Boolean)
     .slice(0, DIRECTORY_GALLERY_MAX);
-  const extras = splitPortfolioUrls(p.portfolioLinks).slice(0, 6);
+
+  const expertise = p.photographyFocus?.trim();
 
   return (
     <div
@@ -102,12 +97,12 @@ export function PhotographerPublicDetailModal({
       }}
     >
       <div
-        className="flex max-h-[min(92vh,900px)] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border border-zinc-200 bg-white shadow-2xl sm:rounded-2xl"
+        className="flex max-h-[min(92vh,900px)] w-full max-w-2xl flex-col overflow-visible rounded-t-2xl border border-zinc-200 bg-white shadow-2xl sm:rounded-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="photographer-detail-title"
       >
-        <div className="relative shrink-0 border-b border-zinc-100">
+        <div className="relative shrink-0 overflow-hidden rounded-t-2xl border-b border-zinc-100 sm:rounded-t-2xl">
           <div className="relative aspect-[16/9] w-full bg-zinc-100 sm:aspect-[21/9]">
             {remote ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -130,7 +125,7 @@ export function PhotographerPublicDetailModal({
           </div>
           <button
             type="button"
-            className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-zinc-800 shadow-md ring-1 ring-zinc-900/10 hover:bg-white"
+            className="absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-zinc-800 shadow-md ring-1 ring-zinc-900/10 hover:bg-white"
             aria-label="Close"
             onClick={onClose}
           >
@@ -138,7 +133,7 @@ export function PhotographerPublicDetailModal({
           </button>
           <button
             type="button"
-            className="absolute left-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-zinc-900 shadow-md ring-1 ring-zinc-900/10 hover:bg-white"
+            className="absolute left-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-zinc-900 shadow-md ring-1 ring-zinc-900/10 hover:bg-white"
             title={saved ? 'Remove from saved' : 'Save photographer'}
             onClick={() => {
               if (!user) {
@@ -171,64 +166,52 @@ export function PhotographerPublicDetailModal({
             </p>
           </div>
 
-          <div className="mt-5">
-            <PhotographerSocialIconButtons
-              instagram={p.instagram}
-              website={p.website}
-              twitter={p.twitter}
-              facebook={p.facebook}
-              portfolioLinks={p.portfolioLinks}
-            />
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <PhotographerSocialIconButtons
+                instagram={p.instagram}
+                website={p.website}
+                twitter={p.twitter}
+                facebook={p.facebook}
+                portfolioLinks={undefined}
+                size="sm"
+              />
+            </div>
+            <div className="shrink-0">
+              <ProfileShareDropdown
+                profileSlug={p.profileSlug}
+                placement="below"
+                tone="onLight"
+                menuZClass="z-[150]"
+                className="flex justify-end"
+              />
+            </div>
           </div>
 
-          {p.profileSlug ? (
-            <Link
-              href={publicPhotographerProfilePath(p.profileSlug)}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 py-3 text-sm font-semibold text-zinc-900 transition-colors hover:bg-zinc-100"
-            >
-              View full profile
-              <ExternalLink className="h-4 w-4 opacity-70" />
-            </Link>
-          ) : null}
-
-          {p.bio ? (
-            <section className="mt-6">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Bio
-              </h3>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-zinc-800">
-                {p.bio}
-              </p>
-            </section>
-          ) : null}
-
-          {p.photographyFocus ? (
-            <section className="mt-5">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Expertise
-              </h3>
-              <p className="mt-2 text-sm text-zinc-800">{p.photographyFocus}</p>
-            </section>
-          ) : null}
-
-          {p.serviceArea || p.openToOtherAreas ? (
-            <section className="mt-5">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Coverage
-              </h3>
-              <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-800">
-                {p.serviceArea?.trim() || '—'}
-                {p.openToOtherAreas ? (
-                  <span className="mt-1 block text-xs text-zinc-600">
-                    Open to serving other areas.
-                  </span>
-                ) : null}
-              </p>
-            </section>
+          {expertise || p.serviceArea?.trim() || p.openToOtherAreas ? (
+            <div className="mt-4 space-y-2 text-sm text-zinc-800">
+              {expertise ? (
+                <p>
+                  <span className="font-semibold text-zinc-600">Expertise: </span>
+                  {expertise}
+                </p>
+              ) : null}
+              {p.serviceArea?.trim() || p.openToOtherAreas ? (
+                <p>
+                  <span className="font-semibold text-zinc-600">Coverage: </span>
+                  {p.serviceArea?.trim() || '—'}
+                  {p.openToOtherAreas ? (
+                    <span className="mt-1 block text-xs font-normal text-zinc-600">
+                      Open to serving other areas.
+                    </span>
+                  ) : null}
+                </p>
+              ) : null}
+            </div>
           ) : null}
 
           {gallery.length > 0 ? (
-            <section className="mt-6">
+            <section className="mt-5">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 Gallery
               </h3>
@@ -260,45 +243,44 @@ export function PhotographerPublicDetailModal({
             </section>
           ) : null}
 
-          {extras.length > 0 ? (
-            <section className="mt-5">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Portfolio links
-              </h3>
-              <ul className="mt-2 space-y-1.5 text-sm">
-                {extras.map((u) => (
-                  <li key={u}>
-                    <a
-                      href={
-                        u.startsWith('http')
-                          ? u
-                          : `https://${u.replace(/^\/\//, '')}`
-                      }
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-medium text-amber-900 underline-offset-2 hover:underline"
-                    >
-                      {u}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
+          {p.profileSlug ? (
+            <Link
+              href={publicPhotographerProfilePath(p.profileSlug)}
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-amber-900/20 bg-amber-50/90 py-3.5 text-sm font-semibold text-amber-950 transition-colors hover:bg-amber-100/90"
+            >
+              View full profile page
+              <ExternalLink className="h-4 w-4 opacity-70" />
+            </Link>
+          ) : (
+            <div className="mt-5 rounded-xl border border-dashed border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
+              <p className="font-medium text-zinc-800">No public profile link</p>
+              <p className="mt-1 text-xs leading-relaxed text-zinc-600">
+                This listing doesn’t have a profile URL yet. Fotomatic members who
+                set a <strong>username</strong> and save their photographer profile
+                get a page at{' '}
+                <span className="font-mono text-[11px] text-zinc-700">
+                  /photographer/your-name
+                </span>
+                .
+              </p>
+            </div>
+          )}
 
-          <button
-            type="button"
-            className="mt-8 w-full rounded-xl bg-zinc-900 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
-            onClick={() => {
-              if (!user) {
-                openLoginModal();
-                return;
-              }
-              onRequestBooking(p);
-            }}
-          >
-            Request booking
-          </button>
+          {canRequestBooking ? (
+            <button
+              type="button"
+              className="mt-8 w-full rounded-xl bg-zinc-900 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800"
+              onClick={() => {
+                if (!user) {
+                  openLoginModal();
+                  return;
+                }
+                onRequestBooking(p);
+              }}
+            >
+              Request booking
+            </button>
+          ) : null}
         </div>
       </div>
     </div>

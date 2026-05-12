@@ -1,4 +1,4 @@
-/** Single URL segment for `/{slug}` public photographer pages. */
+/** Single URL segment for `/photographer/{slug}` public photographer pages. */
 const RESERVED = new Set([
   'api',
   'admin',
@@ -25,6 +25,12 @@ const RESERVED = new Set([
   'settings',
   'saved',
   'bookings',
+  /** App routes under `/photographer/…` — cannot be usernames. */
+  'directory',
+  'calendar',
+  'earnings',
+  'requests',
+  'reviews',
   'payments',
   'register',
   'signup',

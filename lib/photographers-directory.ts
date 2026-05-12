@@ -28,11 +28,15 @@ export type DirectoryPhotographer = {
   serviceArea?: string;
   portfolioLinks?: string;
   openToOtherAreas?: boolean;
-  /** Public URL path `/photographers/{profileSlug}` when synced from account username. */
+  /** Public URL path `/photographer/{profileSlug}` when synced from account username. */
   profileSlug?: string;
   phone?: string;
   phoneContact?: boolean;
   emailContact?: boolean;
+  /** When true/false, overrides legacy `phoneContact` for public profile visibility. */
+  publicPhoneOnProfile?: boolean;
+  /** When true/false, overrides legacy `emailContact` for public profile visibility. */
+  publicEmailOnProfile?: boolean;
 };
 
 export const DIRECTORY_GALLERY_MAX = 15;
@@ -168,6 +172,18 @@ export function firestoreDocToDirectory(
   const phone = data.phone != null ? str(data.phone) : '';
   const phoneContact = data.phoneContact === true;
   const emailContact = data.emailContact === true;
+  const publicPhoneOnProfile =
+    data.publicPhoneOnProfile === true
+      ? true
+      : data.publicPhoneOnProfile === false
+        ? false
+        : undefined;
+  const publicEmailOnProfile =
+    data.publicEmailOnProfile === true
+      ? true
+      : data.publicEmailOnProfile === false
+        ? false
+        : undefined;
 
   return {
     id: docId,
@@ -197,5 +213,7 @@ export function firestoreDocToDirectory(
     phone: phone || undefined,
     phoneContact: phoneContact ? true : undefined,
     emailContact: emailContact ? true : undefined,
+    publicPhoneOnProfile,
+    publicEmailOnProfile,
   };
 }

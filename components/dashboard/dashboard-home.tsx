@@ -17,12 +17,12 @@ import { useSavedPhotographerIds } from '@/lib/hooks/use-saved-photographer-ids'
 import { BookingRequestModal } from '@/components/booking-request-modal';
 import { PhotographerPublicDetailModal } from '@/components/photographer-public-detail-modal';
 import { StatCard } from '@/components/dashboard/stat-card';
-import { DashboardWelcomeHeader } from '@/components/dashboard/dashboard-welcome-header';
 import { DashboardBookingCard } from '@/components/dashboard/booking-card';
 import { UpdateItem } from '@/components/dashboard/update-item';
 import { DashboardPhotographerCard } from '@/components/dashboard/dashboard-photographer-card';
 import { InfoStrip } from '@/components/dashboard/info-strip';
 import { useDashboardApplyAsPhotographer } from '@/components/dashboard/dashboard-apply-photographer-context';
+import { isOwnDirectoryPhotographerListing } from '@/lib/directory-photographer-self';
 import {
   Briefcase,
   CalendarClock,
@@ -32,6 +32,7 @@ import {
   Headphones,
   Link2,
   Lock,
+  Search,
   Shield,
   Sparkles,
 } from 'lucide-react';
@@ -54,19 +55,6 @@ function firestoreMs(value: unknown): number {
     return (value as { seconds: number }).seconds * 1000;
   }
   return 0;
-}
-
-function firstNameFromAuth(
-  userData: ReturnType<typeof useAuth>['userData'],
-  displayName: string | null,
-  email: string | null,
-): string {
-  const raw =
-    userData?.displayName?.trim() ||
-    displayName?.trim() ||
-    email?.split('@')[0] ||
-    'there';
-  return raw.split(/\s+/)[0] || 'there';
 }
 
 function notificationDotClass(type: AppNotification['type']): string {
@@ -99,7 +87,20 @@ export function DashboardHome() {
   >(null);
   const { toggle, isSaved } = useSavedPhotographerIds();
 
-  const suggested = useMemo(() => directory.slice(0, 8), [directory]);
+  const suggested = useMemo(() => {
+    let list = directory;
+    if (user && userData?.role === 'photographer') {
+      list = list.filter(
+        (p) =>
+          !isOwnDirectoryPhotographerListing(p, {
+            uid: user.uid,
+            role: userData.role,
+            directoryId: userData.photographer?.directoryId,
+          }),
+      );
+    }
+    return list.slice(0, 8);
+  }, [directory, user, userData]);
 
   useEffect(() => {
     if (!user) return;
@@ -129,13 +130,23 @@ export function DashboardHome() {
 
   const recentUpdates = sortedNotifications.slice(0, 8);
 
-  const firstName = user
-    ? firstNameFromAuth(userData, user.displayName, user.email)
-    : 'there';
-
   return (
     <div className="px-4 py-8 sm:px-6 lg:px-10">
-      <DashboardWelcomeHeader firstName={firstName} />
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+        <Link
+          href="/dashboard/photographers"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800"
+        >
+          <Search className="h-4 w-4" strokeWidth={2} />
+          Find a Photographer
+        </Link>
+        <Link
+          href="/dashboard/bookings"
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-5 py-3 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50"
+        >
+          View All Bookings
+        </Link>
+      </div>
 
       <div className="mt-10 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
@@ -249,6 +260,13 @@ export function DashboardHome() {
               saved={isSaved(p.id)}
               onToggleSave={() => toggle(p.id)}
               onOpenDetail={() => setDetailPhotographer(p)}
+              showRequestBooking={
+                !isOwnDirectoryPhotographerListing(p, {
+                  uid: user?.uid,
+                  role: userData?.role,
+                  directoryId: userData?.photographer?.directoryId,
+                })
+              }
               onRequestBooking={() => {
                 if (!user) {
                   openLoginModal({ redirectTo: '/dashboard' });
@@ -414,6 +432,15 @@ export function DashboardHome() {
         }}
         user={user}
         openLoginModal={(o) => openLoginModal(o)}
+        canRequestBooking={
+          detailPhotographer
+            ? !isOwnDirectoryPhotographerListing(detailPhotographer, {
+                uid: user?.uid,
+                role: userData?.role,
+                directoryId: userData?.photographer?.directoryId,
+              })
+            : true
+        }
       />
 
       {user && bookingPhotographer ? (

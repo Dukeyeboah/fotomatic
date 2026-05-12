@@ -18,11 +18,8 @@ export function AdminHeader() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="font-serif text-2xl font-medium text-zinc-900 md:text-3xl">
-            Welcome back, Admin 👋
+            Admin
           </h1>
-          <p className="mt-1 text-sm text-zinc-600">
-            Here&apos;s an overview of what&apos;s happening on Fotomatic.
-          </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 text-sm text-zinc-600">

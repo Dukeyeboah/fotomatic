@@ -15,6 +15,13 @@ export default function AccountPage() {
   const { user, userData, loading } = useAuth();
   const { openLoginModal } = useLoginModal();
 
+  const profileEditHref =
+    userData?.role === 'photographer'
+      ? '/photographer/profile'
+      : userData?.role === 'user'
+        ? '/dashboard/profile'
+        : '/profile';
+
   return (
     <div className="min-h-screen bg-zinc-50">
       <SiteHeader />
@@ -26,7 +33,7 @@ export default function AccountPage() {
           Overview of your Fotomatic account. Edit details on your profile page.
         </p>
         <p className="mt-2 text-xs text-zinc-500">
-          <Link href="/profile" className="underline">
+          <Link href={user ? profileEditHref : '/profile'} className="underline">
             Edit profile
           </Link>
         </p>

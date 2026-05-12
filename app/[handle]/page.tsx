@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { publicPhotographerProfilePath } from '@/lib/public-profile-url';
 
 /**
- * Legacy URLs `/{slug}` redirect to `/photographers/{slug}`.
+ * Legacy URLs `/{slug}` redirect to `/photographer/{slug}`.
  */
 export default async function LegacyProfileHandlePage({
   params,
