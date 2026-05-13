@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { marketingImagePublicUrl } from '@/lib/fotomatic-marketing-images';
 import { usePathname } from 'next/navigation';
 import {
   Bell,
@@ -87,14 +88,14 @@ export function PhotographerSidebar({
               onClick={onNavigate}
             >
               <Image
-                src="/fotomaticImages/fotomaticLogo.png"
+                src={marketingImagePublicUrl('fotomaticLogo.png')}
                 alt=""
                 width={36}
                 height={36}
                 className="h-8 w-8 shrink-0 object-contain"
               />
               <Image
-                src="/fotomaticImages/fotomatic.jpg"
+                src={marketingImagePublicUrl('fotomatic.jpg')}
                 alt="Fotomatic"
                 width={120}
                 height={32}
@@ -108,7 +109,7 @@ export function PhotographerSidebar({
               onClick={onNavigate}
             >
               <Image
-                src="/fotomaticImages/fotomaticLogo.png"
+                src={marketingImagePublicUrl('fotomaticLogo.png')}
                 alt="Home"
                 width={36}
                 height={36}
@@ -190,7 +191,7 @@ export function PhotographerSidebar({
           <div className="mx-3 mb-3 overflow-hidden rounded-2xl bg-zinc-900 p-3 text-white shadow-lg ring-1 ring-zinc-900/20">
             <div className="relative mb-3 aspect-[16/10] overflow-hidden rounded-xl bg-zinc-800">
               <Image
-                src="/fotomaticImages/fotomatic1.jpg"
+                src={marketingImagePublicUrl('fotomatic1.jpg')}
                 alt=""
                 fill
                 className="object-cover opacity-90"

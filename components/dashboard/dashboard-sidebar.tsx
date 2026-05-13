@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { marketingImagePublicUrl } from '@/lib/fotomatic-marketing-images';
 import { usePathname } from 'next/navigation';
 import {
   Bell,
@@ -78,14 +79,14 @@ export function DashboardSidebar({
               onClick={onNavigate}
             >
               <Image
-                src="/fotomaticImages/fotomaticLogo.png"
+                src={marketingImagePublicUrl('fotomaticLogo.png')}
                 alt=""
                 width={36}
                 height={36}
                 className="h-8 w-8 shrink-0 object-contain"
               />
               <Image
-                src="/fotomaticImages/fotomatic.jpg"
+                src={marketingImagePublicUrl('fotomatic.jpg')}
                 alt="Fotomatic"
                 width={120}
                 height={32}
@@ -99,7 +100,7 @@ export function DashboardSidebar({
               onClick={onNavigate}
             >
               <Image
-                src="/fotomaticImages/fotomaticLogo.png"
+                src={marketingImagePublicUrl('fotomaticLogo.png')}
                 alt="Home"
                 width={36}
                 height={36}
@@ -196,7 +197,7 @@ export function DashboardSidebar({
             <div className="mx-3 mb-3 overflow-hidden rounded-2xl border border-amber-200/70 bg-gradient-to-br from-amber-50/95 to-white shadow-sm ring-1 ring-amber-900/10">
               <div className="relative aspect-[16/9] w-full overflow-hidden">
                 <Image
-                  src="/fotomaticImages/photographer1.jpeg"
+                  src={marketingImagePublicUrl('photographer1.jpeg')}
                   alt=""
                   fill
                   className="object-cover object-top"
@@ -226,7 +227,7 @@ export function DashboardSidebar({
             <div className="mx-3 mb-3 overflow-hidden rounded-2xl bg-white p-3 shadow-sm ring-1 ring-zinc-900/5">
               <div className="relative mb-3 aspect-[16/10] overflow-hidden rounded-xl bg-zinc-100">
                 <Image
-                  src="/fotomaticImages/fotomatic0.jpg"
+                  src={marketingImagePublicUrl('fotomatic0.jpg')}
                   alt=""
                   fill
                   className="object-cover"

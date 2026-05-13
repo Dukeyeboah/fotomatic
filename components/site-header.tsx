@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
 import { AccountMenuDropdown } from '@/components/account-menu-dropdown';
 import { NotificationBell } from '@/components/notification-bell';
+import { marketingImagePublicUrl } from '@/lib/fotomatic-marketing-images';
 import { usePathname } from 'next/navigation';
 
 export function SiteHeader() {
@@ -39,14 +40,14 @@ export function SiteHeader() {
           aria-label="Fotomatic home"
         >
           <Image
-            src="/fotomaticImages/fotomaticLogo.png"
+            src={marketingImagePublicUrl('fotomaticLogo.png')}
             alt=""
             width={40}
             height={40}
             className="h-9 w-9 object-contain"
           />
           <Image
-            src="/fotomaticImages/fotomatic.jpg"
+            src={marketingImagePublicUrl('fotomatic.jpg')}
             alt="Fotomatic"
             width={160}
             height={40}

@@ -14,5 +14,11 @@ service firebase.storage {
         && request.resource.size < 8 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
     }
+
+    // Site marketing assets (logos, hero art). Upload via Console / CI; app reads only.
+    match /fotomatic-images/{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
   }
 }

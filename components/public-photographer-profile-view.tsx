@@ -8,7 +8,6 @@ import {
   DIRECTORY_GALLERY_MAX,
   type DirectoryPhotographer,
   directoryPhotographerHeroImageUrl,
-  photographerPlaceholderImagePath,
 } from '@/lib/photographers-directory';
 import { fetchPhotographerByProfileSlug } from '@/lib/firebase/photographer-by-slug';
 import {
@@ -27,6 +26,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
 import { isOwnDirectoryPhotographerListing } from '@/lib/directory-photographer-self';
 import { Loader2, MapPin, X } from 'lucide-react';
+import { PhotographerReviewsPanel } from '@/components/photographer-reviews-panel';
+import {
+  directoryListingFallbackImageUrl,
+  isDirectoryListingFallbackUrl,
+} from '@/lib/fotomatic-marketing-images';
 
 function displayName(p: DirectoryPhotographer): string {
   if (p.lastName) return `${p.firstName} ${p.lastName}`.trim();
@@ -45,7 +49,7 @@ function formatLocation(p: DirectoryPhotographer): string {
   return '';
 }
 
-type InfoTab = 'bio' | 'coverage' | 'contact';
+type InfoTab = 'bio' | 'coverage' | 'contact' | 'reviews';
 
 export function PublicPhotographerProfileView({ handle }: { handle: string }) {
   const pathname = usePathname();
@@ -124,16 +128,19 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
     () => !!p && hasPublicContactTabContent(p),
     [p],
   );
+  const showReviewsTab = true;
 
   const effectiveTab = useMemo((): InfoTab => {
     if (tab === 'bio' && showBioTab) return 'bio';
     if (tab === 'coverage' && showCoverageTab) return 'coverage';
     if (tab === 'contact' && showContactTab) return 'contact';
+    if (tab === 'reviews' && showReviewsTab) return 'reviews';
     if (showBioTab) return 'bio';
     if (showCoverageTab) return 'coverage';
     if (showContactTab) return 'contact';
+    if (showReviewsTab) return 'reviews';
     return 'bio';
-  }, [tab, showBioTab, showCoverageTab, showContactTab]);
+  }, [tab, showBioTab, showCoverageTab, showContactTab, showReviewsTab]);
 
   if (p === undefined) {
     return (
@@ -164,14 +171,18 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
     );
   }
 
+  const hero = directoryPhotographerHeroImageUrl(p);
+  const photo = p.photoUrl?.trim() || '';
   const banner =
     p.bannerImageUrl?.trim() ||
-    directoryPhotographerHeroImageUrl(p) ||
-    photographerPlaceholderImagePath(p.id);
+    hero ||
+    directoryListingFallbackImageUrl();
   const bannerRemote = /^https?:\/\//i.test(banner);
+  const bannerIsLogoFallback = isDirectoryListingFallbackUrl(banner);
   const avatar =
-    p.photoUrl?.trim() || directoryPhotographerHeroImageUrl(p) || '';
-  const avatarRemote = avatar && /^https?:\/\//i.test(avatar);
+    photo || hero || directoryListingFallbackImageUrl();
+  const avatarRemote = /^https?:\/\//i.test(avatar);
+  const avatarIsLogoFallback = isDirectoryListingFallbackUrl(avatar);
   const loc = formatLocation(p);
   const gallery = (p.galleryImageUrls ?? [])
     .filter(Boolean)
@@ -208,14 +219,22 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
             <img
               src={banner}
               alt=""
-              className="h-full w-full object-cover object-center"
+              className={
+                bannerIsLogoFallback
+                  ? 'h-full w-full object-contain bg-white p-12 sm:p-16'
+                  : 'h-full w-full object-cover object-center'
+              }
             />
           ) : (
             <Image
               src={banner.startsWith('/') ? banner : `/${banner}`}
               alt=""
               fill
-              className="object-cover object-center"
+              className={
+                bannerIsLogoFallback
+                  ? 'object-contain bg-white p-12 sm:p-16'
+                  : 'object-cover object-center'
+              }
               priority
               sizes="100vw"
             />
@@ -233,22 +252,22 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
               <img
                 src={avatar}
                 alt=""
-                className="h-full w-full object-cover"
+                className={
+                  avatarIsLogoFallback
+                    ? 'h-full w-full object-contain bg-white p-4'
+                    : 'h-full w-full object-cover'
+                }
               />
-            ) : avatar ? (
+            ) : (
               <Image
                 src={avatar.startsWith('/') ? avatar : `/${avatar}`}
                 alt=""
                 fill
-                className="object-cover"
-                sizes="160px"
-              />
-            ) : (
-              <Image
-                src={photographerPlaceholderImagePath(p.id)}
-                alt=""
-                fill
-                className="object-cover"
+                className={
+                  avatarIsLogoFallback
+                    ? 'object-contain bg-white p-4'
+                    : 'object-cover'
+                }
                 sizes="160px"
               />
             )}
@@ -290,7 +309,7 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
               portfolioLinks={p.portfolioLinks}
             />
           </div>
-          {showBioTab || showCoverageTab || showContactTab ? (
+          {showBioTab || showCoverageTab || showContactTab || showReviewsTab ? (
             <div
               className="flex flex-wrap justify-center gap-2 sm:justify-end"
               role="tablist"
@@ -299,11 +318,12 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
               {tabBtn('bio', 'Bio', showBioTab)}
               {tabBtn('coverage', 'Coverage', showCoverageTab)}
               {tabBtn('contact', 'Contact', showContactTab)}
+              {tabBtn('reviews', 'Reviews', showReviewsTab)}
             </div>
           ) : null}
         </div>
 
-        {showBioTab || showCoverageTab || showContactTab ? (
+        {showBioTab || showCoverageTab || showContactTab || showReviewsTab ? (
           <section
             className="mt-6 rounded-2xl border border-zinc-200/90 bg-white p-5 shadow-sm sm:p-6"
             role="tabpanel"
@@ -374,6 +394,27 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
                   </p>
                 )}
               </div>
+            ) : null}
+            {effectiveTab === 'reviews' && showReviewsTab ? (
+              <PhotographerReviewsPanel
+                photographerDirectoryId={p.id}
+                photographerDisplayName={displayName(p)}
+                viewer={user}
+                viewerDisplayName={
+                  userData?.displayName?.trim() ||
+                  userData?.username?.trim() ||
+                  null
+                }
+                isSelf={isSelfListing}
+                onNeedLogin={() =>
+                  openLoginModal({
+                    redirectTo: pathname || undefined,
+                    introTitle: 'Sign in to leave a review',
+                    introMessage:
+                      'Log in to rate this photographer and share optional feedback.',
+                  })
+                }
+              />
             ) : null}
           </section>
         ) : null}

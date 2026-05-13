@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { Heart } from 'lucide-react';
 import {
   directoryPhotographerHeroImageUrl,
-  photographerPlaceholderImagePath,
   type DirectoryPhotographer,
 } from '@/lib/photographers-directory';
 import { publicPhotographerProfilePath } from '@/lib/public-profile-url';
+import { directoryListingFallbackImageUrl, isDirectoryListingFallbackUrl } from '@/lib/fotomatic-marketing-images';
+import { StarRow } from '@/components/photographer-reviews-panel';
 
 function displayName(p: DirectoryPhotographer): string {
   if (p.lastName) return `${p.firstName} ${p.lastName}`.trim();
@@ -31,7 +32,7 @@ function cardImage(p: DirectoryPhotographer): string {
   const u = directoryPhotographerHeroImageUrl(p);
   if (u && /^https?:\/\//i.test(u)) return u;
   if (u && u.startsWith('/')) return u;
-  return photographerPlaceholderImagePath(p.id);
+  return directoryListingFallbackImageUrl();
 }
 
 const TAGS = ['Graduation', 'Portraits', 'Events', 'Weddings'] as const;
@@ -43,6 +44,7 @@ export function DashboardPhotographerCard({
   onRequestBooking,
   onOpenDetail,
   showRequestBooking = true,
+  reviewSummary,
 }: {
   photographer: DirectoryPhotographer;
   saved: boolean;
@@ -50,10 +52,12 @@ export function DashboardPhotographerCard({
   onRequestBooking: () => void;
   onOpenDetail?: () => void;
   showRequestBooking?: boolean;
+  reviewSummary?: { average: number; count: number };
 }) {
   const tag = TAGS[photographer.id.length % TAGS.length]!;
   const imgSrc = cardImage(photographer);
   const remoteImg = /^https?:\/\//i.test(imgSrc);
+  const heroIsLogoFallback = isDirectoryListingFallbackUrl(imgSrc);
   return (
     <div
       className={[
@@ -81,14 +85,19 @@ export function DashboardPhotographerCard({
           <img
             src={imgSrc}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover"
+            className={[
+              'absolute inset-0 h-full w-full',
+              heroIsLogoFallback
+                ? 'object-contain bg-white p-8'
+                : 'object-cover',
+            ].join(' ')}
           />
         ) : (
           <Image
             src={imgSrc}
             alt=""
             fill
-            className="object-cover"
+            className={heroIsLogoFallback ? 'object-contain bg-white p-8' : 'object-cover'}
             sizes="260px"
           />
         )}
@@ -113,6 +122,15 @@ export function DashboardPhotographerCard({
         <p className="mt-2 text-sm font-semibold text-zinc-800">
           From ${photographer.startingHourlyRate}/hr
         </p>
+        {reviewSummary && reviewSummary.count > 0 ? (
+          <p className="mt-1.5 flex items-center gap-2 text-xs text-zinc-600">
+            <StarRow value={reviewSummary.average} size="sm" />
+            <span>
+              {reviewSummary.average.toFixed(1)} · {reviewSummary.count} review
+              {reviewSummary.count === 1 ? '' : 's'}
+            </span>
+          </p>
+        ) : null}
         <p className="mt-2 flex flex-wrap gap-1">
           <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-700">
             {tag}

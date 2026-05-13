@@ -486,6 +486,55 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Client reviews for directory listings (one doc per reviewer + listing: `{directoryId}__{uid}`)
+    match /photographerReviews/{reviewId} {
+      allow read: if true;
+
+      allow create: if isAuthenticated()
+        && request.resource.data.reviewerUserId == request.auth.uid
+        && request.resource.data.photographerDirectoryId is string
+        && request.resource.data.photographerDirectoryId.size() > 0
+        && request.resource.data.photographerDirectoryId.size() < 220
+        && reviewId
+          == request.resource.data.photographerDirectoryId + '__' + request.auth.uid
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && exists(/databases/$(database)/documents/photographers/$(request.resource.data.photographerDirectoryId))
+        && get(/databases/$(database)/documents/photographers/$(request.resource.data.photographerDirectoryId)).data.applicantUserId
+          != request.auth.uid
+        && (!request.resource.data.keys().hasAny(['comment'])
+            || request.resource.data.comment == null
+            || (request.resource.data.comment is string
+                && request.resource.data.comment.size() < 2000))
+        && (!request.resource.data.keys().hasAny(['reviewerDisplayName'])
+            || request.resource.data.reviewerDisplayName == null
+            || (request.resource.data.reviewerDisplayName is string
+                && request.resource.data.reviewerDisplayName.size() < 120));
+
+      allow update: if isAuthenticated()
+        && resource.data.reviewerUserId == request.auth.uid
+        && request.resource.data.reviewerUserId == resource.data.reviewerUserId
+        && request.resource.data.photographerDirectoryId == resource.data.photographerDirectoryId
+        && reviewId
+          == request.resource.data.photographerDirectoryId + '__' + request.auth.uid
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && (!request.resource.data.keys().hasAny(['comment'])
+            || request.resource.data.comment == null
+            || (request.resource.data.comment is string
+                && request.resource.data.comment.size() < 2000))
+        && (!request.resource.data.keys().hasAny(['reviewerDisplayName'])
+            || request.resource.data.reviewerDisplayName == null
+            || (request.resource.data.reviewerDisplayName is string
+                && request.resource.data.reviewerDisplayName.size() < 120))
+        && (!request.resource.data.keys().hasAny(['createdAt'])
+            || request.resource.data.createdAt == resource.data.createdAt);
+
+      allow delete: if false;
+    }
+
     // Newsletter (optional landing form — tighten or add rate limits in production)
     match /fotomaticNewsletterLeads/{id} {
       allow read: if false;

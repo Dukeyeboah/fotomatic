@@ -7,7 +7,6 @@ import { BookingRequestModal } from '@/components/booking-request-modal';
 import {
   type DirectoryPhotographer,
   directoryPhotographerHeroImageUrl,
-  photographerPlaceholderImagePath,
 } from '@/lib/photographers-directory';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
@@ -18,8 +17,11 @@ import { useSavedPhotographerIds } from '@/lib/hooks/use-saved-photographer-ids'
 import { useMergedDirectoryPhotographers } from '@/lib/hooks/use-merged-directory-photographers';
 import { publicPhotographerProfilePath } from '@/lib/public-profile-url';
 import { isOwnDirectoryPhotographerListing } from '@/lib/directory-photographer-self';
+import { usePhotographerDirectoryReviewStats } from '@/lib/hooks/use-directory-review-stats';
+import { StarRow } from '@/components/photographer-reviews-panel';
+import { directoryListingFallbackImageUrl } from '@/lib/fotomatic-marketing-images';
 
-function getPhotographerName(p: DirectoryPhotographer) {
+function getPhotographerName(p: DirectoryPhotographer): string {
   if (p.lastName) return `${p.firstName} ${p.lastName}`.trim();
   return p.firstName;
 }
@@ -58,6 +60,7 @@ export function PhotographersGrid({
   const { user, userData } = useAuth();
   const { openLoginModal } = useLoginModal();
   const { toggle, isSaved } = useSavedPhotographerIds();
+  const reviewStats = usePhotographerDirectoryReviewStats();
 
   const viewerForSelf = useMemo(
     () => ({
@@ -202,10 +205,10 @@ export function PhotographersGrid({
                     )
                   ) : (
                     <Image
-                      src={photographerPlaceholderImagePath(p.id)}
+                      src={directoryListingFallbackImageUrl()}
                       alt=""
                       fill
-                      className="object-cover transition-transform duration-300 ease-out group-hover:scale-[1.02]"
+                      className="object-contain bg-white p-10 transition-transform duration-300 ease-out group-hover:scale-[1.02]"
                       sizes="(max-width: 768px) 100vw, 33vw"
                     />
                   )}
@@ -224,6 +227,19 @@ export function PhotographersGrid({
                       <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400" />
                       {formatLocation(p)}
                     </p>
+                    {(() => {
+                      const s = reviewStats.get(p.id);
+                      if (!s || s.count < 1) return null;
+                      return (
+                        <p className="mt-1 flex items-center gap-2 text-xs text-zinc-600">
+                          <StarRow value={s.average} size="sm" />
+                          <span>
+                            {s.average.toFixed(1)} · {s.count} review
+                            {s.count === 1 ? '' : 's'}
+                          </span>
+                        </p>
+                      );
+                    })()}
                   </div>
                   <div
                     className="flex flex-wrap gap-2"
@@ -257,10 +273,19 @@ export function PhotographersGrid({
                         View full profile
                       </Link>
                     ) : (
-                      <p className="rounded-xl border border-dashed border-zinc-200 bg-zinc-50/80 px-3 py-2 text-center text-[11px] leading-snug text-zinc-500">
-                        No public profile URL yet—only photographers with a saved
-                        username get a shareable page.
-                      </p>
+                      <div className="rounded-xl border border-dashed border-zinc-200 bg-zinc-50/80 px-3 py-2 text-center text-[11px] leading-snug text-zinc-600">
+                        <p className="font-medium text-zinc-800">
+                          No public profile link
+                        </p>
+                        {isOwnDirectoryPhotographerListing(p, viewerForSelf) ? (
+                          <p className="mt-1.5 text-[10px] leading-snug text-zinc-500">
+                            To activate your public profile link, set a{' '}
+                            <strong>username</strong>, add a{' '}
+                            <strong>profile image</strong>, then save your
+                            photography profile in settings.
+                          </p>
+                        ) : null}
+                      </div>
                     )}
                     {canBook ? (
                     <button

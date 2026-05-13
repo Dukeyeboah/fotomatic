@@ -21,6 +21,7 @@ import {
   Link2,
 } from 'lucide-react';
 import { useCallback, useState } from 'react';
+import { marketingImagePublicUrl } from '@/lib/fotomatic-marketing-images';
 
 function scrollToId(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -39,14 +40,14 @@ function LandingNav() {
           aria-label='Fotomatic home'
         >
           <Image
-            src='/fotomaticImages/fotomaticLogo.png'
+            src={marketingImagePublicUrl('fotomaticLogo.png')}
             alt=''
             width={40}
             height={40}
             className='h-9 w-9 object-contain'
           />
           <Image
-            src='/fotomaticImages/fotomatic.jpg'
+            src={marketingImagePublicUrl('fotomatic.jpg')}
             alt='Fotomatic'
             width={160}
             height={40}
@@ -182,7 +183,7 @@ export function LandingPage() {
           <div className='relative aspect-[4/3] w-full lg:aspect-[5/4]'>
             <div className='absolute inset-0 overflow-hidden rounded-3xl shadow-xl shadow-zinc-900/10 ring-1 ring-zinc-900/5'>
               <Image
-                src='/fotomaticImages/fotomatic0.jpg'
+                src={marketingImagePublicUrl('fotomatic0.jpg')}
                 alt=''
                 fill
                 className='object-cover'
@@ -366,7 +367,7 @@ export function LandingPage() {
                   className='relative aspect-[4/3] overflow-hidden rounded-2xl shadow-md ring-1 ring-zinc-900/5'
                 >
                   <Image
-                    src={`/fotomaticImages/${img}`}
+                    src={marketingImagePublicUrl(img)}
                     alt=''
                     fill
                     className='object-cover'
@@ -438,14 +439,14 @@ export function LandingPage() {
             <div className='lg:col-span-5'>
               <div className='flex items-center gap-2 sm:gap-3'>
                 <Image
-                  src='/fotomaticImages/fotomaticLogo.png'
+                  src={marketingImagePublicUrl('fotomaticLogo.png')}
                   alt=''
                   width={36}
                   height={36}
                   className='h-8 w-8 object-contain'
                 />
                 <Image
-                  src='/fotomaticImages/fotomatic.jpg'
+                  src={marketingImagePublicUrl('fotomatic.jpg')}
                   alt='Fotomatic'
                   width={140}
                   height={36}

@@ -23,6 +23,8 @@ import { DashboardPhotographerCard } from '@/components/dashboard/dashboard-phot
 import { InfoStrip } from '@/components/dashboard/info-strip';
 import { useDashboardApplyAsPhotographer } from '@/components/dashboard/dashboard-apply-photographer-context';
 import { isOwnDirectoryPhotographerListing } from '@/lib/directory-photographer-self';
+import { usePhotographerDirectoryReviewStats } from '@/lib/hooks/use-directory-review-stats';
+import { marketingImagePublicUrl } from '@/lib/fotomatic-marketing-images';
 import {
   Briefcase,
   CalendarClock,
@@ -86,6 +88,7 @@ export function DashboardHome() {
     (typeof directory)[number] | null
   >(null);
   const { toggle, isSaved } = useSavedPhotographerIds();
+  const reviewStats = usePhotographerDirectoryReviewStats();
 
   const suggested = useMemo(() => {
     let list = directory;
@@ -260,6 +263,7 @@ export function DashboardHome() {
               saved={isSaved(p.id)}
               onToggleSave={() => toggle(p.id)}
               onOpenDetail={() => setDetailPhotographer(p)}
+              reviewSummary={reviewStats.get(p.id)}
               showRequestBooking={
                 !isOwnDirectoryPhotographerListing(p, {
                   uid: user?.uid,
@@ -286,7 +290,7 @@ export function DashboardHome() {
           {/* Left image */}
           <div className="relative hidden w-52 shrink-0 overflow-hidden rounded-l-3xl lg:block">
             <Image
-              src="/fotomaticImages/photographer1.jpeg"
+              src={marketingImagePublicUrl('photographer1.jpeg')}
               alt=""
               fill
               className="object-cover"
@@ -358,7 +362,7 @@ export function DashboardHome() {
           {/* Right image */}
           <div className="relative hidden w-52 shrink-0 overflow-hidden rounded-r-3xl lg:block">
             <Image
-              src="/fotomaticImages/photographer2.jpeg"
+              src={marketingImagePublicUrl('photographer2.jpeg')}
               alt=""
               fill
               className="object-cover object-top"
@@ -371,7 +375,7 @@ export function DashboardHome() {
         <div className="grid grid-cols-2 lg:hidden">
           <div className="relative aspect-[4/3] overflow-hidden rounded-bl-3xl">
             <Image
-              src="/fotomaticImages/photographer1.jpeg"
+              src={marketingImagePublicUrl('photographer1.jpeg')}
               alt=""
               fill
               className="object-cover"
@@ -380,7 +384,7 @@ export function DashboardHome() {
           </div>
           <div className="relative aspect-[4/3] overflow-hidden rounded-br-3xl">
             <Image
-              src="/fotomaticImages/photographer2.jpeg"
+              src={marketingImagePublicUrl('photographer2.jpeg')}
               alt=""
               fill
               className="object-cover object-top"

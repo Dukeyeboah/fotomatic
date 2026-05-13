@@ -7,13 +7,15 @@ import {
   DIRECTORY_GALLERY_MAX,
   type DirectoryPhotographer,
   directoryPhotographerHeroImageUrl,
-  photographerPlaceholderImagePath,
 } from '@/lib/photographers-directory';
 import { publicPhotographerProfilePath } from '@/lib/public-profile-url';
 import Link from 'next/link';
 import { PhotographerSocialIconButtons } from '@/components/photographer-social-icon-buttons';
 import { ProfileShareDropdown } from '@/components/photographer/profile-share-dropdown';
 import { ExternalLink, Heart, X } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { PhotographerReviewsPanel } from '@/components/photographer-reviews-panel';
+import { directoryListingFallbackImageUrl, isDirectoryListingFallbackUrl } from '@/lib/fotomatic-marketing-images';
 
 function displayName(p: DirectoryPhotographer): string {
   if (p.lastName) return `${p.firstName} ${p.lastName}`.trim();
@@ -36,7 +38,7 @@ function heroSrc(p: DirectoryPhotographer): string {
   const u = directoryPhotographerHeroImageUrl(p);
   if (u && /^https?:\/\//i.test(u)) return u;
   if (u && u.startsWith('/')) return u;
-  return photographerPlaceholderImagePath(p.id);
+  return directoryListingFallbackImageUrl();
 }
 
 function modalBannerSrc(p: DirectoryPhotographer): string {
@@ -68,6 +70,7 @@ export function PhotographerPublicDetailModal({
   /** When false, hides the primary booking CTA (e.g. photographer viewing their own listing). */
   canRequestBooking?: boolean;
 }) {
+  const { userData } = useAuth();
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -82,6 +85,7 @@ export function PhotographerPublicDetailModal({
   const p = photographer;
   const img = modalBannerSrc(p);
   const remote = /^https?:\/\//i.test(img);
+  const heroIsLogoFallback = isDirectoryListingFallbackUrl(img);
   const gallery = (p.galleryImageUrls ?? [])
     .filter(Boolean)
     .slice(0, DIRECTORY_GALLERY_MAX);
@@ -109,14 +113,23 @@ export function PhotographerPublicDetailModal({
               <img
                 src={img}
                 alt=""
-                className="absolute inset-0 h-full w-full object-cover object-top"
+                className={[
+                  'absolute inset-0 h-full w-full',
+                  heroIsLogoFallback
+                    ? 'object-contain bg-white p-10 sm:p-14'
+                    : 'object-cover object-top',
+                ].join(' ')}
               />
             ) : (
               <Image
                 src={img.startsWith('/') ? img : `/${img}`}
                 alt=""
                 fill
-                className="object-cover object-top"
+                className={
+                  heroIsLogoFallback
+                    ? 'object-contain bg-white p-10 sm:p-14'
+                    : 'object-cover object-top'
+                }
                 sizes="(max-width: 768px) 100vw, 672px"
                 priority
               />
@@ -254,17 +267,31 @@ export function PhotographerPublicDetailModal({
           ) : (
             <div className="mt-5 rounded-xl border border-dashed border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
               <p className="font-medium text-zinc-800">No public profile link</p>
-              <p className="mt-1 text-xs leading-relaxed text-zinc-600">
-                This listing doesn’t have a profile URL yet. Fotomatic members who
-                set a <strong>username</strong> and save their photographer profile
-                get a page at{' '}
-                <span className="font-mono text-[11px] text-zinc-700">
-                  /photographer/your-name
-                </span>
-                .
-              </p>
+              {!canRequestBooking ? (
+                <p className="mt-2 text-xs leading-relaxed text-zinc-600">
+                  To activate your public profile link, set a{' '}
+                  <strong>username</strong>, add a <strong>profile image</strong>,
+                  then save your photography profile in account settings.
+                </p>
+              ) : null}
             </div>
           )}
+
+          <div className="mt-6">
+            <PhotographerReviewsPanel
+              photographerDirectoryId={p.id}
+              photographerDisplayName={displayName(p)}
+              viewer={user}
+              viewerDisplayName={
+                userData?.displayName?.trim() ||
+                userData?.username?.trim() ||
+                null
+              }
+              isSelf={!canRequestBooking}
+              onNeedLogin={() => openLoginModal()}
+              compact
+            />
+          </div>
 
           {canRequestBooking ? (
             <button

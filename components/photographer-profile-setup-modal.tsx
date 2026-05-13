@@ -1,24 +1,49 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProfileSettingsForm } from '@/components/profile-settings-form';
-import {
-  clearPhotographerProfileSetupModal,
-} from '@/lib/firebase/user-profile';
+import { clearPhotographerProfileSetupModal } from '@/lib/firebase/user-profile';
+import { needsGuidedPhotographerProfile } from '@/lib/photographer-profile-setup';
 import { X } from 'lucide-react';
+
+const SESSION_DISMISS_KEY = 'fotomatic_photog_setup_dismissed';
 
 export function PhotographerProfileSetupModal() {
   const { user, userData, loading, refreshUserData } = useAuth();
+  const [dismissedIncomplete, setDismissedIncomplete] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(SESSION_DISMISS_KEY) === '1') {
+        setDismissedIncomplete(true);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   if (loading || !user || !userData || userData.role !== 'photographer') {
     return null;
   }
-  if (userData.photographer?.showProfileSetupModal !== true) {
-    return null;
-  }
+
+  const serverPrompt = userData.photographer?.showProfileSetupModal === true;
+  const incomplete =
+    needsGuidedPhotographerProfile(userData) && !dismissedIncomplete;
+  const open = serverPrompt || incomplete;
+
+  if (!open) return null;
 
   const dismiss = async () => {
-    await clearPhotographerProfileSetupModal(user.uid);
+    try {
+      sessionStorage.setItem(SESSION_DISMISS_KEY, '1');
+    } catch {
+      /* ignore */
+    }
+    setDismissedIncomplete(true);
+    if (serverPrompt) {
+      await clearPhotographerProfileSetupModal(user.uid);
+    }
     await refreshUserData();
   };
 
@@ -45,12 +70,19 @@ export function PhotographerProfileSetupModal() {
               id="photographer-setup-title"
               className="mt-1 font-serif text-xl font-medium text-zinc-900"
             >
-              You&apos;re approved — finish your public profile
+              {serverPrompt
+                ? 'You’re approved — finish your public profile'
+                : 'Finish your public profile'}
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-zinc-600">
-              We&apos;ve carried over what you shared on your application. Add a
-              profile photo, portfolio images (3–15), and double-check your bio
-              and links so clients can book you with confidence.
+              To get a shareable link at{' '}
+              <span className="font-mono text-[13px] text-zinc-800">
+                /photographer/your-name
+              </span>
+              , choose a <strong>username</strong> (3–40 characters) and save.
+              Add a <strong>profile photo</strong> and <strong>banner image</strong>{' '}
+              so clients recognize you—then save again so your directory listing
+              updates.
             </p>
           </div>
           <button
@@ -78,7 +110,12 @@ export function PhotographerProfileSetupModal() {
             userData={userData}
             showMediaUploads
             onSaved={async () => {
-              await refreshUserData();
+              try {
+                sessionStorage.removeItem(SESSION_DISMISS_KEY);
+              } catch {
+                /* ignore */
+              }
+              setDismissedIncomplete(false);
               await clearPhotographerProfileSetupModal(user.uid);
               await refreshUserData();
             }}

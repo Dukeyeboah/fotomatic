@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
 import { useMergedDirectoryPhotographers } from '@/lib/hooks/use-merged-directory-photographers';
 import { useSavedPhotographerIds } from '@/lib/hooks/use-saved-photographer-ids';
+import { usePhotographerDirectoryReviewStats } from '@/lib/hooks/use-directory-review-stats';
 import { isOwnDirectoryPhotographerListing } from '@/lib/directory-photographer-self';
 import { BookingRequestModal } from '@/components/booking-request-modal';
 import { PhotographerPublicDetailModal } from '@/components/photographer-public-detail-modal';
@@ -30,12 +31,14 @@ import {
   formatThreadDateDisplay,
   lifetimeEarningsFromThreads,
   threadsToActivityFeedItems,
+  effectivePhotographerDirectoryId,
 } from '@/lib/photographer-booking-dashboard';
 import { PhotographerStatCard } from '@/components/photographer/photographer-stat-card';
 import { PhotographerRequestCard } from '@/components/photographer/photographer-request-card';
 import { PhotographerBookingRow } from '@/components/photographer/photographer-booking-row';
 import { PhotographerActivityFeed } from '@/components/photographer/photographer-activity-feed';
 import { PhotographerEarningsChart } from '@/components/photographer/photographer-earnings-chart';
+import { PhotographerReviewsPanel } from '@/components/photographer-reviews-panel';
 import { PhotographerQuickActionGrid } from '@/components/photographer/photographer-quick-actions';
 import { publicPhotographerProfilePath } from '@/lib/public-profile-url';
 import { isValidPublicProfileSlug } from '@/lib/public-profile-slug';
@@ -81,6 +84,7 @@ export function PhotographerHome() {
   const { openLoginModal } = useLoginModal();
   const directory = useMergedDirectoryPhotographers();
   const { toggle, isSaved } = useSavedPhotographerIds();
+  const reviewStats = usePhotographerDirectoryReviewStats();
   const [detailPhotographer, setDetailPhotographer] = useState<
     (typeof directory)[number] | null
   >(null);
@@ -99,6 +103,18 @@ export function PhotographerHome() {
     if (!raw || !isValidPublicProfileSlug(raw)) return '/photographer/profile';
     return publicPhotographerProfilePath(raw.toLowerCase());
   }, [userData?.username]);
+
+  const myListingId = useMemo(
+    () =>
+      user
+        ? effectivePhotographerDirectoryId(
+            user.uid,
+            userData?.photographer?.directoryId,
+          )
+        : '',
+    [user, userData?.photographer?.directoryId],
+  );
+  const myReviewAgg = myListingId ? reviewStats.get(myListingId) : undefined;
 
   return (
     <div className="px-4 py-8 sm:px-6 lg:px-10">
@@ -160,17 +176,26 @@ export function PhotographerHome() {
         />
         <PhotographerStatCard
           label="Rating"
-          valueDisplay="—"
-          subtext="Reviews not enabled yet"
+          valueDisplay={
+            myReviewAgg && myReviewAgg.count > 0
+              ? `${myReviewAgg.average.toFixed(1)} ★`
+              : '—'
+          }
+          subtext={
+            myReviewAgg && myReviewAgg.count > 0
+              ? `${myReviewAgg.count} client review${myReviewAgg.count === 1 ? '' : 's'}`
+              : 'No reviews yet'
+          }
           icon={Star}
           tintClass="bg-violet-50/90"
-          viewHref="/photographer/reviews"
-          viewLabel="View reviews"
+          viewHref="/photographer/profile"
+          viewLabel="Edit profile"
           modalTitle="Your rating"
           modalBody={
             <p>
-              Public client reviews are not enabled yet. When they are, your
-              average rating will appear here.
+              Average from client reviews on your public listing. Encourage
+              happy clients to leave a star rating from your profile page or the
+              directory.
             </p>
           }
         />
@@ -299,6 +324,36 @@ export function PhotographerHome() {
             </Link>
           </div>
 
+          {myListingId ? (
+            <div className="rounded-2xl border border-zinc-200/90 bg-white p-4 shadow-sm">
+              <h2 className="font-serif text-lg font-medium text-zinc-900">
+                Your reviews
+              </h2>
+              <p className="mt-1 text-xs text-zinc-500">
+                What clients submit from your public profile or the directory.
+              </p>
+              <div className="mt-4">
+                <PhotographerReviewsPanel
+                  photographerDirectoryId={myListingId}
+                  photographerDisplayName={
+                    userData?.displayName?.trim() ||
+                    userData?.username?.trim() ||
+                    'Your listing'
+                  }
+                  viewer={user}
+                  viewerDisplayName={
+                    userData?.displayName?.trim() ||
+                    userData?.username?.trim() ||
+                    null
+                  }
+                  isSelf
+                  onNeedLogin={() => {}}
+                  compact
+                />
+              </div>
+            </div>
+          ) : null}
+
           <div className="rounded-2xl border border-zinc-200/90 bg-white p-5 shadow-sm">
             <h2 className="font-serif text-lg font-medium text-zinc-900">
               Earnings overview
@@ -398,6 +453,7 @@ export function PhotographerHome() {
                 saved={isSaved(p.id)}
                 onToggleSave={() => toggle(p.id)}
                 onOpenDetail={() => setDetailPhotographer(p)}
+                reviewSummary={reviewStats.get(p.id)}
                 showRequestBooking={
                   !isOwnDirectoryPhotographerListing(p, {
                     uid: user?.uid,

@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { marketingImagePublicUrl } from '@/lib/fotomatic-marketing-images';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -122,14 +123,14 @@ export function AdminSidebar({
             onClick={onNavigate}
           >
             <Image
-              src="/fotomaticImages/fotomaticLogo.png"
+              src={marketingImagePublicUrl('fotomaticLogo.png')}
               alt=""
               width={36}
               height={36}
               className="h-9 w-9 shrink-0 object-contain brightness-0 invert"
             />
             <Image
-              src="/fotomaticImages/fotomatic.jpg"
+              src={marketingImagePublicUrl('fotomatic.jpg')}
               alt="Fotomatic"
               width={110}
               height={28}
@@ -144,7 +145,7 @@ export function AdminSidebar({
             title="Admin home"
           >
             <Image
-              src="/fotomaticImages/fotomaticLogo.png"
+              src={marketingImagePublicUrl('fotomaticLogo.png')}
               alt="Admin"
               width={36}
               height={36}
