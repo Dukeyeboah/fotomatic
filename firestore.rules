@@ -31,6 +31,20 @@ service cloud.firestore {
         && directoryId == photographerEffectiveDirectoryId(uid);
     }
 
+    /** Thread was created for this listing doc; applicant may differ from `photographerEffectiveDirectoryId` (e.g. custom profile directoryId). */
+    function photographerListingApplicantMatches(uid, directoryId) {
+      return directoryId is string
+        && directoryId.size() > 0
+        && directoryId.size() < 220
+        && exists(/databases/$(database)/documents/photographers/$(directoryId))
+        && get(/databases/$(database)/documents/photographers/$(directoryId)).data.applicantUserId == uid;
+    }
+
+    function photographerCanAccessThreadAsPhotographer(uid, directoryId) {
+      return photographerListingMatchesDirectory(uid, directoryId)
+        || photographerListingApplicantMatches(uid, directoryId);
+    }
+
     function bookingThreadData(threadId) {
       return get(/databases/$(database)/documents/bookingThreads/$(threadId)).data;
     }
@@ -39,7 +53,7 @@ service cloud.firestore {
       let t = bookingThreadData(threadId);
       return t.clientUserId == request.auth.uid
         || t.photographerUserId == request.auth.uid
-        || photographerListingMatchesDirectory(request.auth.uid, t.photographerDirectoryId);
+        || photographerCanAccessThreadAsPhotographer(request.auth.uid, t.photographerDirectoryId);
     }
 
     // Client accounts
@@ -94,7 +108,7 @@ service cloud.firestore {
       allow read: if isAuthenticated()
         && (resource.data.clientUserId == request.auth.uid
             || resource.data.photographerUserId == request.auth.uid
-            || photographerListingMatchesDirectory(
+            || photographerCanAccessThreadAsPhotographer(
               request.auth.uid,
               resource.data.photographerDirectoryId
             ));
@@ -173,7 +187,7 @@ service cloud.firestore {
         && (
              resource.data.photographerUserId == request.auth.uid
              || (resource.data.photographerUserId == null
-                 && photographerListingMatchesDirectory(
+                 && photographerCanAccessThreadAsPhotographer(
                    request.auth.uid,
                    resource.data.photographerDirectoryId
                  ))
@@ -186,6 +200,21 @@ service cloud.firestore {
           'declined',
           'expired'
         ];
+
+      // Photographer: touch `updatedAt` / unread counts while messaging (thread may still be unclaimed).
+      allow update: if isAuthenticated()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'photographer'
+        && (
+             resource.data.photographerUserId == request.auth.uid
+             || photographerCanAccessThreadAsPhotographer(
+                  request.auth.uid,
+                  resource.data.photographerDirectoryId
+                )
+           )
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'updatedAt',
+          'unreadByClientCount',
+        ]);
 
       allow update: if isAdmin();
 
@@ -210,7 +239,7 @@ service cloud.firestore {
         && (
           get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.clientUserId == request.auth.uid
           || get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.photographerUserId == request.auth.uid
-          || photographerListingMatchesDirectory(
+          || photographerCanAccessThreadAsPhotographer(
             request.auth.uid,
             get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.photographerDirectoryId
           )
@@ -229,7 +258,7 @@ service cloud.firestore {
         && (
           get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.clientUserId == request.auth.uid
           || get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.photographerUserId == request.auth.uid
-          || photographerListingMatchesDirectory(
+          || photographerCanAccessThreadAsPhotographer(
             request.auth.uid,
             get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.photographerDirectoryId
           )
@@ -297,7 +326,7 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.clientUserId == request.resource.data.userId
         && (
              get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.photographerUserId == request.auth.uid
-             || photographerListingMatchesDirectory(
+             || photographerCanAccessThreadAsPhotographer(
                request.auth.uid,
                get(/databases/$(database)/documents/bookingThreads/$(request.resource.data.threadId)).data.photographerDirectoryId
              )
