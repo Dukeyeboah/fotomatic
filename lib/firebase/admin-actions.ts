@@ -111,6 +111,15 @@ export async function adminApprovePhotographerApplication(args: {
       facebook: str(app.facebook) || undefined,
       portfolioUrl: str(app.portfolioLinks) || undefined,
       photographyFocus: str(app.photographyFocus) || undefined,
+      photographyFocuses: Array.isArray(app.photographyFocuses)
+        ? (app.photographyFocuses as unknown[])
+            .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+            .map((x) => x.trim())
+            .slice(0, 12)
+        : undefined,
+      startingPrice: rate,
+      eventPricing: Array.isArray(app.eventPricing) ? app.eventPricing : undefined,
+      pricingNotes: str(app.pricingNotes) || undefined,
       serviceArea: str(app.serviceArea) || undefined,
       openToOtherAreas: app.openToOtherAreas === true,
       phone: str(app.phone) || undefined,
@@ -175,6 +184,15 @@ export async function adminApprovePhotographerApplication(args: {
         location,
         bio: str(app.bio) || null,
         photographyFocus: str(app.photographyFocus) || null,
+        photographyFocuses: Array.isArray(app.photographyFocuses)
+          ? (app.photographyFocuses as unknown[])
+              .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+              .map((x) => x.trim())
+              .slice(0, 12)
+          : null,
+        startingPrice: rate,
+        eventPricing: Array.isArray(app.eventPricing) ? app.eventPricing : null,
+        pricingNotes: str(app.pricingNotes) || null,
         serviceArea: str(app.serviceArea) || null,
         openToOtherAreas: app.openToOtherAreas === true,
         phoneContact: app.phoneContact === true,

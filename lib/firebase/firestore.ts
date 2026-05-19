@@ -191,9 +191,20 @@ export interface PhotographerApplicationInput {
   state: string;
   country: string;
   address: string;
+  /** General event starting price (USD). */
+  startingPrice: number;
+  /** @deprecated Mirrored from `startingPrice` for older readers. */
   startingHourlyRate: number;
   bio: string;
+  /** Legacy comma-separated summary. */
   photographyFocus: string;
+  photographyFocuses: string[];
+  eventPricing?: Array<{
+    focus: string;
+    startingPrice: number;
+    notes?: string;
+  }>;
+  pricingNotes?: string;
   phone: string;
   phoneContact: boolean;
   emailContact: boolean;

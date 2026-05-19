@@ -277,15 +277,20 @@ export default function AdminApplicationDetailPage() {
                     Photography focus / specialty
                   </dt>
                   <dd className="mt-1 text-zinc-900">
-                    {dash(app.photographyFocus)}
+                    {Array.isArray(app.photographyFocuses) &&
+                    app.photographyFocuses.length > 0
+                      ? app.photographyFocuses.join(' · ')
+                      : dash(app.photographyFocus)}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-                    Starting hourly rate
+                    Default starting price
                   </dt>
                   <dd className="mt-1 text-zinc-900">
-                    {formatHourlyRate(app.startingHourlyRate)}
+                    {formatHourlyRate(
+                      app.startingPrice ?? app.startingHourlyRate,
+                    )}
                   </dd>
                 </div>
                 <div>

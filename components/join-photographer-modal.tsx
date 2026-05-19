@@ -5,6 +5,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
 import { savePhotographerApplication } from '@/lib/firebase/firestore';
 import { COUNTRY_NAMES } from '@/lib/countries';
+import {
+  resolvePhotographyFocusesFromForm,
+  serializePhotographyFocuses,
+} from '@/lib/photography-focus';
+import { PhotographyFocusPicker } from '@/components/photography-focus-picker';
+import { PhotographerPricingFields } from '@/components/photographer-pricing-fields';
+import {
+  clampStartingPrice,
+  sanitizeEventPricingRows,
+  sanitizePricingNotes,
+} from '@/lib/photographer-pricing';
+import type { FocusEventPricing } from '@/lib/photographer-pricing';
 import { PHOTOGRAPHY_FOCUS_OPTIONS } from '@/lib/photography-focus';
 import { CheckCircle2, Loader2, X } from 'lucide-react';
 
@@ -19,10 +31,12 @@ function emptyApplyForm() {
     city: '',
     state: '',
     country: '',
-    startingHourlyRate: '',
+    startingPrice: '',
     bio: '',
-    photoFocusChoice: '' as string,
+    photoFocusSelected: [] as string[],
     photoFocusOther: '',
+    pricingNotes: '',
+    eventPricing: [] as FocusEventPricing[],
     phone: '',
     phoneContact: false,
     emailContact: false,
@@ -48,9 +62,13 @@ type ApplyPayload = {
   state: string;
   country: string;
   address: string;
+  startingPrice: number;
   startingHourlyRate: number;
   bio: string;
   photographyFocus: string;
+  photographyFocuses: string[];
+  eventPricing?: FocusEventPricing[];
+  pricingNotes?: string;
   phone: string;
   phoneContact: boolean;
   emailContact: boolean;
@@ -100,6 +118,24 @@ export function JoinPhotographerModal({
         const parsed = JSON.parse(raw) as Record<string, unknown>;
         if (parsed && typeof parsed === 'object') {
           next = { ...next, ...(parsed as typeof next) };
+          const legacy = parsed as Record<string, unknown>;
+          if (
+            !next.startingPrice &&
+            typeof legacy.startingHourlyRate === 'string'
+          ) {
+            next.startingPrice = legacy.startingHourlyRate;
+          }
+          if (
+            (!next.photoFocusSelected || next.photoFocusSelected.length === 0) &&
+            typeof legacy.photoFocusChoice === 'string' &&
+            legacy.photoFocusChoice
+          ) {
+            const choice = String(legacy.photoFocusChoice);
+            next.photoFocusSelected = [choice];
+            if (choice === 'Other' && typeof legacy.photoFocusOther === 'string') {
+              next.photoFocusOther = legacy.photoFocusOther;
+            }
+          }
         }
       }
     } catch {
@@ -170,11 +206,17 @@ export function JoinPhotographerModal({
         openLoginModal({ redirectTo: loginRedirectTo });
         return;
       }
-      const rate = Number(apply.startingHourlyRate);
-      const focusResolved =
-        apply.photoFocusChoice === 'Other'
-          ? apply.photoFocusOther.trim()
-          : apply.photoFocusChoice.trim();
+      const rate = clampStartingPrice(Number(apply.startingPrice));
+      const focusResolved = resolvePhotographyFocusesFromForm({
+        selectedPresets: apply.photoFocusSelected,
+        otherText: apply.photoFocusOther,
+      });
+      const focusSummary = serializePhotographyFocuses(focusResolved);
+      const cleanedPricing = sanitizeEventPricingRows(
+        apply.eventPricing,
+        [...PHOTOGRAPHY_FOCUS_OPTIONS, ...focusResolved],
+      );
+      const notes = sanitizePricingNotes(apply.pricingNotes);
       const bioWords = apply.bio.trim().split(/\s+/).filter(Boolean).length;
       if (
         !apply.firstName.trim() ||
@@ -182,10 +224,8 @@ export function JoinPhotographerModal({
         !apply.email.trim() ||
         !apply.city.trim() ||
         !apply.country.trim() ||
-        !apply.photoFocusChoice ||
-        !focusResolved ||
+        focusResolved.length === 0 ||
         !Number.isFinite(rate) ||
-        rate < 1 ||
         !apply.bio.trim() ||
         bioWords > 150
       ) {
@@ -204,9 +244,13 @@ export function JoinPhotographerModal({
         state: apply.state.trim(),
         country: apply.country.trim(),
         address: apply.address.trim(),
+        startingPrice: rate,
         startingHourlyRate: rate,
         bio: apply.bio.trim(),
-        photographyFocus: focusResolved,
+        photographyFocus: focusSummary,
+        photographyFocuses: focusResolved,
+        ...(cleanedPricing.length > 0 ? { eventPricing: cleanedPricing } : {}),
+        ...(notes ? { pricingNotes: notes } : {}),
         phone: apply.phone.trim(),
         phoneContact: apply.phoneContact,
         emailContact: apply.emailContact,
@@ -446,59 +490,44 @@ export function JoinPhotographerModal({
                     ))}
                   </select>
                 </label>
-                <label className='block space-y-1 sm:col-span-2'>
-                  <span className='text-xs font-medium text-zinc-600'>
-                    Starting hourly rate (USD) <span className='text-red-600'>*</span>
-                  </span>
-                  <input
-                    inputMode='decimal'
-                    required
-                    className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
-                    placeholder='e.g. 200'
-                    value={apply.startingHourlyRate}
-                    onChange={(e) =>
+                <PhotographyFocusPicker
+                  className='sm:col-span-2'
+                  required
+                  selected={apply.photoFocusSelected}
+                  onChange={(photoFocusSelected) =>
+                    setApply((s) => ({ ...s, photoFocusSelected }))
+                  }
+                  otherText={apply.photoFocusOther}
+                  onOtherTextChange={(photoFocusOther) =>
+                    setApply((s) => ({ ...s, photoFocusOther }))
+                  }
+                />
+                <div className='sm:col-span-2'>
+                  <PhotographerPricingFields
+                    startingPrice={
+                      apply.startingPrice === ''
+                        ? ''
+                        : Number(apply.startingPrice)
+                    }
+                    onStartingPriceChange={(v) =>
                       setApply((s) => ({
                         ...s,
-                        startingHourlyRate: e.target.value,
+                        startingPrice: v === '' ? '' : String(v),
                       }))
+                    }
+                    pricingNotes={apply.pricingNotes}
+                    onPricingNotesChange={(pricingNotes) =>
+                      setApply((s) => ({ ...s, pricingNotes }))
+                    }
+                    selectedFocuses={resolvePhotographyFocusesFromForm({
+                      selectedPresets: apply.photoFocusSelected,
+                      otherText: apply.photoFocusOther,
+                    })}
+                    eventPricing={apply.eventPricing}
+                    onEventPricingChange={(eventPricing) =>
+                      setApply((s) => ({ ...s, eventPricing }))
                     }
                   />
-                </label>
-                <div className='space-y-2 sm:col-span-2'>
-                  <span className='text-xs font-medium text-zinc-600'>
-                    Photography focus / specialty <span className='text-red-600'>*</span>
-                  </span>
-                  <select
-                    required
-                    className='w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
-                    value={apply.photoFocusChoice}
-                    onChange={(e) =>
-                      setApply((s) => ({
-                        ...s,
-                        photoFocusChoice: e.target.value,
-                      }))
-                    }
-                  >
-                    <option value=''>Select…</option>
-                    {PHOTOGRAPHY_FOCUS_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                  {apply.photoFocusChoice === 'Other' ? (
-                    <input
-                      className='w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20'
-                      placeholder='Describe your focus'
-                      value={apply.photoFocusOther}
-                      onChange={(e) =>
-                        setApply((s) => ({
-                          ...s,
-                          photoFocusOther: e.target.value,
-                        }))
-                      }
-                    />
-                  ) : null}
                 </div>
                 <label className='block space-y-1 sm:col-span-2'>
                   <span className='text-xs font-medium text-zinc-600'>

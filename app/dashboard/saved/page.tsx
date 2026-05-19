@@ -7,6 +7,7 @@ import { useMergedDirectoryPhotographers } from '@/lib/hooks/use-merged-director
 import { useSavedPhotographerIds } from '@/lib/hooks/use-saved-photographer-ids';
 import { Heart } from 'lucide-react';
 import { photographerPlaceholderImagePath } from '@/lib/photographers-directory';
+import { formatDirectoryStartingPrice } from '@/lib/photographer-pricing';
 
 function cardImage(id: string): string {
   return photographerPlaceholderImagePath(id);
@@ -63,7 +64,7 @@ export default function DashboardSavedPage() {
                   {p.lastName ? `${p.firstName} ${p.lastName}` : p.firstName}
                 </p>
                 <p className="text-xs text-zinc-500">
-                  From ${p.startingHourlyRate}/hr
+                  {formatDirectoryStartingPrice(p)}
                 </p>
                 <div className="mt-2 flex gap-2">
                   <Link

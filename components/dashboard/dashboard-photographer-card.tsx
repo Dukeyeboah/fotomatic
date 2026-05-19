@@ -9,6 +9,7 @@ import {
 } from '@/lib/photographers-directory';
 import { publicPhotographerProfilePath } from '@/lib/public-profile-url';
 import { directoryListingFallbackImageUrl, isDirectoryListingFallbackUrl } from '@/lib/fotomatic-marketing-images';
+import { formatDirectoryStartingPrice } from '@/lib/photographer-pricing';
 import { StarRow } from '@/components/photographer-reviews-panel';
 
 function displayName(p: DirectoryPhotographer): string {
@@ -120,7 +121,7 @@ export function DashboardPhotographerCard({
         <p className="font-semibold text-zinc-900">{displayName(photographer)}</p>
         <p className="mt-0.5 text-xs text-zinc-500">{formatLocation(photographer)}</p>
         <p className="mt-2 text-sm font-semibold text-zinc-800">
-          From ${photographer.startingHourlyRate}/hr
+          {formatDirectoryStartingPrice(photographer)}
         </p>
         {reviewSummary && reviewSummary.count > 0 ? (
           <p className="mt-1.5 flex items-center gap-2 text-xs text-zinc-600">

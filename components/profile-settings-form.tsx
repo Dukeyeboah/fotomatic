@@ -14,6 +14,21 @@ import {
 } from '@/lib/firebase/upload';
 import { DIRECTORY_GALLERY_MAX } from '@/lib/photographers-directory';
 import { COUNTRY_NAMES } from '@/lib/countries';
+import {
+  parsePhotographyFocusesFromFirestore,
+  resolvePhotographyFocusesFromForm,
+  serializePhotographyFocuses,
+  isPresetPhotographyFocus,
+} from '@/lib/photography-focus';
+import { PhotographyFocusPicker } from '@/components/photography-focus-picker';
+import { PhotographerPricingFields } from '@/components/photographer-pricing-fields';
+import {
+  parseEventPricingFromFirestore,
+  sanitizeEventPricingRows,
+  sanitizePricingNotes,
+  clampStartingPrice,
+} from '@/lib/photographer-pricing';
+import type { FocusEventPricing } from '@/lib/photographer-pricing';
 import { PHOTOGRAPHY_FOCUS_OPTIONS } from '@/lib/photography-focus';
 import { syncPhotographerPublicDirectory } from '@/lib/firebase/sync-photographer-directory';
 import {
@@ -58,13 +73,19 @@ export function ProfileSettingsForm({
   const [state, setState] = useState(userData.state ?? ph.state ?? '');
   const [country, setCountry] = useState(userData.country ?? ph.country ?? '');
   const [bio, setBio] = useState(ph.bio ?? '');
-  const initialFocus = ph.photographyFocus ?? ph.style ?? '';
-  const focusPresets = PHOTOGRAPHY_FOCUS_OPTIONS as readonly string[];
-  const [photoFocusChoice, setPhotoFocusChoice] = useState(() =>
-    focusPresets.includes(initialFocus) ? initialFocus : initialFocus ? 'Other' : '',
-  );
+  const initialFocuses = parsePhotographyFocusesFromFirestore({
+    photographyFocuses: ph.photographyFocuses,
+    photographyFocus: ph.photographyFocus,
+    style: ph.style,
+  });
+  const [photoFocusSelected, setPhotoFocusSelected] = useState<string[]>(() => {
+    const presets = initialFocuses.filter((f) => isPresetPhotographyFocus(f));
+    const custom = initialFocuses.filter((f) => !isPresetPhotographyFocus(f));
+    if (custom.length > 0) return [...presets, 'Other'];
+    return presets;
+  });
   const [photoFocusOther, setPhotoFocusOther] = useState(() =>
-    focusPresets.includes(initialFocus) ? '' : initialFocus,
+    initialFocuses.find((f) => !isPresetPhotographyFocus(f)) ?? '',
   );
   const [interests, setInterests] = useState(ph.interests ?? '');
   const [behance, setBehance] = useState(ph.behance ?? '');
@@ -91,8 +112,18 @@ export function ProfileSettingsForm({
   const [openToOtherAreas, setOpenToOtherAreas] = useState(
     ph.openToOtherAreas === true,
   );
-  const [hourlyRate, setHourlyRate] = useState<number | ''>(
-    typeof ph.hourlyRate === 'number' ? ph.hourlyRate : '',
+  const [startingPrice, setStartingPrice] = useState<number | ''>(() => {
+    const n =
+      typeof ph.startingPrice === 'number'
+        ? ph.startingPrice
+        : typeof ph.hourlyRate === 'number'
+          ? ph.hourlyRate
+          : NaN;
+    return Number.isFinite(n) && n > 0 ? n : '';
+  });
+  const [pricingNotes, setPricingNotes] = useState(ph.pricingNotes ?? '');
+  const [eventPricing, setEventPricing] = useState<FocusEventPricing[]>(() =>
+    parseEventPricingFromFirestore(ph.eventPricing),
   );
   const [bannerImageUrl, setBannerImageUrl] = useState(ph.bannerImageUrl ?? '');
   const [profileImageUrl, setProfileImageUrl] = useState(
@@ -246,15 +277,36 @@ export function ProfileSettingsForm({
       state: state.trim() || null,
       country: country.trim() || null,
     };
-    const resolvedFocus =
-      photoFocusChoice === 'Other'
-        ? photoFocusOther.trim()
-        : photoFocusChoice.trim();
+    const resolvedFocuses = resolvePhotographyFocusesFromForm({
+      selectedPresets: photoFocusSelected,
+      otherText: photoFocusOther,
+    });
+    const focusSummary = serializePhotographyFocuses(resolvedFocuses);
+    const price =
+      typeof startingPrice === 'number'
+        ? clampStartingPrice(startingPrice)
+        : NaN;
+    if (isPhotographer && resolvedFocuses.length === 0) {
+      setSaving(false);
+      setMessage('Select at least one photography focus / specialty.');
+      return;
+    }
+    if (isPhotographer && !Number.isFinite(price)) {
+      setSaving(false);
+      setMessage('Enter a default starting price for your events.');
+      return;
+    }
+    const cleanedPricing = sanitizeEventPricingRows(
+      eventPricing,
+      [...PHOTOGRAPHY_FOCUS_OPTIONS, ...resolvedFocuses],
+    );
     if (isPhotographer) {
       patch.photographer = {
         bio: bio.trim() || undefined,
-        style: resolvedFocus || undefined,
-        photographyFocus: resolvedFocus || undefined,
+        style: focusSummary || undefined,
+        photographyFocus: focusSummary || undefined,
+        photographyFocuses:
+          resolvedFocuses.length > 0 ? resolvedFocuses : undefined,
         interests: interests.trim() || undefined,
         behance: behance.trim() || undefined,
         instagram: instagram.trim() || undefined,
@@ -270,7 +322,11 @@ export function ProfileSettingsForm({
         publicEmailOnProfile,
         serviceArea: serviceArea.trim() || undefined,
         openToOtherAreas,
-        hourlyRate: typeof hourlyRate === 'number' ? hourlyRate : undefined,
+        startingPrice: Number.isFinite(price) ? price : undefined,
+        hourlyRate: Number.isFinite(price) ? price : undefined,
+        eventPricing:
+          cleanedPricing.length > 0 ? cleanedPricing : undefined,
+        pricingNotes: sanitizePricingNotes(pricingNotes) || undefined,
         bannerImageUrl: bannerImageUrl.trim() || undefined,
         profileImageUrl: profileImageUrl.trim() || undefined,
         galleryImageUrls: galleryClean,
@@ -495,22 +551,22 @@ export function ProfileSettingsForm({
         <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <h2 className="text-sm font-semibold text-zinc-900">Photographer profile</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <label className="block space-y-1">
-              <span className="text-xs font-medium text-zinc-600">
-                Hourly rate <span className="font-normal text-zinc-400">(optional)</span>
-              </span>
-              <input
-                inputMode="numeric"
-                className={FIELD_INPUT_CLASS}
-                value={hourlyRate}
-                onChange={(e) => {
-                  const v = e.target.value.trim();
-                  if (!v) setHourlyRate('');
-                  else setHourlyRate(Number(v));
-                }}
-                placeholder="200"
+            <div className="sm:col-span-2">
+              <PhotographerPricingFields
+                startingPrice={startingPrice}
+                onStartingPriceChange={setStartingPrice}
+                pricingNotes={pricingNotes}
+                onPricingNotesChange={setPricingNotes}
+                selectedFocuses={resolvePhotographyFocusesFromForm({
+                  selectedPresets: photoFocusSelected,
+                  otherText: photoFocusOther,
+                })}
+                eventPricing={eventPricing}
+                onEventPricingChange={setEventPricing}
+                inputClassName={FIELD_INPUT_CLASS}
+                textareaClassName={FIELD_TEXTAREA_CLASS}
               />
-            </label>
+            </div>
             <label className="block space-y-1 sm:col-span-2">
               <span className="text-xs font-medium text-zinc-600">Phone</span>
               <input
@@ -782,31 +838,14 @@ export function ProfileSettingsForm({
                 {bio.trim().split(/\s+/).filter(Boolean).length} / ~150 words suggested max
               </span>
             </label>
-            <div className="block space-y-2">
-              <span className="text-xs font-medium text-zinc-600">
-                Photography focus / specialty
-              </span>
-              <select
-                className={FIELD_INPUT_CLASS}
-                value={photoFocusChoice}
-                onChange={(e) => setPhotoFocusChoice(e.target.value)}
-              >
-                <option value="">Select…</option>
-                {PHOTOGRAPHY_FOCUS_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-              {photoFocusChoice === 'Other' ? (
-                <input
-                  className={FIELD_INPUT_CLASS}
-                  value={photoFocusOther}
-                  onChange={(e) => setPhotoFocusOther(e.target.value)}
-                  placeholder="Describe your focus"
-                />
-              ) : null}
-            </div>
+            <PhotographyFocusPicker
+              className="sm:col-span-2"
+              selected={photoFocusSelected}
+              onChange={setPhotoFocusSelected}
+              otherText={photoFocusOther}
+              onOtherTextChange={setPhotoFocusOther}
+              required
+            />
             <label className="block space-y-1">
               <span className="text-xs font-medium text-zinc-600">Interests</span>
               <input

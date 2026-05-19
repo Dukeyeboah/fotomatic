@@ -28,9 +28,17 @@ export type PhotographerApplication = {
   state?: string;
   country: string;
   address?: string;
+  startingPrice?: number;
   startingHourlyRate?: number;
   bio?: string;
   photographyFocus?: string;
+  photographyFocuses?: string[];
+  eventPricing?: Array<{
+    focus: string;
+    startingPrice: number;
+    notes?: string;
+  }>;
+  pricingNotes?: string;
   phone?: string;
   phoneContact?: boolean;
   emailContact?: boolean;

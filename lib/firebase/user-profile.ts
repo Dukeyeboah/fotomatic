@@ -6,8 +6,20 @@ import { db } from './config';
 export interface PhotographerProfileFields {
   bio?: string;
   style?: string;
-  /** Primary specialty (directory + application). */
+  /** Primary specialty (legacy comma-separated). */
   photographyFocus?: string;
+  /** Selected specialties (directory + application). */
+  photographyFocuses?: string[];
+  /** General event starting price (USD). */
+  startingPrice?: number | null;
+  /** Per-specialty starting prices and notes. */
+  eventPricing?: Array<{
+    focus: string;
+    startingPrice: number;
+    notes?: string;
+  }>;
+  /** General pricing / add-on notes for public profile. */
+  pricingNotes?: string;
   interests?: string;
   behance?: string;
   instagram?: string;
@@ -25,7 +37,7 @@ export interface PhotographerProfileFields {
    * can be shown in this photographer admin UI.
    */
   directoryId?: string | null;
-  /** Optional published hourly rate used at acceptance time. */
+  /** @deprecated Legacy alias for `startingPrice`. */
   hourlyRate?: number | null;
   city?: string;
   state?: string;

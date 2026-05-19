@@ -287,7 +287,7 @@ export function PhotographerBookingsInbox() {
                           {t.duration} · {t.eventLocation}
                         </p>
                         <p className="mt-2 text-xs text-zinc-500">
-                          Shown to client: From ${t.photographerStartingHourlyRate}/hr
+                          Shown to client: From ${t.photographerStartingHourlyRate}
                         </p>
                       </div>
                     </div>
@@ -372,7 +372,7 @@ export function PhotographerBookingsInbox() {
                         </p>
                         <label className="mt-3 block space-y-1">
                           <span className="text-xs font-medium text-zinc-600">
-                            Hourly rate ($/hr)
+                            Starting price ($)
                           </span>
                           <input
                             inputMode="numeric"

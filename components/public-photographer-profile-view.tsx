@@ -27,6 +27,8 @@ import { useLoginModal } from '@/contexts/LoginModalContext';
 import { isOwnDirectoryPhotographerListing } from '@/lib/directory-photographer-self';
 import { Loader2, MapPin, X } from 'lucide-react';
 import { PhotographerReviewsPanel } from '@/components/photographer-reviews-panel';
+import { PhotographerFocusPricingDisplay } from '@/components/photographer-focus-pricing-display';
+import { formatDirectoryStartingPrice } from '@/lib/photographer-pricing';
 import {
   directoryListingFallbackImageUrl,
   isDirectoryListingFallbackUrl,
@@ -117,7 +119,8 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
       !!p &&
       (Boolean(p.bio?.trim()) ||
         Boolean(p.interests?.trim()) ||
-        Boolean(p.photographyFocus?.trim())),
+        Boolean(p.photographyFocus?.trim()) ||
+        Boolean(p.photographyFocuses?.length)),
     [p],
   );
   const showCoverageTab = useMemo(
@@ -284,7 +287,7 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
                 </p>
               ) : null}
               <p className="mt-2 text-center text-sm font-bold text-zinc-800 sm:text-left">
-                From ${p.startingHourlyRate}/hr
+                {formatDirectoryStartingPrice(p)}
               </p>
             </div>
           </div>
@@ -333,14 +336,7 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
                 {p.bio?.trim() ? (
                   <p className="whitespace-pre-wrap text-base">{p.bio}</p>
                 ) : null}
-                {p.photographyFocus?.trim() ? (
-                  <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                      Expertise
-                    </h3>
-                    <p className="mt-1">{p.photographyFocus}</p>
-                  </div>
-                ) : null}
+                <PhotographerFocusPricingDisplay photographer={p} />
                 {p.interests?.trim() ? (
                   <div>
                     <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">

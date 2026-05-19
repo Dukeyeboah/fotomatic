@@ -20,6 +20,7 @@ import { isOwnDirectoryPhotographerListing } from '@/lib/directory-photographer-
 import { usePhotographerDirectoryReviewStats } from '@/lib/hooks/use-directory-review-stats';
 import { StarRow } from '@/components/photographer-reviews-panel';
 import { directoryListingFallbackImageUrl } from '@/lib/fotomatic-marketing-images';
+import { formatDirectoryStartingPrice } from '@/lib/photographer-pricing';
 
 function getPhotographerName(p: DirectoryPhotographer): string {
   if (p.lastName) return `${p.firstName} ${p.lastName}`.trim();
@@ -27,7 +28,7 @@ function getPhotographerName(p: DirectoryPhotographer): string {
 }
 
 function formatStartingRate(p: DirectoryPhotographer): string {
-  return `From $${p.startingHourlyRate}/hr`;
+  return formatDirectoryStartingPrice(p);
 }
 
 function formatLocation(p: DirectoryPhotographer): string {

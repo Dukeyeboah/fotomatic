@@ -430,15 +430,27 @@ service cloud.firestore {
         && request.resource.data.city.size() > 0
         && request.resource.data.country is string
         && request.resource.data.country.size() > 0
+        && request.resource.data.startingPrice is number
+        && request.resource.data.startingPrice >= 1
+        && request.resource.data.startingPrice < 10000
         && request.resource.data.startingHourlyRate is number
-        && request.resource.data.startingHourlyRate >= 1
-        && request.resource.data.startingHourlyRate < 10000
+        && request.resource.data.startingHourlyRate == request.resource.data.startingPrice
         && request.resource.data.bio is string
         && request.resource.data.bio.size() > 0
         && request.resource.data.bio.size() < 2000
         && request.resource.data.photographyFocus is string
         && request.resource.data.photographyFocus.size() > 0
-        && request.resource.data.photographyFocus.size() < 120
+        && request.resource.data.photographyFocus.size() < 500
+        && request.resource.data.photographyFocuses is list
+        && request.resource.data.photographyFocuses.size() >= 1
+        && request.resource.data.photographyFocuses.size() <= 12
+        && (!request.resource.data.keys().hasAny(['eventPricing'])
+            || request.resource.data.eventPricing == null
+            || (request.resource.data.eventPricing is list
+                && request.resource.data.eventPricing.size() <= 12))
+        && (!request.resource.data.keys().hasAny(['pricingNotes'])
+            || (request.resource.data.pricingNotes is string
+                && request.resource.data.pricingNotes.size() < 2000))
         && request.resource.data.phoneContact is bool
         && request.resource.data.emailContact is bool
         && request.resource.data.openToOtherAreas is bool

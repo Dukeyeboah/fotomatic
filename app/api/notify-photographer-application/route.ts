@@ -15,8 +15,12 @@ function formatBody(data: Record<string, unknown>): string {
     `City: ${data.city}`,
     `State/region: ${data.state || '—'}`,
     `Country: ${data.country}`,
-    `Starting hourly rate: ${data.startingHourlyRate}`,
-    `Photography focus: ${data.photographyFocus}`,
+    `Default starting price: ${data.startingPrice ?? data.startingHourlyRate}`,
+    `Photography focus: ${
+      Array.isArray(data.photographyFocuses) && data.photographyFocuses.length > 0
+        ? data.photographyFocuses.join(', ')
+        : data.photographyFocus
+    }`,
     `Service area: ${data.serviceArea || '—'}`,
     `Open to other areas: ${data.openToOtherAreas ? 'Yes' : 'No'}`,
     `Bio:\n${data.bio || '—'}`,

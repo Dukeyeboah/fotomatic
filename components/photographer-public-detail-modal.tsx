@@ -16,6 +16,8 @@ import { ExternalLink, Heart, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PhotographerReviewsPanel } from '@/components/photographer-reviews-panel';
 import { directoryListingFallbackImageUrl, isDirectoryListingFallbackUrl } from '@/lib/fotomatic-marketing-images';
+import { formatDirectoryStartingPrice } from '@/lib/photographer-pricing';
+import { PhotographerFocusPricingDisplay } from '@/components/photographer-focus-pricing-display';
 
 function displayName(p: DirectoryPhotographer): string {
   if (p.lastName) return `${p.firstName} ${p.lastName}`.trim();
@@ -90,7 +92,9 @@ export function PhotographerPublicDetailModal({
     .filter(Boolean)
     .slice(0, DIRECTORY_GALLERY_MAX);
 
-  const expertise = p.photographyFocus?.trim();
+  const hasFocus =
+    Boolean(p.photographyFocus?.trim()) ||
+    Boolean(p.photographyFocuses?.length);
 
   return (
     <div
@@ -175,7 +179,7 @@ export function PhotographerPublicDetailModal({
               <p className="mt-1 text-sm text-zinc-600">{formatLocation(p)}</p>
             </div>
             <p className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-sm font-semibold text-zinc-900">
-              From ${p.startingHourlyRate}/hr
+              {formatDirectoryStartingPrice(p)}
             </p>
           </div>
 
@@ -201,14 +205,14 @@ export function PhotographerPublicDetailModal({
             </div>
           </div>
 
-          {expertise || p.serviceArea?.trim() || p.openToOtherAreas ? (
+          {hasFocus ? (
+            <div className="mt-4">
+              <PhotographerFocusPricingDisplay photographer={p} />
+            </div>
+          ) : null}
+
+          {p.serviceArea?.trim() || p.openToOtherAreas ? (
             <div className="mt-4 space-y-2 text-sm text-zinc-800">
-              {expertise ? (
-                <p>
-                  <span className="font-semibold text-zinc-600">Expertise: </span>
-                  {expertise}
-                </p>
-              ) : null}
               {p.serviceArea?.trim() || p.openToOtherAreas ? (
                 <p>
                   <span className="font-semibold text-zinc-600">Coverage: </span>

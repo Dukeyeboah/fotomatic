@@ -4,6 +4,10 @@ import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from './config';
 import type { UserData } from './user-profile';
 import { normalizePublicProfileSlug } from '@/lib/public-profile-slug';
+import { serializePhotographyFocuses } from '@/lib/photography-focus';
+import { parsePhotographyFocusesFromFirestore } from '@/lib/photography-focus';
+import { sanitizeEventPricingRows, sanitizePricingNotes } from '@/lib/photographer-pricing';
+import { PHOTOGRAPHY_FOCUS_OPTIONS } from '@/lib/photography-focus';
 
 /**
  * Pushes the photographer’s profile into the public `photographers` collection
@@ -52,8 +56,23 @@ export async function syncPhotographerPublicDirectory(
   const lastName =
     nameParts.length > 1 ? nameParts.slice(1).join(' ') : undefined;
 
-  const rate =
-    typeof ph.hourlyRate === 'number' && ph.hourlyRate > 0 ? ph.hourlyRate : 150;
+  const rateRaw =
+    typeof ph.startingPrice === 'number' && ph.startingPrice > 0
+      ? ph.startingPrice
+      : typeof ph.hourlyRate === 'number' && ph.hourlyRate > 0
+        ? ph.hourlyRate
+        : 150;
+  const rate = rateRaw;
+  const focuses = parsePhotographyFocusesFromFirestore({
+    photographyFocuses: ph.photographyFocuses,
+    photographyFocus: ph.photographyFocus ?? ph.style,
+  });
+  const focusSummary = serializePhotographyFocuses(focuses);
+  const eventPricing = sanitizeEventPricingRows(
+    ph.eventPricing ?? [],
+    [...PHOTOGRAPHY_FOCUS_OPTIONS, ...focuses],
+  );
+  const pricingNotes = sanitizePricingNotes(ph.pricingNotes);
 
   const profileSlugRaw = normalizePublicProfileSlug(
     (userData.username ?? '').trim(),
@@ -84,7 +103,12 @@ export async function syncPhotographerPublicDirectory(
         twitter: ph.twitter ?? null,
         facebook: ph.facebook ?? null,
         portfolioLinks: ph.portfolioUrl ?? null,
-        photographyFocus: ph.photographyFocus ?? ph.style ?? null,
+        photographyFocus:
+          focusSummary || ph.photographyFocus || ph.style || null,
+        photographyFocuses: focuses.length > 0 ? focuses : null,
+        eventPricing: eventPricing.length > 0 ? eventPricing : null,
+        pricingNotes: pricingNotes || null,
+        startingPrice: rate,
         serviceArea: ph.serviceArea ?? null,
         openToOtherAreas: ph.openToOtherAreas === true,
         phone: ph.phone ?? null,

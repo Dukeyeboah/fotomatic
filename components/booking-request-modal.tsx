@@ -9,6 +9,13 @@ import {
 } from '@/lib/booking-request';
 import type { DirectoryPhotographer } from '@/lib/photographers-directory';
 import { createBookingThread } from '@/lib/firebase/booking-threads';
+import {
+  formatDirectoryStartingPrice,
+  formatStartingPriceLabel,
+  focusLabelForBookingEventType,
+  notesForPhotographyFocus,
+  priceForBookingEventType,
+} from '@/lib/photographer-pricing';
 import { CalendarDays, CheckCircle2, Loader2, X } from 'lucide-react';
 
 function getPhotographerName(p: DirectoryPhotographer): string {
@@ -29,7 +36,7 @@ function formatLocation(p: DirectoryPhotographer): string {
 }
 
 function formatStartingRate(p: DirectoryPhotographer): string {
-  return `From $${p.startingHourlyRate}/hr`;
+  return formatDirectoryStartingPrice(p);
 }
 
 type Props = {
@@ -97,6 +104,13 @@ export function BookingRequestModal({
 
   if (!photographer) return null;
 
+  const eventPrice = priceForBookingEventType(photographer, eventType);
+  const eventFocusLabel = focusLabelForBookingEventType(eventType);
+  const eventPriceNotes =
+    eventFocusLabel != null
+      ? notesForPhotographyFocus(photographer, eventFocusLabel)
+      : null;
+
   const userName =
     userData?.displayName ?? user.displayName ?? user.email ?? 'Unknown';
   const userEmail = userData?.email ?? user.email ?? '';
@@ -125,7 +139,10 @@ export function BookingRequestModal({
       clientEmail: userEmail,
       photographerDirectoryId: photographer.id,
       photographerName: getPhotographerName(photographer),
-      photographerStartingHourlyRate: photographer.startingHourlyRate,
+      photographerStartingHourlyRate: priceForBookingEventType(
+        photographer,
+        eventType.trim(),
+      ),
       eventType: eventType.trim(),
       eventDate,
       eventTimeframe: eventTimeframe.trim(),
@@ -275,6 +292,19 @@ export function BookingRequestModal({
                 </option>
               ))}
             </select>
+            <p className="text-xs text-zinc-600">
+              Starting price for this event:{' '}
+              <span className="font-semibold text-zinc-900">
+                {formatStartingPriceLabel(eventPrice)}
+              </span>
+              . Final quotes may include add-ons (outfit or location changes,
+              group size, etc.).
+            </p>
+            {eventPriceNotes ? (
+              <p className="whitespace-pre-wrap text-xs text-zinc-500">
+                {eventPriceNotes}
+              </p>
+            ) : null}
           </label>
 
           <label className="block space-y-1">
