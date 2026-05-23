@@ -8,7 +8,7 @@ import {
   type DirectoryPhotographer,
 } from '@/lib/photographers-directory';
 import { publicPhotographerProfilePath } from '@/lib/public-profile-url';
-import { directoryListingFallbackImageUrl, isDirectoryListingFallbackUrl } from '@/lib/fotomatic-marketing-images';
+import { DirectoryListingPlaceholderImage } from '@/components/directory-listing-placeholder-image';
 import { formatDirectoryStartingPrice } from '@/lib/photographer-pricing';
 import { StarRow } from '@/components/photographer-reviews-panel';
 
@@ -29,11 +29,11 @@ function formatLocation(p: DirectoryPhotographer): string {
   return 'Location TBD';
 }
 
-function cardImage(p: DirectoryPhotographer): string {
+function cardImage(p: DirectoryPhotographer): string | null {
   const u = directoryPhotographerHeroImageUrl(p);
   if (u && /^https?:\/\//i.test(u)) return u;
   if (u && u.startsWith('/')) return u;
-  return directoryListingFallbackImageUrl();
+  return null;
 }
 
 const TAGS = ['Graduation', 'Portraits', 'Events', 'Weddings'] as const;
@@ -57,8 +57,7 @@ export function DashboardPhotographerCard({
 }) {
   const tag = TAGS[photographer.id.length % TAGS.length]!;
   const imgSrc = cardImage(photographer);
-  const remoteImg = /^https?:\/\//i.test(imgSrc);
-  const heroIsLogoFallback = isDirectoryListingFallbackUrl(imgSrc);
+  const remoteImg = imgSrc != null && /^https?:\/\//i.test(imgSrc);
   return (
     <div
       className={[
@@ -81,24 +80,26 @@ export function DashboardPhotographerCard({
       tabIndex={onOpenDetail ? 0 : undefined}
     >
       <div className="relative aspect-[4/3] w-full bg-zinc-100">
-        {remoteImg ? (
+        {!imgSrc ? (
+          <DirectoryListingPlaceholderImage
+            alt=""
+            fill
+            className="object-contain bg-white p-8"
+            sizes="260px"
+          />
+        ) : remoteImg ? (
           // eslint-disable-next-line @next/next/no-img-element -- remote profile URLs
           <img
             src={imgSrc}
             alt=""
-            className={[
-              'absolute inset-0 h-full w-full',
-              heroIsLogoFallback
-                ? 'object-contain bg-white p-8'
-                : 'object-cover',
-            ].join(' ')}
+            className="absolute inset-0 h-full w-full object-cover"
           />
         ) : (
           <Image
             src={imgSrc}
             alt=""
             fill
-            className={heroIsLogoFallback ? 'object-contain bg-white p-8' : 'object-cover'}
+            className="object-cover"
             sizes="260px"
           />
         )}

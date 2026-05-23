@@ -1,12 +1,11 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
 import { AccountMenuDropdown } from '@/components/account-menu-dropdown';
 import { NotificationBell } from '@/components/notification-bell';
-import { marketingImagePublicUrl } from '@/lib/fotomatic-marketing-images';
+import { MarketingImage } from '@/components/marketing-image';
 import { usePathname } from 'next/navigation';
 
 export function SiteHeader() {
@@ -39,18 +38,20 @@ export function SiteHeader() {
           className="flex items-center gap-2 sm:gap-3"
           aria-label="Fotomatic home"
         >
-          <Image
-            src={marketingImagePublicUrl('fotomaticLogo.png')}
+          <MarketingImage
+            file="fotomaticLogo.png"
             alt=""
             width={40}
             height={40}
+            priority
             className="h-9 w-9 object-contain"
           />
-          <Image
-            src={marketingImagePublicUrl('fotomatic.jpg')}
+          <MarketingImage
+            file="fotomatic.jpg"
             alt="Fotomatic"
             width={160}
             height={40}
+            priority
             className="h-7 w-auto max-w-[150px] object-contain object-left sm:max-w-[180px]"
           />
         </Link>

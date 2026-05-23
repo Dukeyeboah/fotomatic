@@ -1,8 +1,8 @@
 'use client';
 
 import Image from 'next/image';
+import { MarketingImage } from '@/components/marketing-image';
 import Link from 'next/link';
-import { marketingImagePublicUrl } from '@/lib/fotomatic-marketing-images';
 import { usePathname } from 'next/navigation';
 import {
   Bell,
@@ -78,15 +78,15 @@ export function DashboardSidebar({
               className="flex min-w-0 items-center gap-2"
               onClick={onNavigate}
             >
-              <Image
-                src={marketingImagePublicUrl('fotomaticLogo.png')}
+              <MarketingImage
+                file="fotomaticLogo.png"
                 alt=""
                 width={36}
                 height={36}
                 className="h-8 w-8 shrink-0 object-contain"
               />
-              <Image
-                src={marketingImagePublicUrl('fotomatic.jpg')}
+              <MarketingImage
+                file="fotomatic.jpg"
                 alt="Fotomatic"
                 width={120}
                 height={32}
@@ -99,8 +99,8 @@ export function DashboardSidebar({
               className="mx-auto flex justify-center"
               onClick={onNavigate}
             >
-              <Image
-                src={marketingImagePublicUrl('fotomaticLogo.png')}
+              <MarketingImage
+                file="fotomaticLogo.png"
                 alt="Home"
                 width={36}
                 height={36}
@@ -196,8 +196,8 @@ export function DashboardSidebar({
           <>
             <div className="mx-3 mb-3 overflow-hidden rounded-2xl border border-amber-200/70 bg-gradient-to-br from-amber-50/95 to-white shadow-sm ring-1 ring-amber-900/10">
               <div className="relative aspect-[16/9] w-full overflow-hidden">
-                <Image
-                  src={marketingImagePublicUrl('photographer1.jpeg')}
+                <MarketingImage
+                  file="photographer1.jpeg"
                   alt=""
                   fill
                   className="object-cover object-top"
@@ -226,8 +226,8 @@ export function DashboardSidebar({
             </div>
             <div className="mx-3 mb-3 overflow-hidden rounded-2xl bg-white p-3 shadow-sm ring-1 ring-zinc-900/5">
               <div className="relative mb-3 aspect-[16/10] overflow-hidden rounded-xl bg-zinc-100">
-                <Image
-                  src={marketingImagePublicUrl('fotomatic0.jpg')}
+                <MarketingImage
+                  file="fotomatic0.jpg"
                   alt=""
                   fill
                   className="object-cover"

@@ -15,7 +15,8 @@ import { ProfileShareDropdown } from '@/components/photographer/profile-share-dr
 import { ExternalLink, Heart, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { PhotographerReviewsPanel } from '@/components/photographer-reviews-panel';
-import { directoryListingFallbackImageUrl, isDirectoryListingFallbackUrl } from '@/lib/fotomatic-marketing-images';
+import { isDirectoryListingFallbackUrl } from '@/lib/fotomatic-marketing-images';
+import { DirectoryListingPlaceholderImage } from '@/components/directory-listing-placeholder-image';
 import { formatDirectoryStartingPrice } from '@/lib/photographer-pricing';
 import { PhotographerFocusPricingDisplay } from '@/components/photographer-focus-pricing-display';
 
@@ -36,14 +37,14 @@ function formatLocation(p: DirectoryPhotographer): string {
   return 'Location coming soon';
 }
 
-function heroSrc(p: DirectoryPhotographer): string {
+function heroSrc(p: DirectoryPhotographer): string | null {
   const u = directoryPhotographerHeroImageUrl(p);
   if (u && /^https?:\/\//i.test(u)) return u;
   if (u && u.startsWith('/')) return u;
-  return directoryListingFallbackImageUrl();
+  return null;
 }
 
-function modalBannerSrc(p: DirectoryPhotographer): string {
+function modalBannerSrc(p: DirectoryPhotographer): string | null {
   const b = p.bannerImageUrl?.trim();
   if (b && /^https?:\/\//i.test(b)) return b;
   if (b && b.startsWith('/')) return b;
@@ -86,8 +87,10 @@ export function PhotographerPublicDetailModal({
 
   const p = photographer;
   const img = modalBannerSrc(p);
-  const remote = /^https?:\/\//i.test(img);
-  const heroIsLogoFallback = isDirectoryListingFallbackUrl(img);
+  const useLogoPlaceholder =
+    img == null || (img != null && isDirectoryListingFallbackUrl(img));
+  const remote = img != null && /^https?:\/\//i.test(img);
+  const heroIsLogoFallback = useLogoPlaceholder;
   const gallery = (p.galleryImageUrls ?? [])
     .filter(Boolean)
     .slice(0, DIRECTORY_GALLERY_MAX);
@@ -112,28 +115,27 @@ export function PhotographerPublicDetailModal({
       >
         <div className="relative shrink-0 overflow-hidden rounded-t-2xl border-b border-zinc-100 sm:rounded-t-2xl">
           <div className="relative aspect-[16/9] w-full bg-zinc-100 sm:aspect-[21/9]">
-            {remote ? (
+            {heroIsLogoFallback ? (
+              <DirectoryListingPlaceholderImage
+                alt=""
+                fill
+                className="object-contain bg-white p-10 sm:p-14"
+                sizes="(max-width: 768px) 100vw, 672px"
+                priority
+              />
+            ) : remote ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={img}
+                src={img!}
                 alt=""
-                className={[
-                  'absolute inset-0 h-full w-full',
-                  heroIsLogoFallback
-                    ? 'object-contain bg-white p-10 sm:p-14'
-                    : 'object-cover object-top',
-                ].join(' ')}
+                className="absolute inset-0 h-full w-full object-cover object-top"
               />
             ) : (
               <Image
-                src={img.startsWith('/') ? img : `/${img}`}
+                src={img!.startsWith('/') ? img! : `/${img!}`}
                 alt=""
                 fill
-                className={
-                  heroIsLogoFallback
-                    ? 'object-contain bg-white p-10 sm:p-14'
-                    : 'object-cover object-top'
-                }
+                className="object-cover object-top"
                 sizes="(max-width: 768px) 100vw, 672px"
                 priority
               />

@@ -24,7 +24,7 @@ import { InfoStrip } from '@/components/dashboard/info-strip';
 import { useDashboardApplyAsPhotographer } from '@/components/dashboard/dashboard-apply-photographer-context';
 import { isOwnDirectoryPhotographerListing } from '@/lib/directory-photographer-self';
 import { usePhotographerDirectoryReviewStats } from '@/lib/hooks/use-directory-review-stats';
-import { marketingImagePublicUrl } from '@/lib/fotomatic-marketing-images';
+import { MarketingImage } from '@/components/marketing-image';
 import {
   Briefcase,
   CalendarClock,
@@ -289,8 +289,8 @@ export function DashboardHome() {
 
           {/* Left image */}
           <div className="relative hidden w-52 shrink-0 overflow-hidden rounded-l-3xl lg:block">
-            <Image
-              src={marketingImagePublicUrl('photographer1.jpeg')}
+            <MarketingImage
+              file="photographer1.jpeg"
               alt=""
               fill
               className="object-cover"
@@ -361,8 +361,8 @@ export function DashboardHome() {
 
           {/* Right image */}
           <div className="relative hidden w-52 shrink-0 overflow-hidden rounded-r-3xl lg:block">
-            <Image
-              src={marketingImagePublicUrl('photographer2.jpeg')}
+            <MarketingImage
+              file="photographer2.jpeg"
               alt=""
               fill
               className="object-cover object-top"
@@ -374,8 +374,8 @@ export function DashboardHome() {
         {/* Mobile: show both images below content in a 2-col strip */}
         <div className="grid grid-cols-2 lg:hidden">
           <div className="relative aspect-[4/3] overflow-hidden rounded-bl-3xl">
-            <Image
-              src={marketingImagePublicUrl('photographer1.jpeg')}
+            <MarketingImage
+              file="photographer1.jpeg"
               alt=""
               fill
               className="object-cover"
@@ -383,8 +383,8 @@ export function DashboardHome() {
             />
           </div>
           <div className="relative aspect-[4/3] overflow-hidden rounded-br-3xl">
-            <Image
-              src={marketingImagePublicUrl('photographer2.jpeg')}
+            <MarketingImage
+              file="photographer2.jpeg"
               alt=""
               fill
               className="object-cover object-top"

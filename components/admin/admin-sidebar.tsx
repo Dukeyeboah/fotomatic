@@ -1,8 +1,7 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
-import { marketingImagePublicUrl } from '@/lib/fotomatic-marketing-images';
+import { MarketingImage } from '@/components/marketing-image';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -122,15 +121,15 @@ export function AdminSidebar({
             className="flex min-w-0 flex-1 items-center gap-2"
             onClick={onNavigate}
           >
-            <Image
-              src={marketingImagePublicUrl('fotomaticLogo.png')}
+            <MarketingImage
+              file="fotomaticLogo.png"
               alt=""
               width={36}
               height={36}
               className="h-9 w-9 shrink-0 object-contain brightness-0 invert"
             />
-            <Image
-              src={marketingImagePublicUrl('fotomatic.jpg')}
+            <MarketingImage
+              file="fotomatic.jpg"
               alt="Fotomatic"
               width={110}
               height={28}
@@ -144,8 +143,8 @@ export function AdminSidebar({
             onClick={onNavigate}
             title="Admin home"
           >
-            <Image
-              src={marketingImagePublicUrl('fotomaticLogo.png')}
+            <MarketingImage
+              file="fotomaticLogo.png"
               alt="Admin"
               width={36}
               height={36}

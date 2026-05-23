@@ -1,7 +1,7 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
+import { MarketingImage } from '@/components/marketing-image';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
 import { AccountMenuDropdown } from '@/components/account-menu-dropdown';
@@ -21,7 +21,6 @@ import {
   Link2,
 } from 'lucide-react';
 import { useCallback, useState } from 'react';
-import { marketingImagePublicUrl } from '@/lib/fotomatic-marketing-images';
 
 function scrollToId(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -39,18 +38,20 @@ function LandingNav() {
           className='flex items-center gap-2 sm:gap-3'
           aria-label='Fotomatic home'
         >
-          <Image
-            src={marketingImagePublicUrl('fotomaticLogo.png')}
+          <MarketingImage
+            file='fotomaticLogo.png'
             alt=''
             width={40}
             height={40}
+            priority
             className='h-9 w-9 object-contain'
           />
-          <Image
-            src={marketingImagePublicUrl('fotomatic.jpg')}
+          <MarketingImage
+            file='fotomatic.jpg'
             alt='Fotomatic'
             width={160}
             height={40}
+            priority
             className='h-7 w-auto max-w-[150px] object-contain object-left sm:max-w-[180px]'
           />
         </Link>
@@ -182,10 +183,11 @@ export function LandingPage() {
           </div>
           <div className='relative aspect-[4/3] w-full lg:aspect-[5/4]'>
             <div className='absolute inset-0 overflow-hidden rounded-3xl shadow-xl shadow-zinc-900/10 ring-1 ring-zinc-900/5'>
-              <Image
-                src={marketingImagePublicUrl('fotomatic0.jpg')}
+              <MarketingImage
+                file='fotomatic0.jpg'
                 alt=''
                 fill
+                sizes='(max-width: 1024px) 100vw, 50vw'
                 className='object-cover'
                 priority
               />
@@ -366,10 +368,11 @@ export function LandingPage() {
                   key={img}
                   className='relative aspect-[4/3] overflow-hidden rounded-2xl shadow-md ring-1 ring-zinc-900/5'
                 >
-                  <Image
-                    src={marketingImagePublicUrl(img)}
+                  <MarketingImage
+                    file={img}
                     alt=''
                     fill
+                    sizes='(max-width: 768px) 50vw, 25vw'
                     className='object-cover'
                   />
                 </div>
@@ -438,15 +441,15 @@ export function LandingPage() {
           <div className='grid gap-8 md:grid-cols-2 lg:grid-cols-12 lg:gap-8'>
             <div className='lg:col-span-5'>
               <div className='flex items-center gap-2 sm:gap-3'>
-                <Image
-                  src={marketingImagePublicUrl('fotomaticLogo.png')}
+                <MarketingImage
+                  file='fotomaticLogo.png'
                   alt=''
                   width={36}
                   height={36}
                   className='h-8 w-8 object-contain'
                 />
-                <Image
-                  src={marketingImagePublicUrl('fotomatic.jpg')}
+                <MarketingImage
+                  file='fotomatic.jpg'
                   alt='Fotomatic'
                   width={140}
                   height={36}

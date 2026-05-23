@@ -19,7 +19,7 @@ import { publicPhotographerProfilePath } from '@/lib/public-profile-url';
 import { isOwnDirectoryPhotographerListing } from '@/lib/directory-photographer-self';
 import { usePhotographerDirectoryReviewStats } from '@/lib/hooks/use-directory-review-stats';
 import { StarRow } from '@/components/photographer-reviews-panel';
-import { directoryListingFallbackImageUrl } from '@/lib/fotomatic-marketing-images';
+import { DirectoryListingPlaceholderImage } from '@/components/directory-listing-placeholder-image';
 import { formatDirectoryStartingPrice } from '@/lib/photographer-pricing';
 
 function getPhotographerName(p: DirectoryPhotographer): string {
@@ -205,8 +205,7 @@ export function PhotographersGrid({
                       />
                     )
                   ) : (
-                    <Image
-                      src={directoryListingFallbackImageUrl()}
+                    <DirectoryListingPlaceholderImage
                       alt=""
                       fill
                       className="object-contain bg-white p-10 transition-transform duration-300 ease-out group-hover:scale-[1.02]"

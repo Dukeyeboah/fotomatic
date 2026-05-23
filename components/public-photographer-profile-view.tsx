@@ -29,10 +29,8 @@ import { Loader2, MapPin, X } from 'lucide-react';
 import { PhotographerReviewsPanel } from '@/components/photographer-reviews-panel';
 import { PhotographerFocusPricingDisplay } from '@/components/photographer-focus-pricing-display';
 import { formatDirectoryStartingPrice } from '@/lib/photographer-pricing';
-import {
-  directoryListingFallbackImageUrl,
-  isDirectoryListingFallbackUrl,
-} from '@/lib/fotomatic-marketing-images';
+import { isDirectoryListingFallbackUrl } from '@/lib/fotomatic-marketing-images';
+import { DirectoryListingPlaceholderImage } from '@/components/directory-listing-placeholder-image';
 
 function displayName(p: DirectoryPhotographer): string {
   if (p.lastName) return `${p.firstName} ${p.lastName}`.trim();
@@ -176,16 +174,17 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
 
   const hero = directoryPhotographerHeroImageUrl(p);
   const photo = p.photoUrl?.trim() || '';
-  const banner =
-    p.bannerImageUrl?.trim() ||
-    hero ||
-    directoryListingFallbackImageUrl();
-  const bannerRemote = /^https?:\/\//i.test(banner);
-  const bannerIsLogoFallback = isDirectoryListingFallbackUrl(banner);
-  const avatar =
-    photo || hero || directoryListingFallbackImageUrl();
-  const avatarRemote = /^https?:\/\//i.test(avatar);
-  const avatarIsLogoFallback = isDirectoryListingFallbackUrl(avatar);
+  const bannerRaw =
+    p.bannerImageUrl?.trim() || hero || '';
+  const bannerIsLogoFallback =
+    !bannerRaw || isDirectoryListingFallbackUrl(bannerRaw);
+  const banner = bannerIsLogoFallback ? null : bannerRaw;
+  const bannerRemote = banner != null && /^https?:\/\//i.test(banner);
+  const avatarRaw = photo || hero || '';
+  const avatarIsLogoFallback =
+    !avatarRaw || isDirectoryListingFallbackUrl(avatarRaw);
+  const avatar = avatarIsLogoFallback ? null : avatarRaw;
+  const avatarRemote = avatar != null && /^https?:\/\//i.test(avatar);
   const loc = formatLocation(p);
   const gallery = (p.galleryImageUrls ?? [])
     .filter(Boolean)
@@ -217,27 +216,27 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
     <div className="pb-16">
       <div className="relative h-[min(52vw,320px)] w-full bg-zinc-900 sm:h-80">
         <div className="absolute inset-0 overflow-hidden">
-          {bannerRemote ? (
+          {bannerIsLogoFallback ? (
+            <DirectoryListingPlaceholderImage
+              alt=""
+              fill
+              className="object-contain bg-white p-12 sm:p-16"
+              priority
+              sizes="100vw"
+            />
+          ) : bannerRemote ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={banner}
+              src={banner!}
               alt=""
-              className={
-                bannerIsLogoFallback
-                  ? 'h-full w-full object-contain bg-white p-12 sm:p-16'
-                  : 'h-full w-full object-cover object-center'
-              }
+              className="h-full w-full object-cover object-center"
             />
           ) : (
             <Image
-              src={banner.startsWith('/') ? banner : `/${banner}`}
+              src={banner!.startsWith('/') ? banner! : `/${banner!}`}
               alt=""
               fill
-              className={
-                bannerIsLogoFallback
-                  ? 'object-contain bg-white p-12 sm:p-16'
-                  : 'object-cover object-center'
-              }
+              className="object-cover object-center"
               priority
               sizes="100vw"
             />
@@ -250,27 +249,26 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
       <div className="relative mx-auto max-w-3xl px-4 sm:px-6">
         <div className="-mt-16 flex flex-col items-center sm:-mt-20 sm:flex-row sm:items-start sm:gap-8">
           <div className="relative h-32 w-32 shrink-0 overflow-hidden rounded-full border-4 border-white bg-zinc-100 shadow-xl ring-2 ring-zinc-200/80 sm:h-40 sm:w-40">
-            {avatarRemote ? (
+            {avatarIsLogoFallback ? (
+              <DirectoryListingPlaceholderImage
+                alt=""
+                fill
+                className="object-contain bg-white p-4"
+                sizes="160px"
+              />
+            ) : avatarRemote ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={avatar}
+                src={avatar!}
                 alt=""
-                className={
-                  avatarIsLogoFallback
-                    ? 'h-full w-full object-contain bg-white p-4'
-                    : 'h-full w-full object-cover'
-                }
+                className="h-full w-full object-cover"
               />
             ) : (
               <Image
-                src={avatar.startsWith('/') ? avatar : `/${avatar}`}
+                src={avatar!.startsWith('/') ? avatar! : `/${avatar!}`}
                 alt=""
                 fill
-                className={
-                  avatarIsLogoFallback
-                    ? 'object-contain bg-white p-4'
-                    : 'object-cover'
-                }
+                className="object-cover"
                 sizes="160px"
               />
             )}
