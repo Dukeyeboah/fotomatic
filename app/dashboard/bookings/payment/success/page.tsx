@@ -16,10 +16,12 @@ export default function BookingPaymentSuccessPage() {
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (loading || !user || !sessionId || status !== 'idle') return;
+    if (loading || !user || !sessionId) return;
+
     let cancelled = false;
+    setStatus('verifying');
+
     (async () => {
-      setStatus('verifying');
       try {
         const token = await user.getIdToken();
         const res = await fetch('/api/stripe/verify-session', {
@@ -30,17 +32,32 @@ export default function BookingPaymentSuccessPage() {
           },
           body: JSON.stringify({ sessionId }),
         });
-        const data = (await res.json()) as {
+
+        let data: {
           ok?: boolean;
           error?: string;
           paymentStatus?: string;
-        };
+        } = {};
+        try {
+          data = (await res.json()) as typeof data;
+        } catch {
+          if (!cancelled) {
+            setStatus('err');
+            setMessage(
+              `Could not confirm payment (HTTP ${res.status}). Your card may still have been charged — check bookings or Stripe email.`,
+            );
+          }
+          return;
+        }
+
         if (cancelled) return;
+
         if (!res.ok) {
           setStatus('err');
           setMessage(data.error ?? 'Could not confirm payment.');
           return;
         }
+
         if (data.paymentStatus === 'paid' || data.ok) {
           setStatus('ok');
         } else {
@@ -50,18 +67,25 @@ export default function BookingPaymentSuccessPage() {
       } catch {
         if (!cancelled) {
           setStatus('err');
-          setMessage('Could not verify payment. Your card may still have been charged — check email from Stripe.');
+          setMessage(
+            'Could not verify payment. Your card may still have been charged — check email from Stripe.',
+          );
         }
       }
     })();
+
     return () => {
       cancelled = true;
     };
-  }, [loading, user, sessionId, status]);
+  }, [loading, user, sessionId]);
+
+  const showSpinner =
+    Boolean(sessionId) &&
+    (status === 'idle' || status === 'verifying' || loading);
 
   return (
     <div className="mx-auto max-w-lg px-4 py-16 text-center">
-      {status === 'verifying' || (loading && sessionId) ? (
+      {showSpinner ? (
         <>
           <Loader2 className="mx-auto h-10 w-10 animate-spin text-zinc-400" />
           <p className="mt-4 text-sm text-zinc-600">Confirming your payment…</p>
