@@ -32,9 +32,17 @@ function parseServiceAccountJson(raw: string): ServiceAccount {
 
 function initAdminApp(): App {
   const existing = getApps()[0];
-  if (existing) return existing;
+  if (existing) {
+    console.log('[firebase-admin] reusing existing app');
+    return existing;
+  }
 
   const json = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
+  console.log('[firebase-admin] init', {
+    hasJson: Boolean(json),
+    length: json?.length ?? 0,
+    startsWithBrace: json?.startsWith('{') ?? false,
+  });
   if (!json || json.includes('"type":"service_account"...')) {
     throw new Error(
       'FIREBASE_SERVICE_ACCOUNT_JSON is not set. Required for Stripe webhooks and secure checkout.',
@@ -43,13 +51,31 @@ function initAdminApp(): App {
 
   try {
     const serviceAccount = parseServiceAccountJson(json);
-    return initializeApp({
-      credential: cert(serviceAccount),
-      projectId:
-        typeof serviceAccount.projectId === 'string'
-          ? serviceAccount.projectId
-          : (serviceAccount as { project_id?: string }).project_id,
+    const projectId =
+      typeof serviceAccount.projectId === 'string'
+        ? serviceAccount.projectId
+        : (serviceAccount as { project_id?: string }).project_id;
+    console.log('[firebase-admin] parsed SA', {
+      projectId: projectId ?? null,
+      hasClientEmail: Boolean(
+        (serviceAccount as { clientEmail?: string; client_email?: string })
+          .clientEmail ||
+          (serviceAccount as { client_email?: string }).client_email,
+      ),
+      privateKeyLen:
+        (
+          (serviceAccount as { privateKey?: string; private_key?: string })
+            .privateKey ||
+          (serviceAccount as { private_key?: string }).private_key ||
+          ''
+        ).length,
     });
+    const app = initializeApp({
+      credential: cert(serviceAccount),
+      projectId,
+    });
+    console.log('[firebase-admin] init ok');
+    return app;
   } catch (e) {
     const detail = e instanceof Error ? e.message : 'unknown error';
     console.error('[firebase-admin] init failed:', detail);

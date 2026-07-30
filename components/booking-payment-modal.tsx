@@ -44,9 +44,15 @@ export function BookingPaymentModal({ thread, user, open, onClose }: Props) {
           discountCode: discountCode.trim() || undefined,
         }),
       });
-      let data: { url?: string; error?: string } = {};
+      let data: { url?: string; error?: string; step?: string; hint?: string } =
+        {};
       try {
-        data = (await res.json()) as { url?: string; error?: string };
+        data = (await res.json()) as {
+          url?: string;
+          error?: string;
+          step?: string;
+          hint?: string;
+        };
       } catch {
         setError(
           `Checkout failed (HTTP ${res.status}). Check Stripe and Firebase Admin env vars on the server.`,
@@ -55,10 +61,13 @@ export function BookingPaymentModal({ thread, user, open, onClose }: Props) {
         return;
       }
       if (!res.ok || !data.url) {
-        setError(
+        const parts = [
           data.error ||
-            `Could not start checkout (HTTP ${res.status}). Check Stripe configuration and try again.`,
-        );
+            `Could not start checkout (HTTP ${res.status}).`,
+          data.step ? `Step: ${data.step}` : null,
+          data.hint ?? null,
+        ].filter(Boolean);
+        setError(parts.join(' — '));
         setLoading(false);
         return;
       }

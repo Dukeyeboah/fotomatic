@@ -20,6 +20,21 @@ export function stripeSecretKey(): string {
   if (!key) {
     throw new Error('STRIPE_SECRET_KEY is not configured.');
   }
+  if (key.startsWith('pk_')) {
+    throw new Error(
+      'STRIPE_SECRET_KEY is a publishable key (pk_…). Use the secret key (sk_live_… / sk_test_…).',
+    );
+  }
+  if (key.startsWith('mk_')) {
+    throw new Error(
+      'STRIPE_SECRET_KEY looks like an API key ID (mk_…). Paste the full secret key (sk_live_…).',
+    );
+  }
+  if (!key.startsWith('sk_')) {
+    throw new Error(
+      'STRIPE_SECRET_KEY must start with sk_live_ or sk_test_.',
+    );
+  }
   return key;
 }
 
