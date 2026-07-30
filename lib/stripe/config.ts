@@ -36,10 +36,21 @@ export function appBaseUrl(): string {
     process.env.NEXT_PUBLIC_APP_URL?.trim() ||
     process.env.VERCEL_URL?.trim();
   if (fromEnv) {
-    const withProto = fromEnv.startsWith('http')
+    let withProto = fromEnv.startsWith('http')
       ? fromEnv
       : `https://${fromEnv}`;
-    return withProto.replace(/\/$/, '');
+    withProto = withProto.replace(/\/$/, '');
+    // Apex → www (Vercel 307 redirects fotomatic.app → www.fotomatic.app)
+    try {
+      const u = new URL(withProto);
+      if (u.hostname === 'fotomatic.app') {
+        u.hostname = 'www.fotomatic.app';
+        return u.origin;
+      }
+    } catch {
+      /* keep as-is */
+    }
+    return withProto;
   }
   return 'http://localhost:3000';
 }
