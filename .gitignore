@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local secret helper (do not commit)
+.firebase-sa-oneline.txt
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json

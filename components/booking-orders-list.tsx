@@ -9,6 +9,7 @@ import {
   type BookingThread,
 } from '@/lib/firebase/booking-threads';
 import { bookingStatusBadge } from '@/lib/booking-status-display';
+import { BookingPaymentModal } from '@/components/booking-payment-modal';
 import { Loader2 } from 'lucide-react';
 
 export function BookingOrdersList({
@@ -28,6 +29,7 @@ export function BookingOrdersList({
   const { user, loading } = useAuth();
   const { openLoginModal } = useLoginModal();
   const [threads, setThreads] = useState<BookingThread[]>([]);
+  const [payThread, setPayThread] = useState<BookingThread | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -132,11 +134,7 @@ export function BookingOrdersList({
                   <button
                     type="button"
                     className="rounded-full border border-amber-200/80 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-950 hover:bg-amber-100"
-                    onClick={() => {
-                      alert(
-                        'Confirm & Pay is coming next (Stripe). Your booking is accepted and awaiting payment.',
-                      );
-                    }}
+                    onClick={() => setPayThread(t)}
                   >
                     Confirm & Pay
                   </button>
@@ -147,6 +145,15 @@ export function BookingOrdersList({
           })}
         </div>
       )}
+
+      {payThread && user ? (
+        <BookingPaymentModal
+          thread={payThread}
+          user={user}
+          open={Boolean(payThread)}
+          onClose={() => setPayThread(null)}
+        />
+      ) : null}
     </div>
   );
 }

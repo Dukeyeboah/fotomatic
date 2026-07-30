@@ -1,4 +1,5 @@
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { prepareImageForUpload } from '@/lib/prepare-image-upload';
 import { storage } from './config';
 
 function safeImageExt(file: File): string {
@@ -6,21 +7,38 @@ function safeImageExt(file: File): string {
   return ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext) ? ext : 'jpg';
 }
 
+async function putPreparedImage(
+  path: string,
+  prepared: File,
+): Promise<string | null> {
+  try {
+    const storageRef = ref(storage, path);
+    const contentType = prepared.type?.startsWith('image/')
+      ? prepared.type
+      : 'image/jpeg';
+    await uploadBytes(storageRef, prepared, { contentType });
+    return await getDownloadURL(storageRef);
+  } catch (e) {
+    console.error('putPreparedImage', path, e);
+    return null;
+  }
+}
+
 export async function uploadPhotographerMedia(
   uid: string,
   kind: 'banner' | 'profile',
   file: File,
 ): Promise<string | null> {
-  try {
-    const safeExt = safeImageExt(file);
-    const path = `photographer-media/${uid}/${kind}-${Date.now()}.${safeExt}`;
-    const storageRef = ref(storage, path);
-    await uploadBytes(storageRef, file, { contentType: file.type || undefined });
-    return await getDownloadURL(storageRef);
-  } catch (e) {
-    console.error('uploadPhotographerMedia', e);
-    return null;
+  const prepared = await prepareImageForUpload(file);
+  const safeExt = safeImageExt(prepared);
+  const path = `photographer-media/${uid}/${kind}-${Date.now()}.${safeExt}`;
+  const url = await putPreparedImage(path, prepared);
+  if (!url) {
+    throw new Error(
+      'Upload failed. Check your connection and Storage rules, then try again.',
+    );
   }
+  return url;
 }
 
 /** Public portfolio images; max count enforced in UI and Firestore rules. */
@@ -28,16 +46,16 @@ export async function uploadPhotographerGalleryImage(
   uid: string,
   file: File,
 ): Promise<string | null> {
-  try {
-    const safeExt = safeImageExt(file);
-    const path = `photographer-media/${uid}/gallery-${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${safeExt}`;
-    const storageRef = ref(storage, path);
-    await uploadBytes(storageRef, file, { contentType: file.type || undefined });
-    return await getDownloadURL(storageRef);
-  } catch (e) {
-    console.error('uploadPhotographerGalleryImage', e);
-    return null;
+  const prepared = await prepareImageForUpload(file);
+  const safeExt = safeImageExt(prepared);
+  const path = `photographer-media/${uid}/gallery-${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${safeExt}`;
+  const url = await putPreparedImage(path, prepared);
+  if (!url) {
+    throw new Error(
+      'Upload failed. Check your connection and Storage rules, then try again.',
+    );
   }
+  return url;
 }
 
 /** Account avatar for clients/admins; same storage path rules as photographer profile uploads. */

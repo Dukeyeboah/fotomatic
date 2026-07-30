@@ -14,6 +14,7 @@ import {
   type BookingThread,
   type BookingThreadMessage,
 } from '@/lib/firebase/booking-threads';
+import { BookingPaymentModal } from '@/components/booking-payment-modal';
 import { Loader2 } from 'lucide-react';
 
 export function BookingMessagesView({
@@ -272,37 +273,13 @@ export function BookingMessagesView({
         </div>
       )}
 
-      {payModalOpen ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-4 backdrop-blur-[2px]"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="pay-modal-title"
-          onClick={() => setPayModalOpen(false)}
-        >
-          <div
-            className="max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2
-              id="pay-modal-title"
-              className="font-serif text-lg font-medium text-zinc-900"
-            >
-              Payment coming soon
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed text-zinc-600">
-              Confirm & Pay is coming next (Stripe). Your booking is accepted
-              and awaiting payment.
-            </p>
-            <button
-              type="button"
-              className="mt-6 w-full rounded-xl bg-zinc-900 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800"
-              onClick={() => setPayModalOpen(false)}
-            >
-              OK
-            </button>
-          </div>
-        </div>
+      {payModalOpen && activeThread && user ? (
+        <BookingPaymentModal
+          thread={activeThread}
+          user={user}
+          open={payModalOpen}
+          onClose={() => setPayModalOpen(false)}
+        />
       ) : null}
     </div>
   );

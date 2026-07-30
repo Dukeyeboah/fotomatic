@@ -32,10 +32,10 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-zinc-200/80 bg-white/90 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:h-16 sm:px-6 lg:px-8">
         <Link
           href={logoHref}
-          className="flex items-center gap-2 sm:gap-3"
+          className="flex min-w-0 shrink items-center gap-1.5 sm:gap-3"
           aria-label="Fotomatic home"
         >
           <MarketingImage
@@ -44,7 +44,7 @@ export function SiteHeader() {
             width={40}
             height={40}
             priority
-            className="h-9 w-9 object-contain"
+            className="h-7 w-7 shrink-0 object-contain sm:h-9 sm:w-9"
           />
           <MarketingImage
             file="fotomatic.jpg"
@@ -52,19 +52,19 @@ export function SiteHeader() {
             width={160}
             height={40}
             priority
-            className="h-7 w-auto max-w-[150px] object-contain object-left sm:max-w-[180px]"
+            className="h-5 w-auto max-w-[108px] object-contain object-left sm:h-7 sm:max-w-[180px]"
           />
         </Link>
-        <nav className="flex items-center gap-3 sm:gap-4 text-sm font-medium text-zinc-700">
+        <nav className="flex shrink-0 items-center gap-2 text-sm font-medium text-zinc-700 sm:gap-4">
           {showMarketingNav ? (
-            <>
+            <div className="hidden items-center gap-4 sm:flex">
               <Link href="/#how-it-works" className="hover:text-zinc-900">
                 How it works
               </Link>
               <Link href="/photographers" className="hover:text-zinc-900">
                 Photographers
               </Link>
-            </>
+            </div>
           ) : null}
           {!loading &&
             (user ? (

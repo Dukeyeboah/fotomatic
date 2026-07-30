@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import type { User } from 'firebase/auth';
 import { updateProfile } from 'firebase/auth';
 import {
@@ -41,7 +41,9 @@ import {
   syncUsernameClaimForUser,
 } from '@/lib/firebase/username-claim';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Upload, X } from 'lucide-react';
+import { ImageUploadField } from '@/components/image-upload-field';
+import { isImageFile } from '@/lib/prepare-image-upload';
+import { Loader2, X } from 'lucide-react';
 
 const FIELD_INPUT_CLASS =
   'w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-500 caret-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20';
@@ -140,10 +142,6 @@ export function ProfileSettingsForm({
   >(null);
   const [message, setMessage] = useState<string | null>(null);
   const [usernameHint, setUsernameHint] = useState<string | null>(null);
-  const bannerFileRef = useRef<HTMLInputElement>(null);
-  const profileFileRef = useRef<HTMLInputElement>(null);
-  const galleryFilesRef = useRef<HTMLInputElement>(null);
-  const clientAvatarFileRef = useRef<HTMLInputElement>(null);
 
   const isPhotographer = userData.role === 'photographer';
   const isAdmin = userData.role === 'admin';
@@ -155,37 +153,49 @@ export function ProfileSettingsForm({
       : '',
   );
 
-  const onClientAvatarUpload = async (file: File | null) => {
+  const onClientAvatarUpload = async (files: FileList | null) => {
+    const file = files?.[0] ?? null;
     if (!file || !showClientProfilePhoto) return;
     setUploading('clientAvatar');
     setMessage(null);
-    const url = await uploadUserProfileAvatar(user.uid, file);
-    setUploading(null);
-    if (!url) {
-      setMessage('Upload failed. Check Storage rules and bucket in Firebase.');
-      return;
+    try {
+      const url = await uploadUserProfileAvatar(user.uid, file);
+      if (url) setClientProfilePhotoUrl(url);
+    } catch (e) {
+      setMessage(
+        e instanceof Error ? e.message : 'Could not upload profile photo.',
+      );
+    } finally {
+      setUploading(null);
     }
-    setClientProfilePhotoUrl(url);
   };
 
-  const onUpload = async (kind: 'banner' | 'profile', file: File | null) => {
+  const onUpload = async (
+    kind: 'banner' | 'profile',
+    files: FileList | null,
+  ) => {
+    const file = files?.[0] ?? null;
     if (!file) return;
     setUploading(kind);
     setMessage(null);
-    const url = await uploadPhotographerMedia(user.uid, kind, file);
-    setUploading(null);
-    if (!url) {
-      setMessage('Upload failed. Check Storage rules and bucket in Firebase.');
-      return;
+    try {
+      const url = await uploadPhotographerMedia(user.uid, kind, file);
+      if (kind === 'banner') setBannerImageUrl(url!);
+      else setProfileImageUrl(url!);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Could not upload image.');
+    } finally {
+      setUploading(null);
     }
-    if (kind === 'banner') setBannerImageUrl(url);
-    else setProfileImageUrl(url);
   };
 
   const onGalleryPickMultiple = async (files: FileList | null) => {
     if (!files?.length || !showMediaUploads) return;
-    const list = Array.from(files).filter((f) => f.type.startsWith('image/'));
-    if (list.length === 0) return;
+    const list = Array.from(files).filter((f) => isImageFile(f));
+    if (list.length === 0) {
+      setMessage('Please choose image files (JPG, PNG, WebP, or HEIC).');
+      return;
+    }
     let room = DIRECTORY_GALLERY_MAX - galleryImageUrls.length;
     if (room <= 0) {
       setMessage(`Portfolio is limited to ${DIRECTORY_GALLERY_MAX} images.`);
@@ -194,17 +204,26 @@ export function ProfileSettingsForm({
     setUploading('gallery');
     setMessage(null);
     const nextUrls: string[] = [];
+    let lastError: string | null = null;
     for (const file of list) {
       if (room <= 0) break;
-      const url = await uploadPhotographerGalleryImage(user.uid, file);
-      if (url) {
-        nextUrls.push(url);
-        room -= 1;
+      try {
+        const url = await uploadPhotographerGalleryImage(user.uid, file);
+        if (url) {
+          nextUrls.push(url);
+          room -= 1;
+        }
+      } catch (e) {
+        lastError =
+          e instanceof Error ? e.message : 'Could not upload one or more images.';
       }
     }
     setUploading(null);
     if (nextUrls.length === 0) {
-      setMessage('Upload failed. Check Storage rules and bucket in Firebase.');
+      setMessage(
+        lastError ??
+          'Upload failed. Check Storage rules and bucket in Firebase.',
+      );
       return;
     }
     setGalleryImageUrls((prev) =>
@@ -395,25 +414,15 @@ export function ProfileSettingsForm({
             />
           </label>
           {showClientProfilePhoto ? (
-            <>
-              <input
-                ref={clientAvatarFileRef}
-                type="file"
-                accept="image/*"
-                className="sr-only"
-                onChange={(e) => {
-                  void onClientAvatarUpload(e.target.files?.[0] ?? null);
-                  e.target.value = '';
-                }}
-              />
-              <div className="sm:col-span-2">
-                <span className="text-xs font-medium text-zinc-600">
-                  Profile photo
-                </span>
-                <p className="mt-1 text-[11px] leading-snug text-zinc-500">
-                  Shown in the menu and anywhere your account appears. JPG, PNG,
-                  or WebP.
-                </p>
+            <div className="sm:col-span-2">
+              <ImageUploadField
+                label="Profile photo"
+                hint="Shown in the menu and anywhere your account appears. JPG, PNG, WebP, or iPhone HEIC (converted automatically)."
+                captureFacing="user"
+                uploading={uploading === 'clientAvatar'}
+                disabled={uploading !== null && uploading !== 'clientAvatar'}
+                onPick={onClientAvatarUpload}
+              >
                 <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
                   <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full bg-zinc-100 ring-2 ring-zinc-200">
                     {clientProfilePhotoUrl.trim() ? (
@@ -428,38 +437,20 @@ export function ProfileSettingsForm({
                         No photo
                       </div>
                     )}
-                    {uploading === 'clientAvatar' ? (
-                      <div className="absolute inset-0 flex items-center justify-center rounded-full bg-white/70">
-                        <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
-                      </div>
-                    ) : null}
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
+                  {clientProfilePhotoUrl.trim() ? (
                     <button
                       type="button"
-                      onClick={() => clientAvatarFileRef.current?.click()}
                       disabled={uploading !== null}
-                      className="inline-flex items-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50 disabled:opacity-50"
+                      onClick={() => setClientProfilePhotoUrl('')}
+                      className="rounded-xl px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-50"
                     >
-                      <Upload className="h-4 w-4" />
-                      {clientProfilePhotoUrl.trim()
-                        ? 'Replace photo'
-                        : 'Upload photo'}
+                      Remove
                     </button>
-                    {clientProfilePhotoUrl.trim() ? (
-                      <button
-                        type="button"
-                        disabled={uploading !== null}
-                        onClick={() => setClientProfilePhotoUrl('')}
-                        className="rounded-xl px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-50"
-                      >
-                        Remove
-                      </button>
-                    ) : null}
-                  </div>
+                  ) : null}
                 </div>
-              </div>
-            </>
+              </ImageUploadField>
+            </div>
           ) : null}
           <label className="block space-y-1 sm:col-span-2">
             <span className="text-xs font-medium text-zinc-600">Username</span>
@@ -648,149 +639,67 @@ export function ProfileSettingsForm({
           </div>
           {showMediaUploads ? (
             <div className="mt-4 space-y-8">
-              <input
-                ref={bannerFileRef}
-                type="file"
-                accept="image/*"
-                className="sr-only"
-                onChange={(e) => {
-                  void onUpload('banner', e.target.files?.[0] ?? null);
-                  e.target.value = '';
-                }}
-              />
-              <div>
-                <span className="text-xs font-medium text-zinc-600">
-                  Banner image
-                </span>
-                <p className="mt-1 text-[11px] leading-snug text-zinc-500">
-                  Wide image across the top of your public profile. JPG, PNG,
-                  or WebP up to 8MB.
-                </p>
-                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start">
-                  <div className="relative aspect-[21/9] w-full max-w-xl overflow-hidden rounded-xl bg-zinc-100 ring-1 ring-zinc-200">
-                    {bannerImageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- Firebase Storage URL
-                      <img
-                        src={bannerImageUrl}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full min-h-[120px] items-center justify-center text-sm text-zinc-400">
-                        No banner yet
-                      </div>
-                    )}
-                    {uploading === 'banner' ? (
-                      <div className="absolute inset-0 flex items-center justify-center bg-white/70">
-                        <Loader2 className="h-8 w-8 animate-spin text-zinc-500" />
-                      </div>
-                    ) : null}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => bannerFileRef.current?.click()}
-                    disabled={uploading !== null}
-                    className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50 disabled:opacity-50"
-                  >
-                    <Upload className="h-4 w-4" />
-                    {bannerImageUrl ? 'Replace banner' : 'Upload banner'}
-                  </button>
+              <ImageUploadField
+                label="Banner image"
+                hint="Wide image across the top of your public profile. JPG, PNG, WebP, or iPhone HEIC — up to 8MB."
+                captureFacing="environment"
+                uploading={uploading === 'banner'}
+                disabled={uploading !== null && uploading !== 'banner'}
+                onPick={(files) => void onUpload('banner', files)}
+              >
+                <div className="relative mt-3 aspect-[21/9] w-full max-w-xl overflow-hidden rounded-xl bg-zinc-100 ring-1 ring-zinc-200">
+                  {bannerImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- Firebase Storage URL
+                    <img
+                      src={bannerImageUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full min-h-[120px] items-center justify-center text-sm text-zinc-400">
+                      No banner yet
+                    </div>
+                  )}
                 </div>
-              </div>
+              </ImageUploadField>
 
-              <input
-                ref={profileFileRef}
-                type="file"
-                accept="image/*"
-                className="sr-only"
-                onChange={(e) => {
-                  void onUpload('profile', e.target.files?.[0] ?? null);
-                  e.target.value = '';
-                }}
-              />
-              <div>
-                <span className="text-xs font-medium text-zinc-600">
-                  Profile image
-                </span>
-                <p className="mt-1 text-[11px] leading-snug text-zinc-500">
-                  Square-ish photo works best; shown on directory cards and your
-                  public page.
-                </p>
-                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full bg-zinc-100 ring-2 ring-zinc-200">
-                    {profileImageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={profileImageUrl}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-xs text-zinc-400">
-                        Photo
-                      </div>
-                    )}
-                    {uploading === 'profile' ? (
-                      <div className="absolute inset-0 flex items-center justify-center rounded-full bg-white/70">
-                        <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
-                      </div>
-                    ) : null}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => profileFileRef.current?.click()}
-                    disabled={uploading !== null}
-                    className="inline-flex items-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50 disabled:opacity-50"
-                  >
-                    <Upload className="h-4 w-4" />
-                    {profileImageUrl ? 'Replace photo' : 'Upload profile photo'}
-                  </button>
+              <ImageUploadField
+                label="Profile image"
+                hint="Square-ish photo works best; shown on directory cards and your public page."
+                captureFacing="user"
+                uploading={uploading === 'profile'}
+                disabled={uploading !== null && uploading !== 'profile'}
+                onPick={(files) => void onUpload('profile', files)}
+              >
+                <div className="relative mt-3 h-28 w-28 shrink-0 overflow-hidden rounded-full bg-zinc-100 ring-2 ring-zinc-200">
+                  {profileImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={profileImageUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-xs text-zinc-400">
+                      Photo
+                    </div>
+                  )}
                 </div>
-              </div>
+              </ImageUploadField>
 
-              <input
-                ref={galleryFilesRef}
-                type="file"
-                accept="image/*"
+              <ImageUploadField
+                label="Portfolio gallery"
+                hint="Add 3–15 images for your public listing. Choose multiple files at once when using “Choose image”. HEIC from iPhone is supported."
+                captureFacing="environment"
                 multiple
-                className="sr-only"
-                disabled={galleryImageUrls.length >= DIRECTORY_GALLERY_MAX}
-                onChange={(e) => {
-                  void onGalleryPickMultiple(e.target.files);
-                  e.target.value = '';
-                }}
-              />
-              <div className="space-y-2">
-                <span className="text-xs font-medium text-zinc-600">
-                  Portfolio gallery
-                </span>
-                <p className="text-[11px] leading-snug text-zinc-500">
-                  Add 3–15 images for your public listing. You can select{' '}
-                  <strong>multiple files at once</strong> (up to your remaining
-                  slots). Cards use your profile image first, then gallery shots.
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => galleryFilesRef.current?.click()}
-                    disabled={
-                      uploading !== null ||
-                      galleryImageUrls.length >= DIRECTORY_GALLERY_MAX
-                    }
-                    className="inline-flex items-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50 disabled:opacity-50"
-                  >
-                    <Upload className="h-4 w-4" />
-                    {galleryImageUrls.length >= DIRECTORY_GALLERY_MAX
-                      ? 'Gallery full'
-                      : 'Upload images'}
-                  </button>
-                  {uploading === 'gallery' ? (
-                    <span className="inline-flex items-center gap-2 text-sm text-zinc-500">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Uploading…
-                    </span>
-                  ) : null}
-                </div>
+                uploading={uploading === 'gallery'}
+                disabled={
+                  galleryImageUrls.length >= DIRECTORY_GALLERY_MAX ||
+                  (uploading !== null && uploading !== 'gallery')
+                }
+                onPick={onGalleryPickMultiple}
+              >
+                <div className="space-y-2">
                 <p className="text-[11px] text-zinc-500">
                   {galleryImageUrls.length} / {DIRECTORY_GALLERY_MAX} · minimum 3
                   when you include any portfolio images
@@ -821,7 +730,8 @@ export function ProfileSettingsForm({
                     ))}
                   </ul>
                 ) : null}
-              </div>
+                </div>
+              </ImageUploadField>
             </div>
           ) : null}
           <div className="mt-4 grid gap-4">

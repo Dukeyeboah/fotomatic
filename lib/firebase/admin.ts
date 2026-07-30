@@ -68,7 +68,8 @@ export type AdminEvent = {
     | 'booking_requested'
     | 'booking_accepted'
     | 'booking_suggested'
-    | 'booking_declined';
+    | 'booking_declined'
+    | 'booking_paid';
   title: string;
   body: string;
   threadId?: string | null;

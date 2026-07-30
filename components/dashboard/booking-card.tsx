@@ -1,6 +1,11 @@
+'use client';
+
+import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ChevronRight, MapPin } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { BookingPaymentModal } from '@/components/booking-payment-modal';
 import type { BookingThread } from '@/lib/firebase/booking-threads';
 import { bookingStatusBadgeForCard } from '@/lib/booking-status-display';
 import { photographerPlaceholderImagePath } from '@/lib/photographers-directory';
@@ -28,11 +33,14 @@ export function DashboardBookingCard({
   thread: BookingThread;
   messagesHref: string;
 }) {
+  const { user } = useAuth();
+  const [payOpen, setPayOpen] = useState(false);
   const badge = bookingToDashboardDisplay(thread);
   const href = `${messagesHref}?thread=${encodeURIComponent(thread.id ?? '')}`;
   const img = threadImageSrc(thread.photographerDirectoryId);
 
   return (
+    <>
     <Link
       href={href}
       className="group flex gap-4 rounded-2xl border border-zinc-200/90 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
@@ -65,9 +73,7 @@ export function DashboardBookingCard({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              alert(
-                'Confirm & Pay is coming next (Stripe). Your booking is accepted and awaiting payment.',
-              );
+              setPayOpen(true);
             }}
             className="mt-3 inline-flex rounded-xl bg-[#c4a574] px-4 py-2 text-xs font-semibold text-zinc-900 shadow-sm hover:bg-[#b89564]"
           >
@@ -77,5 +83,14 @@ export function DashboardBookingCard({
       </div>
       <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-zinc-400 transition-transform group-hover:translate-x-0.5" />
     </Link>
+    {payOpen && user ? (
+      <BookingPaymentModal
+        thread={thread}
+        user={user}
+        open={payOpen}
+        onClose={() => setPayOpen(false)}
+      />
+    ) : null}
+    </>
   );
 }

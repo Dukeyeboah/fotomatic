@@ -61,6 +61,13 @@ export type BookingThread = {
   acceptedHourlyRate?: number | null;
   acceptedTotalPrice?: number | null;
 
+  /** Stripe Checkout (set server-side on pay / webhook). */
+  stripeCheckoutSessionId?: string | null;
+  stripePaymentIntentId?: string | null;
+  paidAmountCents?: number | null;
+  discountCodeApplied?: string | null;
+  paidAt?: unknown;
+
   /** Unread inbound messages (photographer/system) for the client. */
   unreadByClientCount?: number;
   clientLastReadAt?: unknown;

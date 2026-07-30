@@ -69,6 +69,8 @@ export function PhotographerBookingsInbox() {
   const [messagesLoading, setMessagesLoading] = useState(false);
 
   const [acceptRate, setAcceptRate] = useState<number | ''>('');
+  /** Final amount charged to the client (USD). Defaults from rate × duration. */
+  const [acceptTotal, setAcceptTotal] = useState<number | ''>('');
   const [declineReason, setDeclineReason] = useState('');
   const [suggestDate, setSuggestDate] = useState('');
   const [suggestTimeframe, setSuggestTimeframe] = useState('');
@@ -134,7 +136,15 @@ export function PhotographerBookingsInbox() {
         ? userData.photographer.hourlyRate
         : null;
     const fromRequest = activeThread.photographerStartingHourlyRate;
-    setAcceptRate(fromProfile ?? fromRequest ?? '');
+    const rate = fromProfile ?? fromRequest ?? '';
+    setAcceptRate(rate);
+    if (typeof rate === 'number' && rate > 0) {
+      const hrs = durationToHoursApprox(activeThread.duration);
+      const total = Math.round(rate * hrs * 100) / 100;
+      setAcceptTotal(total);
+    } else {
+      setAcceptTotal('');
+    }
     setDeclineReason('');
     setSuggestDate('');
     setSuggestTimeframe('');
@@ -368,43 +378,93 @@ export function PhotographerBookingsInbox() {
                           Accept
                         </p>
                         <p className="mt-1 text-xs text-zinc-600">
-                          Hourly rate × duration for total.
+                          Set the final amount the client will pay on Stripe
+                          (you can override the suggested total).
                         </p>
                         <label className="mt-3 block space-y-1">
                           <span className="text-xs font-medium text-zinc-600">
-                            Starting price ($)
+                            Reference rate ($)
                           </span>
                           <input
-                            inputMode="numeric"
+                            inputMode="decimal"
                             className={FIELD}
                             disabled={actionsLocked}
                             value={acceptRate}
                             onChange={(e) => {
                               const v = e.target.value.trim();
-                              if (!v) setAcceptRate('');
-                              else setAcceptRate(Number(v));
+                              if (!v) {
+                                setAcceptRate('');
+                                return;
+                              }
+                              const n = Number(v);
+                              setAcceptRate(n);
+                              if (Number.isFinite(n) && n > 0) {
+                                const hrs = durationToHoursApprox(t.duration);
+                                setAcceptTotal(
+                                  Math.round(n * hrs * 100) / 100,
+                                );
+                              }
                             }}
                           />
+                        </label>
+                        <label className="mt-3 block space-y-1">
+                          <span className="text-xs font-medium text-zinc-600">
+                            Final total to charge ($)
+                          </span>
+                          <input
+                            inputMode="decimal"
+                            className={FIELD}
+                            disabled={actionsLocked}
+                            placeholder="e.g. 2.00"
+                            value={acceptTotal}
+                            onChange={(e) => {
+                              const v = e.target.value.trim();
+                              if (!v) setAcceptTotal('');
+                              else setAcceptTotal(Number(v));
+                            }}
+                          />
+                          <span className="text-[11px] text-zinc-500">
+                            Duration: {t.duration} (
+                            {durationToHoursApprox(t.duration)}h approx)
+                          </span>
                         </label>
                         <button
                           type="button"
                           disabled={
                             saving ||
-                            typeof acceptRate !== 'number' ||
+                            typeof acceptTotal !== 'number' ||
+                            !Number.isFinite(acceptTotal) ||
+                            acceptTotal < 0.5 ||
                             actionsLocked
                           }
                           className="mt-3 w-full rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
                           onClick={async () => {
-                            if (!t.id || typeof acceptRate !== 'number' || !user)
+                            if (
+                              !t.id ||
+                              typeof acceptTotal !== 'number' ||
+                              !user
+                            )
                               return;
+                            const total =
+                              Math.round(acceptTotal * 100) / 100;
+                            if (!Number.isFinite(total) || total < 0.5) {
+                              setBanner({
+                                kind: 'err',
+                                text: 'Final total must be at least $0.50.',
+                              });
+                              return;
+                            }
+                            const hrs = durationToHoursApprox(t.duration);
+                            const rate =
+                              typeof acceptRate === 'number' && acceptRate > 0
+                                ? acceptRate
+                                : Math.round((total / hrs) * 100) / 100;
                             setSaving(true);
                             setBanner(null);
-                            const hrs = durationToHoursApprox(t.duration);
-                            const total = Math.round(acceptRate * hrs);
                             const res = await photographerAccept({
                               threadId: t.id,
                               photographerUserId: user.uid,
-                              acceptedHourlyRate: acceptRate,
+                              acceptedHourlyRate: rate,
                               acceptedTotalPrice: total,
                               clientUserId: t.clientUserId,
                               photographerName: t.photographerName,
@@ -414,13 +474,17 @@ export function PhotographerBookingsInbox() {
                             else {
                               setBanner({
                                 kind: 'ok',
-                                text: 'Booking accepted. The client has been notified.',
+                                text: `Booking accepted at $${total.toFixed(2)}. Client can pay now.`,
                               });
                               await refreshUserData();
                             }
                           }}
                         >
-                          {saving ? 'Saving…' : 'Accept booking'}
+                          {saving
+                            ? 'Saving…'
+                            : typeof acceptTotal === 'number'
+                              ? `Accept · charge $${acceptTotal.toFixed(2)}`
+                              : 'Accept booking'}
                         </button>
                       </div>
 

@@ -69,6 +69,8 @@ function adminEventCategoryLabel(e: AdminEvent): string {
       return 'Booking';
     case 'booking_declined':
       return 'Booking';
+    case 'booking_paid':
+      return 'Payment';
     default:
       return 'Booking';
   }
