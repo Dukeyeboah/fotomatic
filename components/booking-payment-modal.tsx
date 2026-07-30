@@ -44,18 +44,32 @@ export function BookingPaymentModal({ thread, user, open, onClose }: Props) {
           discountCode: discountCode.trim() || undefined,
         }),
       });
-      const data = (await res.json()) as { url?: string; error?: string };
+      let data: { url?: string; error?: string } = {};
+      try {
+        data = (await res.json()) as { url?: string; error?: string };
+      } catch {
+        setError(
+          `Checkout failed (HTTP ${res.status}). Check Stripe and Firebase Admin env vars on the server.`,
+        );
+        setLoading(false);
+        return;
+      }
       if (!res.ok || !data.url) {
         setError(
           data.error ||
-            'Could not start checkout. Check Stripe configuration and try again.',
+            `Could not start checkout (HTTP ${res.status}). Check Stripe configuration and try again.`,
         );
         setLoading(false);
         return;
       }
       window.location.href = data.url;
-    } catch {
-      setError('Network error. Please try again.');
+    } catch (e) {
+      console.error('[BookingPaymentModal]', e);
+      setError(
+        e instanceof Error
+          ? e.message
+          : 'Network error. Please try again.',
+      );
       setLoading(false);
     }
   };

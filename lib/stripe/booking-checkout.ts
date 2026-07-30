@@ -1,4 +1,5 @@
 import type Stripe from 'stripe';
+import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase/admin-server';
 import { appBaseUrl, allowCheckoutPromotionCodes } from '@/lib/stripe/config';
 import { resolveStripePromotionCode } from '@/lib/stripe/promotion-code';
@@ -105,7 +106,7 @@ export async function createBookingCheckoutSession(args: {
 
   await adminDb().doc(`bookingThreads/${args.threadId}`).update({
     stripeCheckoutSessionId: session.id,
-    updatedAt: new Date(),
+    updatedAt: FieldValue.serverTimestamp(),
   });
 
   return { url: session.url, sessionId: session.id };

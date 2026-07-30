@@ -30,21 +30,35 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ url, sessionId });
   } catch (e) {
+    console.error('[create-checkout-session]', e);
     const message =
       e instanceof Error ? e.message : 'Could not start checkout.';
+    // Stripe SDK errors
+    const stripeMsg =
+      e &&
+      typeof e === 'object' &&
+      'raw' in e &&
+      e.raw &&
+      typeof e.raw === 'object' &&
+      'message' in e.raw &&
+      typeof (e.raw as { message: unknown }).message === 'string'
+        ? (e.raw as { message: string }).message
+        : null;
     const status =
       message.includes('not configured') ||
-      message.includes('FIREBASE_SERVICE_ACCOUNT')
+      message.includes('FIREBASE_SERVICE_ACCOUNT') ||
+      message.includes('Firebase Admin failed')
         ? 503
         : message.includes('not valid') ||
             message.includes('not found') ||
             message.includes('not awaiting') ||
-            message.includes('access')
+            message.includes('access') ||
+            message.includes('Invalid booking')
           ? 400
           : 500;
-    if (status >= 500) {
-      console.error('[create-checkout-session]', e);
-    }
-    return NextResponse.json({ error: message }, { status });
+    return NextResponse.json(
+      { error: stripeMsg || message },
+      { status },
+    );
   }
 }
