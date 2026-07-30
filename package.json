@@ -8,13 +8,13 @@
     "dev:reset": "npm run dev:kill-ports && npm run dev:clean",
     "dev": "npm run dev:clean && next dev --webpack",
     "dev:turbo": "next dev --turbopack",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
     "firebase": "^12.12.1",
-    "firebase-admin": "^14.0.0",
+    "firebase-admin": "^13.6.0",
     "heic2any": "^0.0.4",
     "lucide-react": "^1.11.0",
     "next": "16.2.4",
