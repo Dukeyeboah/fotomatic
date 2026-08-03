@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
 import { AccountMenuDropdown } from '@/components/account-menu-dropdown';
+import { DashboardAccountMenu } from '@/components/dashboard/dashboard-account-menu';
+import { PhotographerAccountMenu } from '@/components/photographer/photographer-account-menu';
 import { NotificationBell } from '@/components/notification-bell';
 import { MarketingImage } from '@/components/marketing-image';
 import { usePathname } from 'next/navigation';
@@ -19,11 +21,11 @@ export function SiteHeader() {
     pathname.startsWith('/photo-admin/');
   const isAdmin = userData?.role === 'admin';
   const isPhotographer = userData?.role === 'photographer';
-  const isAdminUser = userData?.role === 'admin';
+  const isClient = userData?.role === 'user';
   const showMarketingNav = pathname === '/' && !isBackoffice && !isAdmin;
   const logoHref =
     user && !isBackoffice
-      ? isAdminUser
+      ? isAdmin
         ? '/admin'
         : isPhotographer
           ? '/photographer'
@@ -70,7 +72,13 @@ export function SiteHeader() {
             (user ? (
               <div className="flex items-center gap-2">
                 <NotificationBell />
-                <AccountMenuDropdown />
+                {isClient ? (
+                  <DashboardAccountMenu />
+                ) : isPhotographer ? (
+                  <PhotographerAccountMenu />
+                ) : (
+                  <AccountMenuDropdown />
+                )}
               </div>
             ) : (
               <button

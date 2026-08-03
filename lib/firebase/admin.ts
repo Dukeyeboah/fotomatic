@@ -94,7 +94,10 @@ export function subscribeRecentThreads(
           ...(d.data() as Omit<BookingThread, 'id'>),
         })),
       ),
-    () => cb([]),
+    (err) => {
+      console.error('[admin] subscribeRecentThreads', err.code, err.message);
+      cb([]);
+    },
   );
 }
 
@@ -126,7 +129,10 @@ export function subscribeAdminEvents(cb: (events: AdminEvent[]) => void): Unsubs
           ...(d.data() as Omit<AdminEvent, 'id'>),
         })),
       ),
-    () => cb([]),
+    (err) => {
+      console.error('[admin] subscribeAdminEvents', err.code, err.message);
+      cb([]);
+    },
   );
 }
 
@@ -223,7 +229,10 @@ export function subscribeAllUsersForAdmin(
       });
       cb(rows);
     },
-    () => cb([]),
+    (err) => {
+      console.error('[admin] subscribeAllUsersForAdmin', err.code, err.message);
+      cb([]);
+    },
   );
 }
 

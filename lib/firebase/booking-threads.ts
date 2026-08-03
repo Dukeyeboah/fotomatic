@@ -324,14 +324,32 @@ export async function markNotificationsRead(
   notificationIds: string[],
 ): Promise<Result<true>> {
   try {
+    const ids = [...new Set(notificationIds.filter(Boolean))];
+    if (ids.length === 0) return { ok: true, value: true };
     await Promise.all(
-      notificationIds.map((id) =>
-        updateDoc(doc(notificationsCol, id), { read: true }),
-      ),
+      ids.map((id) => updateDoc(doc(notificationsCol, id), { read: true })),
     );
     return { ok: true, value: true };
   } catch (e) {
     console.error('markNotificationsRead', e);
+    return { ok: false, message: firebaseErrMessage(e) };
+  }
+}
+
+/** Marks every unread notification for this user as read. */
+export async function markAllUnreadNotificationsRead(
+  userId: string,
+): Promise<Result<true>> {
+  try {
+    const snap = await getDocs(
+      query(notificationsCol, where('userId', '==', userId), limit(200)),
+    );
+    const unreadIds = snap.docs
+      .filter((d) => !(d.data() as { read?: boolean }).read)
+      .map((d) => d.id);
+    return markNotificationsRead(unreadIds);
+  } catch (e) {
+    console.error('markAllUnreadNotificationsRead', e);
     return { ok: false, message: firebaseErrMessage(e) };
   }
 }

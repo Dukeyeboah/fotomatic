@@ -1,29 +1,38 @@
-import Link from 'next/link';
-import { SiteHeader } from '@/components/site-header';
-import { SupportInboxComposer } from '@/components/support-inbox-composer';
+'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { ClientAppShell } from '@/components/client-app-shell';
+import { ContactSupportContent } from '@/components/contact-support-content';
+
+/**
+ * Public / shared contact entry. Logged-in clients are sent into the dashboard
+ * shell so Help / Support matches the rest of the client app.
+ */
 export default function ContactPage() {
-  return (
-    <div className="min-h-screen bg-white">
-      <SiteHeader />
-      <div className="mx-auto max-w-lg px-4 py-16">
-      <h1 className="font-serif text-3xl font-medium text-zinc-900">
-        Contact support
-      </h1>
-      <p className="mt-3 text-zinc-600">
-        We&apos;re here to help with bookings, your account, or photographer
-        questions.
-      </p>
-      <div className="mt-8">
-        <SupportInboxComposer loginRedirectTo="/contact" />
+  const { user, userData, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (loading) return;
+    if (user && userData?.role === 'user') {
+      router.replace('/dashboard/contact');
+    }
+  }, [loading, user, userData, router]);
+
+  if (loading || (user && (!userData || userData.role === 'user'))) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center bg-[#f4f1ec]">
+        <Loader2 className="h-8 w-8 animate-spin text-zinc-300" />
       </div>
-      <Link
-        href="/"
-        className="mt-8 inline-block text-sm font-semibold text-zinc-700 hover:text-zinc-900"
-      >
-        ← Back to home
-      </Link>
-    </div>
-    </div>
+    );
+  }
+
+  return (
+    <ClientAppShell loginRedirectTo="/dashboard/contact">
+      <ContactSupportContent loginRedirectTo="/dashboard/contact" />
+    </ClientAppShell>
   );
 }

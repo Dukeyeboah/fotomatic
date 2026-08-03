@@ -13,6 +13,8 @@
  * Optional:
  * - NEXT_PUBLIC_APP_URL=http://localhost:3000  (checkout return URLs)
  * - STRIPE_ALLOW_CHECKOUT_PROMO_CODES=true
+ * - STRIPE_PHOTOGRAPHER_SHARE_PERCENT=80  (Connect transfers; default 80)
+ * - STRIPE_PLATFORM_FEE_PERCENT=20        (alternative to share; inverse)
  */
 
 export function stripeSecretKey(): string {

@@ -5,6 +5,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   limit,
   onSnapshot,
   query,
@@ -124,6 +125,26 @@ export function subscribeReviewsForPhotographerDirectory(
       cb([]);
     },
   );
+}
+
+/** Prefer this in modals when a directory-wide reviews listener is already active. */
+export async function fetchReviewsForPhotographerDirectory(
+  photographerDirectoryId: string,
+): Promise<PhotographerReview[]> {
+  const dir = photographerDirectoryId.trim();
+  if (!dir) return [];
+  const q = query(
+    reviewsCol,
+    where('photographerDirectoryId', '==', dir),
+    limit(LIST_CAP),
+  );
+  const snap = await getDocs(q);
+  const rows = snap.docs.map((d) => ({
+    id: d.id,
+    ...(d.data() as Omit<PhotographerReview, 'id'>),
+  }));
+  rows.sort((a, b) => ms(b.createdAt) - ms(a.createdAt));
+  return rows;
 }
 
 /** One listener for directory cards: aggregate average + count per photographer id. */

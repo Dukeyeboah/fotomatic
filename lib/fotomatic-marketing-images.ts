@@ -1,6 +1,7 @@
 /**
- * Marketing / UI images: primary copy in Firebase Storage (`fotomatic-images/…`),
- * with identical files in `public/fotomaticImages/` as fallback.
+ * Marketing / UI images live in `public/fotomaticImages/` (always available).
+ * Optional Firebase Storage copies under `fotomatic-images/` are not used as
+ * the primary src — tokenless Storage URLs 403 and spam Next.js image logs.
  */
 const STORAGE_PREFIX = 'fotomatic-images/';
 const PUBLIC_BASE = '/fotomaticImages';
@@ -29,7 +30,7 @@ export function marketingImageLocalUrl(pathOrName: string): string {
   return `${PUBLIC_BASE}/${name}`;
 }
 
-/** Firebase Storage download URL (requires public read on `fotomatic-images/`). */
+/** Firebase Storage download URL (requires deployed public read + object exists). */
 export function marketingImageStoragePublicUrl(pathOrName: string): string {
   const name = baseFileName(pathOrName) || LOGO_FILE;
   const bucket = storageBucket();
@@ -39,12 +40,16 @@ export function marketingImageStoragePublicUrl(pathOrName: string): string {
 }
 
 /**
- * Preferred URL for marketing assets: Storage when configured, else local public files.
+ * Preferred URL for marketing assets: local public files (reliable).
+ * Set NEXT_PUBLIC_MARKETING_IMAGES_FROM_STORAGE=true to try Storage first.
  */
 export function marketingImagePrimaryUrl(pathOrName: string): string {
   const name = baseFileName(pathOrName);
   if (!name) return marketingImageLocalUrl(LOGO_FILE);
-  if (storageBucket()) return marketingImageStoragePublicUrl(name);
+  const useStorage =
+    process.env.NEXT_PUBLIC_MARKETING_IMAGES_FROM_STORAGE === 'true' ||
+    process.env.NEXT_PUBLIC_MARKETING_IMAGES_FROM_STORAGE === '1';
+  if (useStorage && storageBucket()) return marketingImageStoragePublicUrl(name);
   return marketingImageLocalUrl(name);
 }
 

@@ -56,6 +56,13 @@ export interface PhotographerProfileFields {
    * Cleared when they dismiss the prompt or save from that flow.
    */
   showProfileSetupModal?: boolean;
+  /** Stripe Connect Express account id (`acct_…`). */
+  stripeConnectAccountId?: string | null;
+  /** Cached Connect capabilities from last sync / onboarding return. */
+  stripeChargesEnabled?: boolean;
+  stripePayoutsEnabled?: boolean;
+  stripeDetailsSubmitted?: boolean;
+  stripeConnectUpdatedAt?: unknown;
 }
 
 export interface UserData {

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { signOutUser } from '@/lib/firebase/auth';
 import {
-  Bell,
   CircleUserRound,
   LayoutDashboard,
   LogOut,
@@ -17,7 +16,8 @@ import {
   HelpCircle,
   UserRound,
   CalendarCheck,
-  ClipboardList,
+  CreditCard,
+  Heart,
   Inbox,
   Search,
 } from 'lucide-react';
@@ -73,26 +73,26 @@ export function AccountMenuDropdown() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex cursor-pointer items-center gap-2 rounded-full border border-zinc-200 bg-white py-1 pl-1 pr-3 text-sm font-medium text-zinc-800 shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50"
+        className="flex cursor-pointer items-center rounded-full border border-zinc-200 bg-white p-0.5 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
         aria-expanded={open}
         aria-haspopup="true"
+        aria-label="Account menu"
       >
         {user.photoURL ? (
           // eslint-disable-next-line @next/next/no-img-element -- Google avatar URLs
           <img
             src={user.photoURL}
             alt=""
-            width={32}
-            height={32}
-            className="h-8 w-8 rounded-full object-cover"
+            width={36}
+            height={36}
+            className="h-9 w-9 rounded-full object-cover"
             referrerPolicy="no-referrer"
           />
         ) : (
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100 text-zinc-600">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-100 text-zinc-600">
             <CircleUserRound className="h-5 w-5" strokeWidth={1.75} />
           </span>
         )}
-        <span className="hidden sm:inline">Account</span>
       </button>
       {open ? (
         <div className="absolute right-0 z-50 mt-2 w-60 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg ring-1 ring-zinc-900/5">
@@ -161,17 +161,11 @@ export function AccountMenuDropdown() {
             </>
           ) : (
             <>
+              <Row href="/dashboard/photographers" icon={Search} onClick={close}>
+                Photographers
+              </Row>
               <Row href="/dashboard" icon={LayoutDashboard} onClick={close}>
                 Dashboard
-              </Row>
-              <Row href="/dashboard/photographers" icon={Search} onClick={close}>
-                Find photographer
-              </Row>
-              <Row href="/dashboard/profile" icon={UserRound} onClick={close}>
-                Profile
-              </Row>
-              <Row href="/dashboard/notifications" icon={Bell} onClick={close}>
-                Notifications
               </Row>
               <Row
                 href="/dashboard/messages"
@@ -187,12 +181,15 @@ export function AccountMenuDropdown() {
               >
                 My bookings
               </Row>
+              <Row href="/dashboard/saved" icon={Heart} onClick={close}>
+                Saved
+              </Row>
               <Row
-                href="/dashboard/settings#photographer-application"
-                icon={ClipboardList}
+                href="/dashboard/payments"
+                icon={CreditCard}
                 onClick={close}
               >
-                Photographer application
+                Payments
               </Row>
               <Row
                 href="/dashboard/settings"
@@ -204,11 +201,8 @@ export function AccountMenuDropdown() {
             </>
           )}
 
-          <Row href="/contact" icon={HelpCircle} onClick={close}>
+          <Row href="/dashboard/contact" icon={HelpCircle} onClick={close}>
             Help / Support
-          </Row>
-          <Row href="/account" icon={CircleUserRound} onClick={close}>
-            Account
           </Row>
           <button
             type="button"

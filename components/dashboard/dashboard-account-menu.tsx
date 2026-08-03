@@ -5,27 +5,26 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { signOutUser } from '@/lib/firebase/auth';
 import {
-  Bell,
+  CalendarCheck,
   CircleUserRound,
-  ChevronDown,
+  CreditCard,
+  Heart,
+  HelpCircle,
   LayoutDashboard,
   LogOut,
   MessageCircle,
+  Search,
   Settings,
-  HelpCircle,
-  CalendarCheck,
-  Inbox,
 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { subscribeUnreadNotificationCount } from '@/lib/firebase/booking-threads';
+import { subscribeThreadsForClient } from '@/lib/firebase/booking-threads';
 
 function displayFirstName(
   userData: ReturnType<typeof useAuth>['userData'],
   email: string | null,
 ): string {
   const name =
-    userData?.displayName?.trim() ||
-    (email?.split('@')[0] ?? 'there');
+    userData?.displayName?.trim() || (email?.split('@')[0] ?? 'there');
   const first = name.split(/\s+/)[0];
   return first || 'there';
 }
@@ -62,15 +61,21 @@ export function DashboardAccountMenu() {
   const { user, userData, loading } = useAuth();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [notifUnread, setNotifUnread] = useState(0);
+  const [messagesUnread, setMessagesUnread] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!user) {
-      setNotifUnread(0);
+      setMessagesUnread(0);
       return;
     }
-    return subscribeUnreadNotificationCount(user.uid, setNotifUnread);
+    return subscribeThreadsForClient(user.uid, (threads) => {
+      const n = threads.reduce(
+        (acc, t) => acc + (t.unreadByClientCount ?? 0),
+        0,
+      );
+      setMessagesUnread(n);
+    });
   }, [user]);
 
   useEffect(() => {
@@ -84,9 +89,6 @@ export function DashboardAccountMenu() {
 
   if (loading || !user) return null;
 
-  const label =
-    userData?.username?.trim() ||
-    displayFirstName(userData, user.email ?? null);
   const firstName = displayFirstName(userData, user.email ?? null);
   const close = () => setOpen(false);
 
@@ -95,49 +97,57 @@ export function DashboardAccountMenu() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex max-w-[220px] cursor-pointer items-center gap-2 rounded-full border border-zinc-200 bg-white py-1 pl-1 pr-2 text-sm font-medium text-zinc-800 shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 sm:pr-3"
+        className="flex cursor-pointer items-center rounded-full border border-zinc-200 bg-white p-0.5 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
         aria-expanded={open}
         aria-haspopup="true"
+        aria-label="Account menu"
       >
         {user.photoURL ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={user.photoURL}
             alt=""
-            width={32}
-            height={32}
-            className="h-8 w-8 shrink-0 rounded-full object-cover"
+            width={36}
+            height={36}
+            className="h-9 w-9 shrink-0 rounded-full object-cover"
             referrerPolicy="no-referrer"
           />
         ) : (
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-600">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-600">
             <CircleUserRound className="h-5 w-5" strokeWidth={1.75} />
           </span>
         )}
-        <span className="hidden min-w-0 truncate sm:inline">{label}</span>
-        <ChevronDown className="hidden h-4 w-4 shrink-0 text-zinc-500 sm:block" />
       </button>
       {open ? (
-        <div className="absolute right-0 z-50 mt-2 w-60 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg ring-1 ring-zinc-900/5">
+        <div className="absolute right-0 z-50 mt-2 w-64 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg ring-1 ring-zinc-900/5">
           <p className="border-b border-zinc-100 px-4 py-2 text-xs text-zinc-500">
             Signed in as{' '}
             <span className="font-medium text-zinc-800">{firstName}</span>
           </p>
-          {userData?.role === 'admin' ? (
-            <MenuRow
-              href="/admin"
-              icon={LayoutDashboard}
-              onNavigate={close}
-              className="font-semibold text-amber-900"
-            >
-              Admin dashboard
-            </MenuRow>
-          ) : null}
-          {userData?.role === 'admin' ? (
-            <MenuRow href="/admin/inbox" icon={Inbox} onNavigate={close}>
-              Applications & bookings
-            </MenuRow>
-          ) : null}
+          <MenuRow
+            href="/dashboard/photographers"
+            icon={Search}
+            onNavigate={close}
+          >
+            Photographers
+          </MenuRow>
+          <MenuRow href="/dashboard" icon={LayoutDashboard} onNavigate={close}>
+            Dashboard
+          </MenuRow>
+          <MenuRow
+            href="/dashboard/messages"
+            icon={MessageCircle}
+            onNavigate={close}
+            suffix={
+              messagesUnread > 0 ? (
+                <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-amber-900 px-1.5 py-0.5 text-[11px] font-bold text-white">
+                  {messagesUnread > 99 ? '99+' : messagesUnread}
+                </span>
+              ) : null
+            }
+          >
+            Messages
+          </MenuRow>
           <MenuRow
             href="/dashboard/bookings"
             icon={CalendarCheck}
@@ -145,26 +155,15 @@ export function DashboardAccountMenu() {
           >
             My bookings
           </MenuRow>
-          <MenuRow
-            href="/dashboard/messages"
-            icon={MessageCircle}
-            onNavigate={close}
-          >
-            Messages
+          <MenuRow href="/dashboard/saved" icon={Heart} onNavigate={close}>
+            Saved
           </MenuRow>
           <MenuRow
-            href="/dashboard/notifications"
-            icon={Bell}
+            href="/dashboard/payments"
+            icon={CreditCard}
             onNavigate={close}
-            suffix={
-              notifUnread > 0 ? (
-                <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-amber-900 px-1.5 py-0.5 text-[11px] font-bold text-white">
-                  {notifUnread > 99 ? '99+' : notifUnread}
-                </span>
-              ) : null
-            }
           >
-            Notifications
+            Payments
           </MenuRow>
           <MenuRow
             href="/dashboard/settings"
@@ -173,7 +172,7 @@ export function DashboardAccountMenu() {
           >
             Account settings
           </MenuRow>
-          <MenuRow href="/contact" icon={HelpCircle} onNavigate={close}>
+          <MenuRow href="/dashboard/contact" icon={HelpCircle} onNavigate={close}>
             Help / Support
           </MenuRow>
           <button
@@ -186,7 +185,10 @@ export function DashboardAccountMenu() {
               router.refresh();
             }}
           >
-            <LogOut className="h-4 w-4 shrink-0 text-zinc-500" strokeWidth={1.75} />
+            <LogOut
+              className="h-4 w-4 shrink-0 text-zinc-500"
+              strokeWidth={1.75}
+            />
             Log out
           </button>
         </div>

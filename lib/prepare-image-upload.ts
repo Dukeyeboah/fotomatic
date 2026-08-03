@@ -33,6 +33,41 @@ function mimeFromName(name: string): string {
   return 'image/jpeg';
 }
 
+/** Detect HEIC/HEIF by file magic (iPhone often uploads HEIC renamed as .jpg). */
+export async function blobLooksLikeHeic(blob: Blob): Promise<boolean> {
+  const slice = blob.slice(0, 32);
+  const buf = new Uint8Array(await slice.arrayBuffer());
+  // ISO BMFF: size(4) + 'ftyp' + brand
+  if (buf.length < 12) return false;
+  const brand = String.fromCharCode(
+    buf[8]!,
+    buf[9]!,
+    buf[10]!,
+    buf[11]!,
+  );
+  if (brand === 'heic' || brand === 'heif' || brand === 'mif1' || brand === 'msf1') {
+    return true;
+  }
+  // Some files put brand later in the ftyp box
+  const asText = String.fromCharCode(...buf);
+  return /heic|heif|mif1|msf1/i.test(asText);
+}
+
+async function convertHeicToJpeg(file: File): Promise<File> {
+  const heic2any = (await import('heic2any')).default;
+  const result = await heic2any({
+    blob: file,
+    toType: 'image/jpeg',
+    quality: 0.9,
+  });
+  const blob = Array.isArray(result) ? result[0]! : result;
+  const base = file.name.replace(/\.[^.]+$/i, '') || 'photo';
+  return new File([blob], `${base}.jpg`, {
+    type: 'image/jpeg',
+    lastModified: Date.now(),
+  });
+}
+
 /**
  * Normalizes uploads for Storage + browser display.
  * HEIC/HEIF (common on iPhones) is converted to JPEG because most browsers cannot render HEIC.
@@ -45,19 +80,16 @@ export async function prepareImageForUpload(file: File): Promise<File> {
     throw new Error('Image must be under 8MB.');
   }
 
-  if (isHeicFile(file)) {
-    const heic2any = (await import('heic2any')).default;
-    const result = await heic2any({
-      blob: file,
-      toType: 'image/jpeg',
-      quality: 0.9,
-    });
-    const blob = Array.isArray(result) ? result[0]! : result;
-    const base = file.name.replace(/\.[^.]+$/i, '') || 'photo';
-    return new File([blob], `${base}.jpg`, {
-      type: 'image/jpeg',
-      lastModified: Date.now(),
-    });
+  const looksHeic = isHeicFile(file) || (await blobLooksLikeHeic(file));
+  if (looksHeic) {
+    try {
+      return await convertHeicToJpeg(file);
+    } catch (e) {
+      console.error('HEIC convert failed', e);
+      throw new Error(
+        'Could not convert this iPhone photo (HEIC). Try exporting as JPEG in Photos, then upload again.',
+      );
+    }
   }
 
   if (file.type.startsWith('image/')) return file;

@@ -22,13 +22,15 @@ export default function DashboardSavedPage() {
   );
 
   return (
-    <div className="px-4 py-10 sm:px-6 lg:px-10">
-      <h1 className="font-serif text-2xl font-medium text-zinc-900">
-        Saved photographers
-      </h1>
-      <p className="mt-2 text-sm text-zinc-600">
-        Hearts you add on the dashboard or directory are stored on this device.
-      </p>
+    <div className="px-4 pb-8 pt-0 sm:px-6 lg:px-10">
+      <div className="sticky top-14 z-20 -mx-4 border-b border-zinc-200/70 bg-[#f4f1ec]/95 px-4 py-4 backdrop-blur-md supports-[backdrop-filter]:bg-[#f4f1ec]/90 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
+        <h1 className="font-serif text-2xl font-medium text-zinc-900">
+          Saved photographers
+        </h1>
+        <p className="mt-2 text-sm text-zinc-600">
+          Hearts you add on the dashboard or directory are stored on this device.
+        </p>
+      </div>
 
       {saved.length === 0 ? (
         <div className="mt-10 rounded-2xl border border-dashed border-zinc-300 bg-white/60 p-10 text-center">

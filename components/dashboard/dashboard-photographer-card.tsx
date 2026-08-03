@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart } from 'lucide-react';
+import { CalendarPlus, Heart, UserRound } from 'lucide-react';
 import {
   directoryPhotographerHeroImageUrl,
   type DirectoryPhotographer,
@@ -58,10 +58,14 @@ export function DashboardPhotographerCard({
   const tag = TAGS[photographer.id.length % TAGS.length]!;
   const imgSrc = cardImage(photographer);
   const remoteImg = imgSrc != null && /^https?:\/\//i.test(imgSrc);
+  const profileHref = photographer.profileSlug
+    ? publicPhotographerProfilePath(photographer.profileSlug)
+    : null;
+
   return (
     <div
       className={[
-        'flex w-[260px] shrink-0 flex-col overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-sm',
+        'flex w-[300px] shrink-0 flex-col overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-sm sm:w-[320px]',
         onOpenDetail ? 'cursor-pointer' : '',
       ].join(' ')}
       onClick={(e) => {
@@ -79,13 +83,13 @@ export function DashboardPhotographerCard({
       role={onOpenDetail ? 'button' : undefined}
       tabIndex={onOpenDetail ? 0 : undefined}
     >
-      <div className="relative aspect-[4/3] w-full bg-zinc-100">
+      <div className="relative aspect-[5/4] w-full bg-zinc-100">
         {!imgSrc ? (
           <DirectoryListingPlaceholderImage
             alt=""
             fill
             className="object-contain bg-white p-8"
-            sizes="260px"
+            sizes="320px"
           />
         ) : remoteImg ? (
           // eslint-disable-next-line @next/next/no-img-element -- remote profile URLs
@@ -100,7 +104,7 @@ export function DashboardPhotographerCard({
             alt=""
             fill
             className="object-cover"
-            sizes="260px"
+            sizes="320px"
           />
         )}
         <button
@@ -121,9 +125,6 @@ export function DashboardPhotographerCard({
       <div className="flex flex-1 flex-col p-4">
         <p className="font-semibold text-zinc-900">{displayName(photographer)}</p>
         <p className="mt-0.5 text-xs text-zinc-500">{formatLocation(photographer)}</p>
-        <p className="mt-2 text-sm font-semibold text-zinc-800">
-          {formatDirectoryStartingPrice(photographer)}
-        </p>
         {reviewSummary && reviewSummary.count > 0 ? (
           <p className="mt-1.5 flex items-center gap-2 text-xs text-zinc-600">
             <StarRow value={reviewSummary.average} size="sm" />
@@ -133,29 +134,56 @@ export function DashboardPhotographerCard({
             </span>
           </p>
         ) : null}
-        <p className="mt-2 flex flex-wrap gap-1">
-          <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-700">
-            {tag}
-          </span>
-        </p>
-        {photographer.profileSlug ? (
-          <Link
-            href={publicPhotographerProfilePath(photographer.profileSlug)}
-            onClick={(e) => e.stopPropagation()}
-            className="mt-3 flex w-full items-center justify-center rounded-xl border border-zinc-200 bg-white py-2.5 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
-          >
-            View profile
-          </Link>
-        ) : null}
-        {showRequestBooking ? (
-          <button
-            type="button"
-            onClick={onRequestBooking}
-            className="mt-3 w-full rounded-xl bg-zinc-900 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800"
-          >
-            Request Booking
-          </button>
-        ) : null}
+
+        <div className="mt-3 flex items-end justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-zinc-800">
+              {formatDirectoryStartingPrice(photographer)}
+            </p>
+            <p className="mt-1.5 flex flex-wrap gap-1">
+              <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-700">
+                {tag}
+              </span>
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {profileHref ? (
+              <Link
+                href={profileHref}
+                onClick={(e) => e.stopPropagation()}
+                aria-label={`View ${displayName(photographer)} profile`}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 hover:text-zinc-900"
+              >
+                <UserRound className="h-4 w-4" strokeWidth={1.75} />
+              </Link>
+            ) : onOpenDetail ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenDetail();
+                }}
+                aria-label={`View ${displayName(photographer)} profile`}
+                className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 hover:text-zinc-900"
+              >
+                <UserRound className="h-4 w-4" strokeWidth={1.75} />
+              </button>
+            ) : null}
+            {showRequestBooking ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRequestBooking();
+                }}
+                aria-label={`Request booking with ${displayName(photographer)}`}
+                className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-zinc-900 text-white shadow-sm transition-colors hover:bg-zinc-800"
+              >
+                <CalendarPlus className="h-4 w-4" strokeWidth={1.75} />
+              </button>
+            ) : null}
+          </div>
+        </div>
       </div>
     </div>
   );

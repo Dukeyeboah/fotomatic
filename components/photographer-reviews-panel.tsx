@@ -6,7 +6,7 @@ import { Star } from 'lucide-react';
 import {
   averageRatingFromReviews,
   fetchMyReviewForPhotographer,
-  subscribeReviewsForPhotographerDirectory,
+  fetchReviewsForPhotographerDirectory,
   submitPhotographerReview,
   type PhotographerReview,
 } from '@/lib/firebase/photographer-reviews';
@@ -95,7 +95,15 @@ export function PhotographerReviewsPanel({
       setReviews([]);
       return;
     }
-    return subscribeReviewsForPhotographerDirectory(dir, setReviews);
+    let cancelled = false;
+    // One-shot fetch avoids overlapping onSnapshot with the directory-wide
+    // review stats listener (Firebase "INTERNAL ASSERTION FAILED" / ca9).
+    void fetchReviewsForPhotographerDirectory(dir).then((rows) => {
+      if (!cancelled) setReviews(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [dir]);
 
   useEffect(() => {

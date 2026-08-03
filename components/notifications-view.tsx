@@ -39,8 +39,8 @@ export function NotificationsView({
   }, [user]);
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
-      <div className="flex items-center justify-between gap-4">
+    <div className="mx-auto max-w-2xl px-4 pb-8 pt-0 sm:px-6 lg:px-10">
+      <div className="sticky top-14 z-20 -mx-4 flex items-center justify-between gap-4 border-b border-zinc-200/70 bg-[#f4f1ec]/95 px-4 py-4 backdrop-blur-md supports-[backdrop-filter]:bg-[#f4f1ec]/90 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
         <div>
           <h1 className="font-serif text-2xl font-medium text-zinc-900">
             Notifications
@@ -59,7 +59,7 @@ export function NotificationsView({
               await markNotificationsRead(unreadIds);
               setMarking(false);
             }}
-            className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-60"
+            className="shrink-0 rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-60"
           >
             {marking ? 'Marking…' : 'Mark all read'}
           </button>

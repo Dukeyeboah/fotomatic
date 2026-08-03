@@ -10,23 +10,23 @@ export function InfoStrip({
   }>;
 }) {
   return (
-    <div className="grid gap-4 border-t border-zinc-200/80 py-10 md:grid-cols-3">
-      {items.map(({ icon: Icon, title, description }) => (
-        <div
-          key={title}
-          className="flex gap-4 rounded-2xl border border-zinc-200/70 p-5 shadow-sm shadow-zinc-900/5"
-        >
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-amber-900 shadow-sm ring-1 ring-zinc-900/5">
-            <Icon className="h-5 w-5" strokeWidth={1.75} />
+    <div className="border-t border-zinc-200/80 pt-6 pb-0 md:pt-7">
+      <div className="grid gap-5 md:grid-cols-3 md:gap-8">
+        {items.map(({ icon: Icon, title, description }) => (
+          <div key={title} className="flex gap-3">
+            <Icon
+              className="mt-0.5 h-4 w-4 shrink-0 text-amber-900/80"
+              strokeWidth={1.75}
+            />
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-zinc-900">{title}</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-zinc-500 sm:text-sm">
+                {description}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="font-semibold text-zinc-900">{title}</p>
-            <p className="mt-1 text-sm leading-relaxed text-zinc-600">
-              {description}
-            </p>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }

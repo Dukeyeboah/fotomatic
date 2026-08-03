@@ -191,14 +191,16 @@ export function PhotographerBookingsInbox() {
   }
 
   return (
-    <div className="px-4 py-8 sm:px-6 lg:px-10">
-      <h1 className="font-serif text-2xl font-medium text-zinc-900">
-        Bookings inbox
-      </h1>
-      <p className="mt-2 max-w-2xl text-sm text-zinc-600">
-        Review each request, reply in the thread, then accept, suggest an
-        alternative, or decline.
-      </p>
+    <div className="px-4 pb-8 pt-0 sm:px-6 lg:px-10">
+      <div className="sticky top-14 z-20 -mx-4 border-b border-zinc-200/70 bg-[#f4f1ec]/95 px-4 py-4 backdrop-blur-md supports-[backdrop-filter]:bg-[#f4f1ec]/90 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
+        <h1 className="font-serif text-2xl font-medium text-zinc-900">
+          Bookings inbox
+        </h1>
+        <p className="mt-2 max-w-2xl text-sm text-zinc-600">
+          Review each request, reply in the thread, then accept, suggest an
+          alternative, or decline.
+        </p>
+      </div>
 
       {banner ? (
         <div
