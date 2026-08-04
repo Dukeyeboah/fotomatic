@@ -51,7 +51,7 @@ export function DashboardApplyPhotographerProvider({
         key={modalKey}
         open={open}
         onClose={() => setOpen(false)}
-        loginRedirectTo="/dashboard"
+        loginRedirectTo="/photographers"
       />
     </DashboardApplyPhotographerContext.Provider>
   );

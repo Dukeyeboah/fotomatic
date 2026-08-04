@@ -221,7 +221,7 @@ export function PhotographerSidebar({
             <>
               <p className="text-xs font-semibold text-zinc-800">Need help?</p>
               <Link
-                href="/contact"
+                href="/photographer/contact"
                 onClick={onNavigate}
                 className="mt-1 text-sm font-medium text-amber-900 underline-offset-2 hover:underline"
               >
@@ -230,7 +230,7 @@ export function PhotographerSidebar({
             </>
           ) : (
             <Link
-              href="/contact"
+              href="/photographer/contact"
               title="Help Center"
               onClick={onNavigate}
               className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg text-zinc-600 hover:bg-white/80"

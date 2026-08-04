@@ -59,7 +59,7 @@ export function DashboardSettingsPanels() {
                 <button
                   type="button"
                   onClick={() =>
-                    openLoginModal({ redirectTo: '/dashboard/settings' })
+                    openLoginModal({ redirectTo: '/settings' })
                   }
                   className="font-medium text-amber-900 underline"
                 >
@@ -117,7 +117,7 @@ export function DashboardSettingsPanels() {
                 <button
                   type="button"
                   onClick={() =>
-                    openLoginModal({ redirectTo: '/dashboard/settings' })
+                    openLoginModal({ redirectTo: '/settings' })
                   }
                   className="font-medium text-amber-900 underline"
                 >
@@ -204,7 +204,7 @@ export function DashboardSettingsPanels() {
           <div className="border-t border-zinc-100 px-5 py-6">
             <SupportInboxComposer
               className="border-0 bg-[#faf8f5] shadow-none"
-              loginRedirectTo="/dashboard/settings"
+              loginRedirectTo="/settings"
             />
           </div>
         ) : null}

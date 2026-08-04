@@ -10,7 +10,7 @@ import {
   CreditCard,
   Heart,
   HelpCircle,
-  LayoutDashboard,
+  Home,
   LogOut,
   MessageCircle,
   Search,
@@ -124,18 +124,18 @@ export function DashboardAccountMenu() {
             Signed in as{' '}
             <span className="font-medium text-zinc-800">{firstName}</span>
           </p>
+          <MenuRow href="/home" icon={Home} onNavigate={close}>
+            Home
+          </MenuRow>
           <MenuRow
-            href="/dashboard/photographers"
+            href="/photographers"
             icon={Search}
             onNavigate={close}
           >
             Photographers
           </MenuRow>
-          <MenuRow href="/dashboard" icon={LayoutDashboard} onNavigate={close}>
-            Dashboard
-          </MenuRow>
           <MenuRow
-            href="/dashboard/messages"
+            href="/messages"
             icon={MessageCircle}
             onNavigate={close}
             suffix={
@@ -149,30 +149,30 @@ export function DashboardAccountMenu() {
             Messages
           </MenuRow>
           <MenuRow
-            href="/dashboard/bookings"
+            href="/bookings"
             icon={CalendarCheck}
             onNavigate={close}
           >
             My bookings
           </MenuRow>
-          <MenuRow href="/dashboard/saved" icon={Heart} onNavigate={close}>
+          <MenuRow href="/saved" icon={Heart} onNavigate={close}>
             Saved
           </MenuRow>
           <MenuRow
-            href="/dashboard/payments"
+            href="/payments"
             icon={CreditCard}
             onNavigate={close}
           >
             Payments
           </MenuRow>
           <MenuRow
-            href="/dashboard/settings"
+            href="/settings"
             icon={Settings}
             onNavigate={close}
           >
             Account settings
           </MenuRow>
-          <MenuRow href="/dashboard/contact" icon={HelpCircle} onNavigate={close}>
+          <MenuRow href="/contact" icon={HelpCircle} onNavigate={close}>
             Help / Support
           </MenuRow>
           <button

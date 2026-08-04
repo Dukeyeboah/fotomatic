@@ -29,7 +29,7 @@ export function SiteHeader() {
         ? '/admin'
         : isPhotographer
           ? '/photographer'
-          : '/dashboard'
+          : '/photographers'
       : '/';
 
   return (

@@ -92,18 +92,18 @@ export function DashboardPaymentsView() {
   }, [paymentFromUrl, rows]);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-6 pt-0 sm:px-6">
-      <div className="sticky top-14 z-20 -mx-4 flex items-end justify-between gap-4 border-b border-zinc-200/70 bg-[#f4f1ec]/95 px-4 py-4 backdrop-blur-md supports-[backdrop-filter]:bg-[#f4f1ec]/90 sm:-mx-6 sm:px-6">
+    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="font-serif text-2xl font-medium text-zinc-900">
             Payments
           </h1>
-          <p className="mt-1 text-sm text-zinc-600">
+          <p className="mt-1 max-w-2xl text-sm text-zinc-600">
             Review amounts due and your payment history.
           </p>
         </div>
         <Link
-          href="/dashboard/bookings"
+          href="/bookings"
           className="shrink-0 text-sm font-semibold text-amber-900 underline"
         >
           View bookings
@@ -119,7 +119,7 @@ export function DashboardPaymentsView() {
           <button
             type="button"
             onClick={() =>
-              openLoginModal({ redirectTo: '/dashboard/payments' })
+              openLoginModal({ redirectTo: '/payments' })
             }
             className="font-medium text-amber-900 underline"
           >
@@ -133,7 +133,7 @@ export function DashboardPaymentsView() {
           up here.
         </div>
       ) : (
-        <div className="mt-6 grid gap-4 lg:grid-cols-[320px_1fr]">
+        <div className="mt-6 grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
           <aside
             className={`flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm ${PANE_HEIGHT}`}
           >
@@ -252,13 +252,13 @@ export function DashboardPaymentsView() {
                     </button>
                   ) : null}
                   <Link
-                    href={`/dashboard/messages?thread=${encodeURIComponent(active.id ?? '')}`}
+                    href={`/messages?thread=${encodeURIComponent(active.id ?? '')}`}
                     className="rounded-xl border border-zinc-200 bg-white px-5 py-2.5 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
                   >
                     Open messages
                   </Link>
                   <Link
-                    href={`/dashboard/bookings?booking=${encodeURIComponent(active.id ?? '')}`}
+                    href={`/bookings?booking=${encodeURIComponent(active.id ?? '')}`}
                     className="rounded-xl border border-zinc-200 bg-white px-5 py-2.5 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
                   >
                     Booking details

@@ -119,8 +119,8 @@ export function SupportInboxComposer({
         <div>
           <label className="text-xs font-medium text-zinc-600">Message</label>
           <textarea
-            className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-amber-900/20"
-            rows={5}
+            className="mt-1 min-h-[10rem] w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-amber-900/20"
+            rows={8}
             placeholder="How can we help?"
             value={message}
             onChange={(e) => setMessage(e.target.value)}

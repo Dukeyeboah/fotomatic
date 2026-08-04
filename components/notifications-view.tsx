@@ -19,7 +19,7 @@ export function NotificationsView({
   threadMessagesBaseHref,
   loginRedirectTo,
 }: {
-  /** e.g. `/dashboard/messages` — thread id appended as `?thread=` */
+  /** e.g. `/messages` — thread id appended as `?thread=` */
   threadMessagesBaseHref: string;
   loginRedirectTo: string;
 }) {

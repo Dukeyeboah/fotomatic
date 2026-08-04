@@ -31,7 +31,7 @@ export default function DashboardProfilePage() {
         <p className="mt-8 text-sm text-zinc-600">
           <button
             type="button"
-            onClick={() => openLoginModal({ redirectTo: '/dashboard/profile' })}
+            onClick={() => openLoginModal({ redirectTo: '/profile' })}
             className="cursor-pointer font-medium text-amber-900 underline"
           >
             Log in

@@ -17,7 +17,7 @@ export function HomeOrDashboard() {
     } else if (userData.role === 'photographer') {
       router.replace('/photographer');
     } else {
-      router.replace('/dashboard');
+      router.replace('/photographers');
     }
   }, [loading, user, userData, router]);
 
@@ -51,7 +51,7 @@ export function HomeOrDashboard() {
           ? 'Opening admin…'
           : userData.role === 'photographer'
             ? 'Opening your studio…'
-            : 'Opening your dashboard…'}
+            : 'Opening photographers…'}
       </p>
     </div>
   );

@@ -22,15 +22,13 @@ export default function DashboardSavedPage() {
   );
 
   return (
-    <div className="px-4 pb-8 pt-0 sm:px-6 lg:px-10">
-      <div className="sticky top-14 z-20 -mx-4 border-b border-zinc-200/70 bg-[#f4f1ec]/95 px-4 py-4 backdrop-blur-md supports-[backdrop-filter]:bg-[#f4f1ec]/90 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
-        <h1 className="font-serif text-2xl font-medium text-zinc-900">
-          Saved photographers
-        </h1>
-        <p className="mt-2 text-sm text-zinc-600">
-          Hearts you add on the dashboard or directory are stored on this device.
-        </p>
-      </div>
+    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <h1 className="font-serif text-2xl font-medium text-zinc-900">
+        Saved photographers
+      </h1>
+      <p className="mt-2 max-w-2xl text-sm text-zinc-600">
+        Hearts you add on Home or in the directory are stored on this device.
+      </p>
 
       {saved.length === 0 ? (
         <div className="mt-10 rounded-2xl border border-dashed border-zinc-300 bg-white/60 p-10 text-center">
@@ -42,7 +40,7 @@ export default function DashboardSavedPage() {
             >
               Browse the directory
             </Link>{' '}
-            or use the hearts on your dashboard.
+            or use the hearts on Home.
           </p>
         </div>
       ) : (
@@ -70,7 +68,7 @@ export default function DashboardSavedPage() {
                 </p>
                 <div className="mt-2 flex gap-2">
                   <Link
-                    href="/dashboard/photographers"
+                    href="/photographers"
                     className="text-xs font-semibold text-amber-900 underline"
                   >
                     View in directory

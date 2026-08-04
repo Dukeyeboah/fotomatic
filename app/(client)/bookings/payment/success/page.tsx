@@ -103,13 +103,13 @@ export default function BookingPaymentSuccessPage() {
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
             <Link
-              href="/dashboard/bookings"
+              href="/bookings"
               className="rounded-xl bg-zinc-900 px-6 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
             >
               View bookings
             </Link>
             <Link
-              href="/dashboard/messages"
+              href="/messages"
               className="rounded-xl border border-zinc-200 bg-white px-6 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
             >
               Messages
@@ -128,7 +128,7 @@ export default function BookingPaymentSuccessPage() {
                 : 'Something went wrong verifying payment.')}
           </p>
           <Link
-            href="/dashboard/bookings"
+            href="/bookings"
             className="mt-8 inline-block rounded-xl bg-zinc-900 px-6 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
           >
             Back to bookings

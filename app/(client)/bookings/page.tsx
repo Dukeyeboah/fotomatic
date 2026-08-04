@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import { BookingOrdersList } from '@/components/booking-orders-list';
 import { Loader2 } from 'lucide-react';
 
-export default function DashboardBookingsPage() {
+export default function BookingsPage() {
   return (
     <Suspense
       fallback={
@@ -14,9 +14,9 @@ export default function DashboardBookingsPage() {
       <BookingOrdersList
         title="My Bookings"
         subtitle="Select a photographer on the left to see booking details."
-        messagesLinkHref="/dashboard/messages"
-        threadLinkBase="/dashboard/messages"
-        loginRedirectTo="/dashboard/bookings"
+        messagesLinkHref="/messages"
+        threadLinkBase="/messages"
+        loginRedirectTo="/bookings"
       />
     </Suspense>
   );

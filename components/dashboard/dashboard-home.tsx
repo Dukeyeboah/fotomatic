@@ -145,7 +145,7 @@ export function DashboardHome() {
             Photographers you might like
           </h2>
           <Link
-            href="/dashboard/photographers"
+            href="/photographers"
             className="text-sm font-medium text-amber-900/90 underline-offset-4 hover:underline"
           >
             Browse all →
@@ -170,7 +170,7 @@ export function DashboardHome() {
                 }
                 onRequestBooking={() => {
                   if (!user) {
-                    openLoginModal({ redirectTo: '/dashboard' });
+                    openLoginModal({ redirectTo: '/photographers' });
                     return;
                   }
                   setBookingPhotographer(p);
@@ -245,7 +245,7 @@ export function DashboardHome() {
                 Your Bookings
               </h2>
               <Link
-                href="/dashboard/bookings"
+                href="/bookings"
                 className="text-sm font-medium text-zinc-600 underline-offset-4 hover:text-zinc-900 hover:underline"
               >
                 View all bookings
@@ -256,7 +256,7 @@ export function DashboardHome() {
                 <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/60 p-8 text-center text-sm text-zinc-600">
                   No bookings yet.{' '}
                   <Link
-                    href="/dashboard/photographers"
+                    href="/photographers"
                     className="font-medium text-amber-900 underline-offset-4 hover:underline"
                   >
                     Find a photographer
@@ -267,7 +267,7 @@ export function DashboardHome() {
                   <DashboardBookingCard
                     key={t.id}
                     thread={t}
-                    messagesHref="/dashboard/messages"
+                    messagesHref="/messages"
                   />
                 ))
               )}
@@ -282,7 +282,7 @@ export function DashboardHome() {
                 Recent Updates
               </h2>
               <Link
-                href="/dashboard/messages"
+                href="/messages"
                 className="text-sm font-medium text-zinc-600 underline-offset-4 hover:text-zinc-900 hover:underline"
               >
                 View all
@@ -308,7 +308,7 @@ export function DashboardHome() {
                 </ul>
               )}
               <Link
-                href="/dashboard/messages"
+                href="/messages"
                 className="mt-2 flex w-full items-center justify-center rounded-xl border border-zinc-200 bg-zinc-50 py-3 text-sm font-medium text-zinc-800 hover:bg-zinc-100"
               >
                 Go to Messages
@@ -398,7 +398,7 @@ export function DashboardHome() {
         onRequestBooking={(p) => {
           setDetailPhotographer(null);
           if (!user) {
-            openLoginModal({ redirectTo: '/dashboard' });
+            openLoginModal({ redirectTo: '/photographers' });
             return;
           }
           setBookingPhotographer(p);

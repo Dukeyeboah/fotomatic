@@ -27,7 +27,7 @@ const actions: Array<{
     href: '/photographer/earnings',
     icon: Wallet,
   },
-  { label: 'Help Center', href: '/contact', icon: HelpCircle },
+  { label: 'Help Center', href: '/photographer/contact', icon: HelpCircle },
 ];
 
 export function PhotographerQuickActionGrid() {

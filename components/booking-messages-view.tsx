@@ -21,8 +21,8 @@ const PANE_HEIGHT =
   'h-[min(72vh,760px)] max-h-[min(72vh,760px)]';
 
 export function BookingMessagesView({
-  ordersLinkHref = '/dashboard/bookings',
-  loginRedirectTo = '/dashboard/messages',
+  ordersLinkHref = '/bookings',
+  loginRedirectTo = '/messages',
 }: {
   ordersLinkHref?: string;
   loginRedirectTo?: string;
@@ -91,13 +91,13 @@ export function BookingMessagesView({
   }, [activeThreadId, user]);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-6 pt-0">
-      <div className="sticky top-14 z-20 -mx-4 flex items-end justify-between gap-4 border-b border-zinc-200/70 bg-[#f4f1ec]/95 px-4 py-4 backdrop-blur-md supports-[backdrop-filter]:bg-[#f4f1ec]/90 sm:mx-0 sm:rounded-none">
+    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="font-serif text-2xl font-medium text-zinc-900">
             Messages
           </h1>
-          <p className="mt-1 text-sm text-zinc-600">
+          <p className="mt-1 max-w-2xl text-sm text-zinc-600">
             Choose a conversation on the left to read and reply.
           </p>
         </div>
@@ -125,7 +125,7 @@ export function BookingMessagesView({
           to view messages.
         </p>
       ) : (
-        <div className="mt-6 grid gap-4 lg:grid-cols-[320px_1fr]">
+        <div className="mt-6 grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
           <aside
             className={`flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm ${PANE_HEIGHT}`}
           >

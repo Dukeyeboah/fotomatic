@@ -4,30 +4,32 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { signOutUser } from '@/lib/firebase/auth';
+import { subscribeThreadsForPhotographer } from '@/lib/firebase/booking-threads';
+import { effectivePhotographerDirectoryId } from '@/lib/photographer-booking-dashboard';
 import {
-  Bell,
-  CircleUserRound,
-  ChevronDown,
+  Calendar,
+  CalendarCheck,
   CircleDollarSign,
+  CircleUserRound,
+  ClipboardList,
+  HelpCircle,
+  LayoutDashboard,
   LogOut,
   MessageCircle,
+  Search,
   Settings,
   Star,
   UserRound,
-  CalendarCheck,
-  HelpCircle,
 } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { subscribeUnreadNotificationCount } from '@/lib/firebase/booking-threads';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { usePhotographerBookingThreadsOptional } from '@/contexts/PhotographerBookingThreadsContext';
 
 function firstName(
   userData: ReturnType<typeof useAuth>['userData'],
   email: string | null,
 ): string {
   const raw =
-    userData?.displayName?.trim() ||
-    email?.split('@')[0] ||
-    'there';
+    userData?.displayName?.trim() || email?.split('@')[0] || 'there';
   return raw.split(/\s+/)[0] || 'there';
 }
 
@@ -59,18 +61,40 @@ function MenuRow({
 
 export function PhotographerAccountMenu() {
   const { user, userData, loading } = useAuth();
+  const threadsCtx = usePhotographerBookingThreadsOptional();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [notifUnread, setNotifUnread] = useState(0);
+  const [standaloneRequestCount, setStandaloneRequestCount] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
 
+  const directoryId = useMemo(() => {
+    if (!user || userData?.role !== 'photographer') return null;
+    return effectivePhotographerDirectoryId(
+      user.uid,
+      userData.photographer?.directoryId,
+    );
+  }, [user, userData?.role, userData?.photographer?.directoryId]);
+
+  /** Site header (outside photographer shell) has no threads provider. */
   useEffect(() => {
-    if (!user) {
-      setNotifUnread(0);
+    if (threadsCtx || !user || !directoryId) {
+      setStandaloneRequestCount(0);
       return;
     }
-    return subscribeUnreadNotificationCount(user.uid, setNotifUnread);
-  }, [user]);
+    return subscribeThreadsForPhotographer({
+      photographerUserId: user.uid,
+      directoryId,
+      cb: (threads) => {
+        setStandaloneRequestCount(
+          threads.filter((t) => t.status === 'requested').length,
+        );
+      },
+    });
+  }, [threadsCtx, user, directoryId]);
+
+  const openRequests = threadsCtx
+    ? threadsCtx.threads.filter((t) => t.status === 'requested').length
+    : standaloneRequestCount;
 
   useEffect(() => {
     if (!open) return;
@@ -83,9 +107,6 @@ export function PhotographerAccountMenu() {
 
   if (loading || !user) return null;
 
-  const label =
-    userData?.username?.trim() ||
-    firstName(userData, user.email ?? null);
   const greet = firstName(userData, user.email ?? null);
   const close = () => setOpen(false);
 
@@ -94,43 +115,46 @@ export function PhotographerAccountMenu() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex max-w-[220px] cursor-pointer items-center gap-2 rounded-full border border-zinc-200 bg-white py-1 pl-1 pr-2 text-sm font-medium text-zinc-800 shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 sm:pr-3"
+        className="flex cursor-pointer items-center rounded-full border border-zinc-200 bg-white p-0.5 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
         aria-expanded={open}
         aria-haspopup="true"
+        aria-label="Account menu"
       >
         {user.photoURL ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={user.photoURL}
             alt=""
-            width={32}
-            height={32}
-            className="h-8 w-8 shrink-0 rounded-full object-cover"
+            width={36}
+            height={36}
+            className="h-9 w-9 shrink-0 rounded-full object-cover"
             referrerPolicy="no-referrer"
           />
         ) : (
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-600">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-600">
             <CircleUserRound className="h-5 w-5" strokeWidth={1.75} />
           </span>
         )}
-        <span className="hidden min-w-0 truncate sm:inline">{label}</span>
-        <ChevronDown className="hidden h-4 w-4 shrink-0 text-zinc-500 sm:block" />
       </button>
       {open ? (
-        <div className="absolute right-0 z-50 mt-2 w-60 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg ring-1 ring-zinc-900/5">
+        <div className="absolute right-0 z-50 mt-2 w-64 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg ring-1 ring-zinc-900/5">
           <p className="border-b border-zinc-100 px-4 py-2 text-xs text-zinc-500">
             Signed in as{' '}
             <span className="font-medium text-zinc-800">{greet}</span>
           </p>
-          <MenuRow href="/photographer/profile" icon={UserRound} onNavigate={close}>
-            Photographer profile
-          </MenuRow>
           <MenuRow
-            href="/photographer/bookings"
-            icon={CalendarCheck}
+            href="/photographer/directory"
+            icon={Search}
             onNavigate={close}
           >
-            My bookings
+            Photographers
+          </MenuRow>
+          <MenuRow
+            href="/photographer"
+            icon={LayoutDashboard}
+            onNavigate={close}
+          >
+            Dashboard
           </MenuRow>
           <MenuRow
             href="/photographer/messages"
@@ -140,18 +164,32 @@ export function PhotographerAccountMenu() {
             Messages
           </MenuRow>
           <MenuRow
-            href="/photographer/notifications"
-            icon={Bell}
+            href="/photographer/requests"
+            icon={ClipboardList}
             onNavigate={close}
             suffix={
-              notifUnread > 0 ? (
+              openRequests > 0 ? (
                 <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-amber-900 px-1.5 py-0.5 text-[11px] font-bold text-white">
-                  {notifUnread > 99 ? '99+' : notifUnread}
+                  {openRequests > 99 ? '99+' : openRequests}
                 </span>
               ) : null
             }
           >
-            Notifications
+            Requests
+          </MenuRow>
+          <MenuRow
+            href="/photographer/bookings"
+            icon={CalendarCheck}
+            onNavigate={close}
+          >
+            Bookings
+          </MenuRow>
+          <MenuRow
+            href="/photographer/calendar"
+            icon={Calendar}
+            onNavigate={close}
+          >
+            Calendar
           </MenuRow>
           <MenuRow
             href="/photographer/earnings"
@@ -164,13 +202,24 @@ export function PhotographerAccountMenu() {
             Reviews
           </MenuRow>
           <MenuRow
+            href="/photographer/profile"
+            icon={UserRound}
+            onNavigate={close}
+          >
+            Profile
+          </MenuRow>
+          <MenuRow
             href="/photographer/settings"
             icon={Settings}
             onNavigate={close}
           >
             Account settings
           </MenuRow>
-          <MenuRow href="/contact" icon={HelpCircle} onNavigate={close}>
+          <MenuRow
+            href="/photographer/contact"
+            icon={HelpCircle}
+            onNavigate={close}
+          >
             Help / Support
           </MenuRow>
           <button
@@ -183,7 +232,10 @@ export function PhotographerAccountMenu() {
               router.refresh();
             }}
           >
-            <LogOut className="h-4 w-4 shrink-0 text-zinc-500" strokeWidth={1.75} />
+            <LogOut
+              className="h-4 w-4 shrink-0 text-zinc-500"
+              strokeWidth={1.75}
+            />
             Log out
           </button>
         </div>

@@ -93,14 +93,14 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
   const bookHref = useMemo(() => {
     if (!user || !userData) return null;
     if (userData.role === 'photographer') return '/photographer/directory';
-    return '/dashboard/photographers';
+    return '/photographers';
   }, [user, userData]);
 
   const directoryHref = useMemo(() => {
     if (!user || !userData) return '/photographers';
     if (userData.role === 'photographer') return '/photographer/directory';
     if (userData.role === 'admin') return '/admin/photographers';
-    return '/dashboard/photographers';
+    return '/photographers';
   }, [user, userData]);
 
   const isSelfListing = useMemo(() => {

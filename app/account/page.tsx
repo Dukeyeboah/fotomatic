@@ -19,7 +19,7 @@ export default function AccountPage() {
     userData?.role === 'photographer'
       ? '/photographer/profile'
       : userData?.role === 'user'
-        ? '/dashboard/profile'
+        ? '/profile'
         : '/profile';
 
   return (

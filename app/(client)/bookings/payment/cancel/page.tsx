@@ -19,14 +19,14 @@ export default function BookingPaymentCancelPage() {
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
         {threadId ? (
           <Link
-            href={`/dashboard/messages?thread=${encodeURIComponent(threadId)}`}
+            href={`/messages?thread=${encodeURIComponent(threadId)}`}
             className="rounded-xl bg-zinc-900 px-6 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
           >
             Back to booking
           </Link>
         ) : null}
         <Link
-          href="/dashboard/bookings"
+          href="/bookings"
           className="rounded-xl border border-zinc-200 bg-white px-6 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
         >
           All bookings

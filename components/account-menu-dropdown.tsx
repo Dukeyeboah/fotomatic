@@ -14,6 +14,7 @@ import {
   Star,
   Settings,
   HelpCircle,
+  Home,
   UserRound,
   CalendarCheck,
   CreditCard,
@@ -161,38 +162,38 @@ export function AccountMenuDropdown() {
             </>
           ) : (
             <>
-              <Row href="/dashboard/photographers" icon={Search} onClick={close}>
+              <Row href="/home" icon={Home} onClick={close}>
+                Home
+              </Row>
+              <Row href="/photographers" icon={Search} onClick={close}>
                 Photographers
               </Row>
-              <Row href="/dashboard" icon={LayoutDashboard} onClick={close}>
-                Dashboard
-              </Row>
               <Row
-                href="/dashboard/messages"
+                href="/messages"
                 icon={MessageCircle}
                 onClick={close}
               >
                 Messages
               </Row>
               <Row
-                href="/dashboard/bookings"
+                href="/bookings"
                 icon={CalendarCheck}
                 onClick={close}
               >
                 My bookings
               </Row>
-              <Row href="/dashboard/saved" icon={Heart} onClick={close}>
+              <Row href="/saved" icon={Heart} onClick={close}>
                 Saved
               </Row>
               <Row
-                href="/dashboard/payments"
+                href="/payments"
                 icon={CreditCard}
                 onClick={close}
               >
                 Payments
               </Row>
               <Row
-                href="/dashboard/settings"
+                href="/settings"
                 icon={Settings}
                 onClick={close}
               >
@@ -201,7 +202,13 @@ export function AccountMenuDropdown() {
             </>
           )}
 
-          <Row href="/dashboard/contact" icon={HelpCircle} onClick={close}>
+          <Row
+            href={
+              isPhotographer ? '/photographer/contact' : '/contact'
+            }
+            icon={HelpCircle}
+            onClick={close}
+          >
             Help / Support
           </Row>
           <button

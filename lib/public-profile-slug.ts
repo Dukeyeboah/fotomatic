@@ -3,6 +3,7 @@ const RESERVED = new Set([
   'api',
   'admin',
   'dashboard',
+  'home',
   'login',
   'logout',
   'profile',

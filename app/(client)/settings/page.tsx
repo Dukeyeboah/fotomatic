@@ -2,15 +2,17 @@ import { DashboardSettingsPanels } from '@/components/dashboard/dashboard-settin
 
 export default function DashboardSettingsPage() {
   return (
-    <div className="px-4 py-10 sm:px-6 lg:px-10">
+    <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
       <h1 className="font-serif text-2xl font-medium text-zinc-900">
         Account settings
       </h1>
-      <p className="mt-2 text-sm text-zinc-600">
+      <p className="mt-2 max-w-2xl text-sm text-zinc-600">
         Expand a section below to manage your profile, review account details,
-        or contact support—all without leaving your dashboard.
+        or contact support.
       </p>
-      <DashboardSettingsPanels />
+      <div className="mt-8">
+        <DashboardSettingsPanels />
+      </div>
     </div>
   );
 }

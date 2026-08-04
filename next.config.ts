@@ -20,6 +20,58 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      { source: "/dashboard", destination: "/photographers", permanent: false },
+      {
+        source: "/dashboard/photographers",
+        destination: "/photographers",
+        permanent: false,
+      },
+      {
+        source: "/dashboard/bookings/payment/:path*",
+        destination: "/bookings/payment/:path*",
+        permanent: false,
+      },
+      {
+        source: "/dashboard/bookings",
+        destination: "/bookings",
+        permanent: false,
+      },
+      {
+        source: "/dashboard/messages",
+        destination: "/messages",
+        permanent: false,
+      },
+      { source: "/dashboard/saved", destination: "/saved", permanent: false },
+      {
+        source: "/dashboard/payments",
+        destination: "/payments",
+        permanent: false,
+      },
+      {
+        source: "/dashboard/settings",
+        destination: "/settings",
+        permanent: false,
+      },
+      {
+        source: "/dashboard/profile",
+        destination: "/profile",
+        permanent: false,
+      },
+      {
+        source: "/dashboard/notifications",
+        destination: "/notifications",
+        permanent: false,
+      },
+      {
+        source: "/dashboard/contact",
+        destination: "/contact",
+        permanent: false,
+      },
+      { source: "/orders", destination: "/bookings", permanent: false },
+    ];
+  },
 };
 
 export default nextConfig;

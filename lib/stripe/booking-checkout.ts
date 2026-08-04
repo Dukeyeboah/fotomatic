@@ -88,8 +88,8 @@ export async function createBookingCheckoutSession(args: {
   }
 
   const base = appBaseUrl();
-  const successUrl = `${base}/dashboard/bookings/payment/success?session_id={CHECKOUT_SESSION_ID}`;
-  const cancelUrl = `${base}/dashboard/bookings/payment/cancel?thread=${encodeURIComponent(args.threadId)}`;
+  const successUrl = `${base}/bookings/payment/success?session_id={CHECKOUT_SESSION_ID}`;
+  const cancelUrl = `${base}/bookings/payment/cancel?thread=${encodeURIComponent(args.threadId)}`;
   console.log('[booking-checkout] step=urls', { base, successUrl, cancelUrl });
 
   const lineItem: Stripe.Checkout.SessionCreateParams.LineItem = {

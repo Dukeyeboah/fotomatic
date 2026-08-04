@@ -46,7 +46,7 @@ export default function PrivacyPage() {
             <p>
               Questions about privacy:{' '}
               <Link
-                href="/dashboard/contact"
+                href="/contact"
                 className="font-medium text-amber-900 underline"
               >
                 Contact support

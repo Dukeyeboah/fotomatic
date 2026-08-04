@@ -1,19 +1,17 @@
 'use client';
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Loader2, Menu } from 'lucide-react';
+import Link from 'next/link';
+import { type ReactNode, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
 import { NotificationBell } from '@/components/notification-bell';
-import { PhotographerSidebar } from '@/components/photographer/photographer-sidebar';
 import { PhotographerAccountMenu } from '@/components/photographer/photographer-account-menu';
 import { PhotographerProfileSetupModal } from '@/components/photographer-profile-setup-modal';
 import { PhotographerBookingThreadsProvider } from '@/contexts/PhotographerBookingThreadsContext';
-import { subscribeUnreadNotificationCount } from '@/lib/firebase/booking-threads';
+import { MarketingImage } from '@/components/marketing-image';
 import { syncPhotographerPublicDirectory } from '@/lib/firebase/sync-photographer-directory';
-
-const COLLAPSE_KEY = 'fotomatic_photographer_sidebar_collapsed';
 
 export function PhotographerLayoutClient({
   children,
@@ -23,49 +21,15 @@ export function PhotographerLayoutClient({
   const { user, userData, loading } = useAuth();
   const { openLoginModal } = useLoginModal();
   const router = useRouter();
-  const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [notificationsUnread, setNotificationsUnread] = useState(0);
-
-  useEffect(() => {
-    try {
-      const v = window.localStorage.getItem(COLLAPSE_KEY);
-      if (v === '1') setCollapsed(true);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  const toggleCollapse = useCallback(() => {
-    setCollapsed((c) => {
-      const next = !c;
-      try {
-        window.localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0');
-      } catch {
-        /* ignore */
-      }
-      return next;
-    });
-  }, []);
-
-  const closeMobile = useCallback(() => setMobileOpen(false), []);
-
-  useEffect(() => {
-    if (!user) {
-      setNotificationsUnread(0);
-      return;
-    }
-    return subscribeUnreadNotificationCount(user.uid, setNotificationsUnread);
-  }, [user]);
 
   useEffect(() => {
     if (loading || !user || !userData) return;
     if (userData.role !== 'photographer') {
-      router.replace('/dashboard');
+      router.replace('/photographers');
     }
   }, [loading, user, userData, router]);
 
-  /** Keep `photographers` in sync with `users` (incl. `username` → `profileSlug`) after login or refresh. */
+  /** Keep `photographers` in sync with `users` after login or refresh. */
   useEffect(() => {
     if (!user || !userData || userData.role !== 'photographer') return;
     let cancelled = false;
@@ -110,15 +74,7 @@ export function PhotographerLayoutClient({
     );
   }
 
-  if (!userData) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#faf8f5]">
-        <Loader2 className="h-10 w-10 animate-spin text-zinc-300" />
-      </div>
-    );
-  }
-
-  if (userData && userData.role !== 'photographer') {
+  if (!userData || userData.role !== 'photographer') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#faf8f5]">
         <Loader2 className="h-10 w-10 animate-spin text-zinc-300" />
@@ -128,41 +84,64 @@ export function PhotographerLayoutClient({
 
   return (
     <PhotographerBookingThreadsProvider>
-      <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 w-full overflow-hidden bg-[#f4f1ec]">
-        <PhotographerSidebar
-          collapsed={collapsed}
-          onToggleCollapse={toggleCollapse}
-          onNavigate={closeMobile}
-          mobileOpen={mobileOpen}
-          notificationsUnreadCount={notificationsUnread}
-          profilePublicSlug={
-            userData.username?.trim()
-              ? userData.username.trim().toLowerCase()
-              : null
-          }
-        />
-        <div className="flex min-h-0 flex-1 flex-col lg:min-w-0">
-          <header className="sticky top-0 z-30 shrink-0 border-b border-zinc-200/80 bg-white/95 backdrop-blur">
-            <div className="flex h-14 items-center justify-between gap-3 px-4 pt-[max(0px,env(safe-area-inset-top))] sm:px-6">
-              <button
-                type="button"
-                className="inline-flex rounded-lg p-2 text-zinc-700 hover:bg-zinc-100 lg:hidden"
-                aria-label="Open menu"
-                onClick={() => setMobileOpen(true)}
-              >
-                <Menu className="h-6 w-6" />
-              </button>
-            <div className="flex flex-1 justify-end gap-2 sm:gap-3">
+      <div className="flex min-h-[100dvh] flex-col bg-[#f4f1ec]">
+        <header className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/95 pt-[max(0px,env(safe-area-inset-top))] backdrop-blur">
+          <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+            <Link
+              href="/photographer"
+              className="flex min-w-0 items-center gap-1.5 sm:gap-2.5"
+              aria-label="Fotomatic photographer home"
+            >
+              <MarketingImage
+                file="fotomaticLogo.png"
+                alt=""
+                width={36}
+                height={36}
+                className="h-8 w-8 shrink-0 object-contain"
+              />
+              <MarketingImage
+                file="fotomatic.jpg"
+                alt="Fotomatic"
+                width={140}
+                height={32}
+                className="h-5 w-auto max-w-[110px] object-contain object-left sm:h-6 sm:max-w-[140px]"
+              />
+            </Link>
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
               <NotificationBell />
-              {/* <DashboardMessagesNavLink href="/photographer/messages" /> */}
               <PhotographerAccountMenu />
             </div>
-            </div>
-          </header>
-          <main className="min-h-0 flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
-            {children}
-          </main>
-        </div>
+          </div>
+        </header>
+
+        <main className="flex w-full flex-1 flex-col pb-24">{children}</main>
+
+        <footer className="fixed inset-x-0 bottom-0 z-20 border-t border-zinc-200/70 bg-[#faf8f5]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+          <div className="mx-auto flex max-w-6xl flex-col items-center gap-3 px-4 py-4 sm:px-6 lg:px-8">
+            <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-xs text-zinc-400 sm:text-sm">
+              <Link
+                href="/privacy"
+                className="transition-colors hover:text-zinc-600"
+              >
+                Privacy
+              </Link>
+              <Link
+                href="/terms"
+                className="transition-colors hover:text-zinc-600"
+              >
+                Terms &amp; conditions
+              </Link>
+              <Link
+                href="/photographer/contact"
+                className="transition-colors hover:text-zinc-600"
+              >
+                Contact support
+              </Link>
+            </nav>
+            <p className="text-xs font-medium text-zinc-600">© Fotomatic 2026</p>
+          </div>
+        </footer>
+
         <PhotographerProfileSetupModal />
       </div>
     </PhotographerBookingThreadsProvider>

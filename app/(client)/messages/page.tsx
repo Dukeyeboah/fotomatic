@@ -4,7 +4,7 @@ import { Suspense } from 'react';
 import { BookingMessagesView } from '@/components/booking-messages-view';
 import { Loader2 } from 'lucide-react';
 
-export default function DashboardMessagesPage() {
+export default function MessagesPage() {
   return (
     <Suspense
       fallback={
@@ -14,8 +14,8 @@ export default function DashboardMessagesPage() {
       }
     >
       <BookingMessagesView
-        ordersLinkHref="/dashboard/bookings"
-        loginRedirectTo="/dashboard/messages"
+        ordersLinkHref="/bookings"
+        loginRedirectTo="/messages"
       />
     </Suspense>
   );

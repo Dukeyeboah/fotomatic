@@ -22,15 +22,15 @@ import {
 import { useDashboardApplyAsPhotographer } from '@/components/dashboard/dashboard-apply-photographer-context';
 
 const nav = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/dashboard/bookings', label: 'My Bookings', icon: CalendarCheck },
-  { href: '/dashboard/messages', label: 'Messages', icon: MessageCircle },
-  { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
-  { href: '/dashboard/photographers', label: 'Find photographers', icon: Search },
-  { href: '/dashboard/saved', label: 'Saved Photographers', icon: Heart },
-  { href: '/dashboard/payments', label: 'Payments', icon: CreditCard },
-  { href: '/dashboard/profile', label: 'Profile', icon: UserRound },
-  { href: '/dashboard/settings', label: 'Account Settings', icon: Settings },
+  { href: '/home', label: 'Home', icon: LayoutDashboard },
+  { href: '/photographers', label: 'Find photographers', icon: Search },
+  { href: '/bookings', label: 'My Bookings', icon: CalendarCheck },
+  { href: '/messages', label: 'Messages', icon: MessageCircle },
+  { href: '/notifications', label: 'Notifications', icon: Bell },
+  { href: '/saved', label: 'Saved Photographers', icon: Heart },
+  { href: '/payments', label: 'Payments', icon: CreditCard },
+  { href: '/profile', label: 'Profile', icon: UserRound },
+  { href: '/settings', label: 'Account Settings', icon: Settings },
 ] as const;
 
 export function DashboardSidebar({
@@ -74,7 +74,7 @@ export function DashboardSidebar({
         <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-zinc-200/80 px-3 lg:px-4">
           {!collapsed ? (
             <Link
-              href="/dashboard"
+              href="/home"
               className="flex min-w-0 items-center gap-2"
               onClick={onNavigate}
             >
@@ -95,7 +95,7 @@ export function DashboardSidebar({
             </Link>
           ) : (
             <Link
-              href="/dashboard"
+              href="/home"
               className="mx-auto flex justify-center"
               onClick={onNavigate}
             >
@@ -133,13 +133,13 @@ export function DashboardSidebar({
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 pb-4">
           {nav.map(({ href, label, icon: Icon }) => {
             const active =
-              href === '/dashboard'
-                ? pathname === '/dashboard'
+              href === '/home'
+                ? pathname === '/home'
                 : pathname === href || pathname.startsWith(`${href}/`);
             const showMsgBadge =
-              href === '/dashboard/messages' && messagesUnreadCount > 0;
+              href === '/messages' && messagesUnreadCount > 0;
             const showNotifBadge =
-              href === '/dashboard/notifications' &&
+              href === '/notifications' &&
               notificationsUnreadCount > 0;
             return (
               <Link
@@ -238,7 +238,7 @@ export function DashboardSidebar({
                 Book the perfect photographer for your special moments.
               </p>
               <Link
-                href="/dashboard/photographers"
+                href="/photographers"
                 onClick={onNavigate}
                 className="mt-3 flex w-full items-center justify-center rounded-xl bg-zinc-900 py-2.5 text-xs font-semibold text-white hover:bg-zinc-800"
               >
@@ -261,7 +261,7 @@ export function DashboardSidebar({
               <Camera className="h-5 w-5" strokeWidth={1.75} />
             </button>
             <Link
-              href="/dashboard/photographers"
+              href="/photographers"
               title="Find Photographers"
               onClick={onNavigate}
               className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-900 text-white hover:bg-zinc-800"
@@ -272,7 +272,7 @@ export function DashboardSidebar({
         ) : collapsed ? (
           <div className="mx-auto mb-3">
             <Link
-              href="/dashboard/photographers"
+              href="/photographers"
               title="Find Photographers"
               onClick={onNavigate}
               className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-900 text-white hover:bg-zinc-800"

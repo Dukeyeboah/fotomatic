@@ -20,7 +20,7 @@ export default function PhotographerSettingsPage() {
         </li>
         <li>
           <Link
-            href="/contact"
+            href="/photographer/contact"
             className="flex rounded-2xl border border-zinc-200 bg-white px-5 py-4 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50"
           >
             Help center →

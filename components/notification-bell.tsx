@@ -13,13 +13,13 @@ import { subscribeUnreadAdminEventCount } from '@/lib/firebase/admin';
 function messagesHrefForRole(role: string | undefined): string {
   if (role === 'photographer') return '/photographer/messages';
   if (role === 'admin') return '/admin/notifications';
-  return '/dashboard/messages';
+  return '/messages';
 }
 
 function notificationsHrefForRole(role: string | undefined): string {
   if (role === 'photographer') return '/photographer/notifications';
   if (role === 'admin') return '/admin/notifications';
-  return '/dashboard/notifications';
+  return '/notifications';
 }
 
 export function NotificationBell() {

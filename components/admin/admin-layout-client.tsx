@@ -42,7 +42,7 @@ export function AdminLayoutClient({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (loading || !user || !userData) return;
     if (userData.role !== 'admin') {
-      router.replace('/dashboard');
+      router.replace('/photographers');
     }
   }, [loading, user, userData, router]);
 

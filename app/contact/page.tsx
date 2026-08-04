@@ -8,8 +8,8 @@ import { ClientAppShell } from '@/components/client-app-shell';
 import { ContactSupportContent } from '@/components/contact-support-content';
 
 /**
- * Public / shared contact entry. Logged-in clients are sent into the dashboard
- * shell so Help / Support matches the rest of the client app.
+ * Public contact entry. Photographers are sent to their role shell;
+ * clients and guests use the shared client chrome.
  */
 export default function ContactPage() {
   const { user, userData, loading } = useAuth();
@@ -17,12 +17,12 @@ export default function ContactPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (user && userData?.role === 'user') {
-      router.replace('/dashboard/contact');
+    if (user && userData?.role === 'photographer') {
+      router.replace('/photographer/contact');
     }
   }, [loading, user, userData, router]);
 
-  if (loading || (user && (!userData || userData.role === 'user'))) {
+  if (loading || (user && userData?.role === 'photographer')) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-[#f4f1ec]">
         <Loader2 className="h-8 w-8 animate-spin text-zinc-300" />
@@ -31,8 +31,12 @@ export default function ContactPage() {
   }
 
   return (
-    <ClientAppShell loginRedirectTo="/dashboard/contact">
-      <ContactSupportContent loginRedirectTo="/dashboard/contact" />
+    <ClientAppShell loginRedirectTo="/contact">
+      <ContactSupportContent
+        loginRedirectTo="/contact"
+        photographersHref="/photographers"
+        dashboardHref="/home"
+      />
     </ClientAppShell>
   );
 }

@@ -51,7 +51,7 @@ export default function TermsPage() {
             <p>
               Questions about these terms:{' '}
               <Link
-                href="/dashboard/contact"
+                href="/contact"
                 className="font-medium text-amber-900 underline"
               >
                 Contact support

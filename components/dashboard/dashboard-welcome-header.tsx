@@ -18,14 +18,14 @@ export function DashboardWelcomeHeader({
       </div>
       <div className="flex flex-wrap gap-3">
         <Link
-          href="/dashboard/photographers"
+          href="/photographers"
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800"
         >
           <Search className="h-4 w-4" strokeWidth={2} />
           Find a Photographer
         </Link>
         <Link
-          href="/dashboard/bookings"
+          href="/bookings"
           className="inline-flex items-center justify-center rounded-xl border border-zinc-300 bg-white px-5 py-3 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50"
         >
           View All Bookings
