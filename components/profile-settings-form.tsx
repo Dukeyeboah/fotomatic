@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { User } from 'firebase/auth';
 import { updateProfile } from 'firebase/auth';
 import {
@@ -14,6 +14,12 @@ import {
 } from '@/lib/firebase/upload';
 import { DIRECTORY_GALLERY_MAX } from '@/lib/photographers-directory';
 import { COUNTRY_NAMES } from '@/lib/countries';
+import {
+  composeInternationalPhone,
+  COUNTRY_DIAL_BY_NAME,
+  dialInfoForCountry,
+  splitStoredPhone,
+} from '@/lib/country-dial-codes';
 import {
   parsePhotographyFocusesFromFirestore,
   resolvePhotographyFocusesFromForm,
@@ -42,14 +48,80 @@ import {
 } from '@/lib/firebase/username-claim';
 import { useAuth } from '@/contexts/AuthContext';
 import { ImageUploadField } from '@/components/image-upload-field';
-import { isImageFile } from '@/lib/prepare-image-upload';
-import { Loader2, X } from 'lucide-react';
+import { ImageEditMenu } from '@/components/image-edit-menu';
+import {
+  ImageCropDialog,
+  fileToObjectUrl,
+} from '@/components/image-crop-dialog';
+import { prepareImageForUpload } from '@/lib/prepare-image-upload';
+import { Loader2, X, ChevronDown } from 'lucide-react';
 
 const FIELD_INPUT_CLASS =
   'w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-500 caret-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20';
 
 const FIELD_TEXTAREA_CLASS =
   'w-full resize-y rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-500 caret-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20';
+
+async function suggestAvailableUsernames(
+  baseRaw: string,
+  uid: string,
+): Promise<string[]> {
+  const base = normalizePublicProfileSlug(baseRaw).replace(/[^a-z0-9_-]/g, '');
+  const seed = base.length >= 3 ? base.slice(0, 32) : `user${uid.slice(0, 4)}`;
+  const out: string[] = [];
+  for (let i = 1; i <= 12 && out.length < 3; i++) {
+    const candidate = `${seed}${i}`;
+    if (!isValidPublicProfileSlug(candidate) || isReservedProfileSlug(candidate)) {
+      continue;
+    }
+    if (await isUsernameClaimAvailable(candidate, uid)) out.push(candidate);
+  }
+  return out;
+}
+
+function CollapsibleCard({
+  title,
+  subtitle,
+  defaultOpen = false,
+  children,
+  className = '',
+}: {
+  title: string;
+  subtitle?: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div
+      className={`rounded-2xl border border-zinc-200 bg-white shadow-sm ${className}`}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left"
+        aria-expanded={open}
+      >
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold text-zinc-900">{title}</h2>
+          {subtitle ? (
+            <p className="mt-0.5 truncate text-xs text-zinc-500">{subtitle}</p>
+          ) : null}
+        </div>
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-zinc-500 transition-transform ${
+            open ? 'rotate-180' : ''
+          }`}
+          strokeWidth={1.75}
+        />
+      </button>
+      {open ? (
+        <div className="border-t border-zinc-100 px-4 pb-4 pt-3">{children}</div>
+      ) : null}
+    </div>
+  );
+}
 
 type Props = {
   user: User;
@@ -97,7 +169,13 @@ export function ProfileSettingsForm({
   const [linkedin, setLinkedin] = useState(ph.linkedin ?? '');
   const [website, setWebsite] = useState(ph.website ?? '');
   const [portfolioUrl, setPortfolioUrl] = useState(ph.portfolioUrl ?? '');
-  const [phone, setPhone] = useState(ph.phone ?? '');
+  const initialPhoneParts = splitStoredPhone(
+    ph.phone,
+    userData.country ?? ph.country,
+  );
+  const [phoneDial, setPhoneDial] = useState(initialPhoneParts.dial);
+  const [phoneAbbr, setPhoneAbbr] = useState(initialPhoneParts.abbr);
+  const [phoneNational, setPhoneNational] = useState(initialPhoneParts.national);
   const [phoneContact, setPhoneContact] = useState(ph.phoneContact === true);
   const [emailContact, setEmailContact] = useState(ph.emailContact === true);
   const [publicPhoneOnProfile, setPublicPhoneOnProfile] = useState(() => {
@@ -136,12 +214,21 @@ export function ProfileSettingsForm({
       ? ph.galleryImageUrls.filter((u) => typeof u === 'string' && u.trim()).slice(0, DIRECTORY_GALLERY_MAX)
       : [],
   );
+  const [contactEmail, setContactEmail] = useState(
+    () => (userData.email ?? user.email ?? '').trim(),
+  );
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<
     'banner' | 'profile' | 'gallery' | 'clientAvatar' | null
   >(null);
   const [message, setMessage] = useState<string | null>(null);
   const [usernameHint, setUsernameHint] = useState<string | null>(null);
+  const [usernameSuggestions, setUsernameSuggestions] = useState<string[]>([]);
+  const [cropSession, setCropSession] = useState<{
+    kind: 'banner' | 'profile' | 'gallery' | 'clientAvatar';
+    src: string;
+    fileName: string;
+  } | null>(null);
 
   const isPhotographer = userData.role === 'photographer';
   const isAdmin = userData.role === 'admin';
@@ -153,35 +240,54 @@ export function ProfileSettingsForm({
       : '',
   );
 
-  const onClientAvatarUpload = async (files: FileList | null) => {
-    const file = files?.[0] ?? null;
-    if (!file || !showClientProfilePhoto) return;
-    setUploading('clientAvatar');
+  const closeCrop = () => {
+    if (cropSession?.src) URL.revokeObjectURL(cropSession.src);
+    setCropSession(null);
+  };
+
+  const beginCropFromFiles = async (
+    kind: 'banner' | 'profile' | 'gallery' | 'clientAvatar',
+    files: FileList | null,
+  ) => {
+    const raw = files?.[0] ?? null;
+    if (!raw) return;
     setMessage(null);
     try {
-      const url = await uploadUserProfileAvatar(user.uid, file);
-      if (url) setClientProfilePhotoUrl(url);
+      const prepared = await prepareImageForUpload(raw);
+      const src = fileToObjectUrl(prepared);
+      setCropSession({ kind, src, fileName: prepared.name });
     } catch (e) {
-      setMessage(
-        e instanceof Error ? e.message : 'Could not upload profile photo.',
-      );
-    } finally {
-      setUploading(null);
+      setMessage(e instanceof Error ? e.message : 'Could not open image.');
     }
   };
 
-  const onUpload = async (
-    kind: 'banner' | 'profile',
-    files: FileList | null,
-  ) => {
-    const file = files?.[0] ?? null;
-    if (!file) return;
-    setUploading(kind);
+  const uploadCroppedFile = async (file: File) => {
+    if (!cropSession) return;
+    const kind = cropSession.kind;
+    closeCrop();
+    setUploading(kind === 'clientAvatar' ? 'clientAvatar' : kind);
     setMessage(null);
     try {
-      const url = await uploadPhotographerMedia(user.uid, kind, file);
-      if (kind === 'banner') setBannerImageUrl(url!);
-      else setProfileImageUrl(url!);
+      if (kind === 'banner' || kind === 'profile') {
+        const url = await uploadPhotographerMedia(user.uid, kind, file);
+        if (kind === 'banner') setBannerImageUrl(url!);
+        else setProfileImageUrl(url!);
+      } else if (kind === 'clientAvatar') {
+        const url = await uploadUserProfileAvatar(user.uid, file);
+        if (url) setClientProfilePhotoUrl(url);
+      } else {
+        let room = DIRECTORY_GALLERY_MAX - galleryImageUrls.length;
+        if (room <= 0) {
+          setMessage(`Portfolio is limited to ${DIRECTORY_GALLERY_MAX} images.`);
+          return;
+        }
+        const url = await uploadPhotographerGalleryImage(user.uid, file);
+        if (url) {
+          setGalleryImageUrls((prev) =>
+            [...prev, url].slice(0, DIRECTORY_GALLERY_MAX),
+          );
+        }
+      }
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Could not upload image.');
     } finally {
@@ -189,51 +295,48 @@ export function ProfileSettingsForm({
     }
   };
 
+  const checkUsernameAvailability = async (raw: string) => {
+    if (!raw || raw.length < 3) {
+      setUsernameHint(null);
+      setUsernameSuggestions([]);
+      return;
+    }
+    const n = normalizePublicProfileSlug(raw);
+    if (!isValidPublicProfileSlug(n) || isReservedProfileSlug(n)) {
+      setUsernameHint(
+        'Username must be 3–40 characters (letters, numbers, underscore, hyphen).',
+      );
+      setUsernameSuggestions([]);
+      return;
+    }
+    const avail = await isUsernameClaimAvailable(raw, user.uid);
+    if (avail) {
+      setUsernameHint(null);
+      setUsernameSuggestions([]);
+      return;
+    }
+    const suggestions = await suggestAvailableUsernames(n, user.uid);
+    setUsernameHint(
+      'That username is already taken. Please choose another.',
+    );
+    setUsernameSuggestions(suggestions);
+  };
+
+  const onClientAvatarUpload = async (files: FileList | null) => {
+    await beginCropFromFiles('clientAvatar', files);
+  };
+
+  const onUpload = async (
+    kind: 'banner' | 'profile',
+    files: FileList | null,
+  ) => {
+    await beginCropFromFiles(kind, files);
+  };
+
   const onGalleryPickMultiple = async (files: FileList | null) => {
     if (!files?.length || !showMediaUploads) return;
-    const list = Array.from(files).filter((f) => isImageFile(f));
-    if (list.length === 0) {
-      setMessage('Please choose image files (JPG, PNG, WebP, or HEIC).');
-      return;
-    }
-    let room = DIRECTORY_GALLERY_MAX - galleryImageUrls.length;
-    if (room <= 0) {
-      setMessage(`Portfolio is limited to ${DIRECTORY_GALLERY_MAX} images.`);
-      return;
-    }
-    setUploading('gallery');
-    setMessage(null);
-    const nextUrls: string[] = [];
-    let lastError: string | null = null;
-    for (const file of list) {
-      if (room <= 0) break;
-      try {
-        const url = await uploadPhotographerGalleryImage(user.uid, file);
-        if (url) {
-          nextUrls.push(url);
-          room -= 1;
-        }
-      } catch (e) {
-        lastError =
-          e instanceof Error ? e.message : 'Could not upload one or more images.';
-      }
-    }
-    setUploading(null);
-    if (nextUrls.length === 0) {
-      setMessage(
-        lastError ??
-          'Upload failed. Check Storage rules and bucket in Firebase.',
-      );
-      return;
-    }
-    setGalleryImageUrls((prev) =>
-      [...prev, ...nextUrls].slice(0, DIRECTORY_GALLERY_MAX),
-    );
-    if (list.length > nextUrls.length && room === 0) {
-      setMessage(
-        `Only the first images that fit within the ${DIRECTORY_GALLERY_MAX} image limit were added.`,
-      );
-    }
+    // Crop the first selected image (preview + adjust), then user can add more.
+    await beginCropFromFiles('gallery', files);
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -286,12 +389,21 @@ export function ProfileSettingsForm({
     if (!claim.ok) {
       setSaving(false);
       setMessage(claim.reason);
+      if (claim.reason.toLowerCase().includes('taken')) {
+        const suggestions = await suggestAvailableUsernames(
+          username.trim() || displayName || 'user',
+          user.uid,
+        );
+        setUsernameHint(claim.reason);
+        setUsernameSuggestions(suggestions);
+      }
       return;
     }
 
     const patch: Partial<UserData> = {
       displayName: displayName.trim() || null,
       username: normalizedUsername,
+      email: contactEmail.trim() || user.email || null,
       city: city.trim() || null,
       state: state.trim() || null,
       country: country.trim() || null,
@@ -334,7 +446,8 @@ export function ProfileSettingsForm({
         linkedin: linkedin.trim() || undefined,
         website: website.trim() || undefined,
         portfolioUrl: portfolioUrl.trim() || undefined,
-        phone: phone.trim() || undefined,
+        phone:
+          composeInternationalPhone(phoneDial, phoneNational) || undefined,
         phoneContact,
         emailContact,
         publicPhoneOnProfile,
@@ -399,32 +512,94 @@ export function ProfileSettingsForm({
         </p>
       ) : null}
 
-      <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h2 className="text-sm font-semibold text-zinc-900">Account</h2>
-        <p className="mt-1 text-xs text-zinc-500">
-          Email (sign-in): {user.email}
-        </p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <label className="block space-y-1 sm:col-span-2">
-            <span className="text-xs font-medium text-zinc-600">Display name</span>
-            <input
-              className={FIELD_INPUT_CLASS}
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-            />
-          </label>
-          {showClientProfilePhoto ? (
-            <div className="sm:col-span-2">
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+        <CollapsibleCard title="Account" defaultOpen={false}>
+          <div className="grid flex-1 content-start gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block space-y-1">
+                <span className="text-xs font-medium text-zinc-600">
+                  Display name
+                </span>
+                <input
+                  className={FIELD_INPUT_CLASS}
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs font-medium text-zinc-600">
+                  Username
+                </span>
+                <input
+                  className={FIELD_INPUT_CLASS}
+                  value={username}
+                  onChange={(e) => {
+                    setUsername(e.target.value);
+                    setUsernameHint(null);
+                    setUsernameSuggestions([]);
+                  }}
+                  onBlur={() => void checkUsernameAvailability(username.trim())}
+                  placeholder="e.g. aureon9"
+                />
+                {usernameHint ? (
+                  <p className="mt-1 text-[11px] font-medium text-red-700">
+                    {usernameHint}
+                  </p>
+                ) : null}
+                {usernameSuggestions.length > 0 ? (
+                  <p className="mt-1 text-[11px] text-zinc-600">
+                    Try{' '}
+                    {usernameSuggestions.map((s, i) => (
+                      <span key={s}>
+                        {i > 0 ? ', ' : null}
+                        <button
+                          type="button"
+                          className="font-semibold text-amber-900 underline"
+                          onClick={() => {
+                            setUsername(s);
+                            setUsernameHint(null);
+                            setUsernameSuggestions([]);
+                          }}
+                        >
+                          {s}
+                        </button>
+                      </span>
+                    ))}
+                  </p>
+                ) : null}
+              </label>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <span className="text-xs font-medium text-zinc-600">Email</span>
+                <p className="mt-1 truncate text-sm text-zinc-900">
+                  {user.email ?? '—'}
+                </p>
+              </div>
+              <div>
+                <span className="text-xs font-medium text-zinc-600">
+                  Account type
+                </span>
+                <p className="mt-1 text-sm capitalize text-zinc-900">
+                  {isAdmin
+                    ? 'Admin'
+                    : isPhotographer
+                      ? 'Photographer'
+                      : 'Client'}
+                </p>
+              </div>
+            </div>
+            {showClientProfilePhoto ? (
               <ImageUploadField
                 label="Profile photo"
-                hint="Shown in the menu and anywhere your account appears. JPG, PNG, WebP, or iPhone HEIC (converted automatically)."
+                hint="Shown in the menu and anywhere your account appears."
                 captureFacing="user"
                 uploading={uploading === 'clientAvatar'}
                 disabled={uploading !== null && uploading !== 'clientAvatar'}
                 onPick={onClientAvatarUpload}
               >
-                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full bg-zinc-100 ring-2 ring-zinc-200">
+                <div className="mt-2 flex items-center gap-3">
+                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-zinc-100 ring-2 ring-zinc-200">
                     {clientProfilePhotoUrl.trim() ? (
                       // eslint-disable-next-line @next/next/no-img-element -- Firebase Storage URL
                       <img
@@ -433,7 +608,7 @@ export function ProfileSettingsForm({
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-xs text-zinc-400">
+                      <div className="flex h-full items-center justify-center text-[10px] text-zinc-400">
                         No photo
                       </div>
                     )}
@@ -443,106 +618,185 @@ export function ProfileSettingsForm({
                       type="button"
                       disabled={uploading !== null}
                       onClick={() => setClientProfilePhotoUrl('')}
-                      className="rounded-xl px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-50"
+                      className="rounded-lg px-2 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 disabled:opacity-50"
                     >
                       Remove
                     </button>
                   ) : null}
                 </div>
               </ImageUploadField>
-            </div>
-          ) : null}
-          <label className="block space-y-1 sm:col-span-2">
-            <span className="text-xs font-medium text-zinc-600">Username</span>
-            <input
-              className={FIELD_INPUT_CLASS}
-              value={username}
-              onChange={(e) => {
-                setUsername(e.target.value);
-                setUsernameHint(null);
-              }}
-              onBlur={async () => {
-                const raw = username.trim();
-                if (!raw || raw.length < 3) {
-                  setUsernameHint(null);
-                  return;
-                }
-                const n = normalizePublicProfileSlug(raw);
-                if (
-                  !isValidPublicProfileSlug(n) ||
-                  isReservedProfileSlug(n)
-                ) {
-                  setUsernameHint(null);
-                  return;
-                }
-                const avail = await isUsernameClaimAvailable(raw, user.uid);
-                setUsernameHint(
-                  avail ? null : 'That username is already taken.',
-                );
-              }}
-              placeholder="e.g. aureon9 — fotomatic.app/photographer/aureon9"
-            />
-            {usernameHint ? (
-              <p className="mt-1 text-[11px] font-medium text-red-700">
-                {usernameHint}
-              </p>
             ) : null}
-            <span className="text-[11px] leading-snug text-zinc-500">
-              Used for your shareable profile link. Lowercase; 3–40 characters;
-              letters, numbers, underscore, or hyphen. Must be unique.
-            </span>
-          </label>
-          <div className="sm:col-span-2">
-            <span className="text-xs font-medium text-zinc-600">Account type</span>
-            <p className="mt-1 text-sm capitalize text-zinc-900">
-              {isAdmin ? 'Admin' : isPhotographer ? 'Photographer' : 'Client'}
-            </p>
           </div>
-        </div>
-      </div>
+        </CollapsibleCard>
 
-      <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h2 className="text-sm font-semibold text-zinc-900">Location</h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <label className="block space-y-1">
-            <span className="text-xs font-medium text-zinc-600">City</span>
-            <input
-              className={FIELD_INPUT_CLASS}
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-            />
-          </label>
-          <label className="block space-y-1">
-            <span className="text-xs font-medium text-zinc-600">State / region</span>
-            <input
-              className={FIELD_INPUT_CLASS}
-              value={state}
-              onChange={(e) => setState(e.target.value)}
-            />
-          </label>
-          <label className="block space-y-1 sm:col-span-2">
-            <span className="text-xs font-medium text-zinc-600">Country</span>
-            <select
-              className={FIELD_INPUT_CLASS}
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-            >
-              <option value="">Select country</option>
-              {COUNTRY_NAMES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+        <CollapsibleCard title="Location" defaultOpen={false}>
+          <div className="grid flex-1 content-start gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block space-y-1">
+                <span className="text-xs font-medium text-zinc-600">City</span>
+                <input
+                  className={FIELD_INPUT_CLASS}
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-xs font-medium text-zinc-600">
+                  State / region
+                </span>
+                <input
+                  className={FIELD_INPUT_CLASS}
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                />
+              </label>
+            </div>
+            <label className="block space-y-1">
+              <span className="text-xs font-medium text-zinc-600">Country</span>
+              <select
+                className={FIELD_INPUT_CLASS}
+                value={country}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setCountry(next);
+                  const info = dialInfoForCountry(next);
+                  setPhoneDial(info.dial);
+                  setPhoneAbbr(info.abbr);
+                }}
+              >
+                <option value="">Select country</option>
+                {COUNTRY_NAMES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </CollapsibleCard>
       </div>
 
       {isPhotographer ? (
-        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="text-sm font-semibold text-zinc-900">Photographer profile</h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-5">
+            <h2 className="text-sm font-semibold text-zinc-900">
+              Photographer profile
+            </h2>
+
+            {showMediaUploads ? (
+              <div className="mt-4 space-y-6">
+                <div className="relative pb-10">
+                  <div className="relative aspect-[21/7] w-full overflow-hidden rounded-2xl bg-zinc-100 ring-1 ring-zinc-200">
+                    {bannerImageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- Firebase Storage URL
+                      <img
+                        src={bannerImageUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full min-h-[120px] items-center justify-center text-sm text-zinc-400">
+                        Banner image
+                      </div>
+                    )}
+                  </div>
+                  <div className="absolute right-3 top-3 z-20">
+                    <ImageEditMenu
+                      label="Edit banner"
+                      captureFacing="environment"
+                      uploading={uploading === 'banner'}
+                      disabled={uploading !== null && uploading !== 'banner'}
+                      onPick={(files) => void onUpload('banner', files)}
+                    />
+                  </div>
+                  <div className="absolute bottom-0 left-4 z-20 sm:left-6">
+                    <div className="relative h-24 w-24 sm:h-28 sm:w-28">
+                      <div className="h-full w-full overflow-hidden rounded-full bg-zinc-100 ring-4 ring-white">
+                        {profileImageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={profileImageUrl}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-xs text-zinc-400">
+                            Photo
+                          </div>
+                        )}
+                      </div>
+                      <div className="absolute bottom-1 right-1 z-10">
+                        <ImageEditMenu
+                          label="Edit profile photo"
+                          captureFacing="user"
+                          uploading={uploading === 'profile'}
+                          disabled={
+                            uploading !== null && uploading !== 'profile'
+                          }
+                          onPick={(files) => void onUpload('profile', files)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 pt-2 lg:grid-cols-2 lg:items-start">
+                  <label className="flex flex-col space-y-1">
+                    <span className="text-xs font-medium text-zinc-600">
+                      Bio
+                    </span>
+                    <textarea
+                      maxLength={2000}
+                      className={`${FIELD_TEXTAREA_CLASS} h-[240px] resize-none`}
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                    />
+                    <span className="text-[11px] text-zinc-500">
+                      {bio.trim().split(/\s+/).filter(Boolean).length} / ~150
+                      words suggested
+                    </span>
+                  </label>
+                  <div className="flex h-[calc(240px+1.25rem)] flex-col">
+                    <PhotographyFocusPicker
+                      className="min-h-0 flex-1"
+                      fillHeight
+                      selected={photoFocusSelected}
+                      onChange={setPhotoFocusSelected}
+                      otherText={photoFocusOther}
+                      onOtherTextChange={setPhotoFocusOther}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 grid gap-4 lg:grid-cols-2 lg:items-start">
+                <label className="flex flex-col space-y-1">
+                  <span className="text-xs font-medium text-zinc-600">Bio</span>
+                  <textarea
+                    maxLength={2000}
+                    className={`${FIELD_TEXTAREA_CLASS} h-[240px] resize-none`}
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                  />
+                </label>
+                <div className="flex h-[calc(240px+1.25rem)] flex-col">
+                  <PhotographyFocusPicker
+                    className="min-h-0 flex-1"
+                    fillHeight
+                    selected={photoFocusSelected}
+                    onChange={setPhotoFocusSelected}
+                    otherText={photoFocusOther}
+                    onOtherTextChange={setPhotoFocusOther}
+                    required
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <CollapsibleCard title="Pricing" defaultOpen>
+            <div className="space-y-4">
               <PhotographerPricingFields
                 startingPrice={startingPrice}
                 onStartingPriceChange={setStartingPrice}
@@ -556,163 +810,205 @@ export function ProfileSettingsForm({
                 onEventPricingChange={setEventPricing}
                 inputClassName={FIELD_INPUT_CLASS}
                 textareaClassName={FIELD_TEXTAREA_CLASS}
+                compact
               />
-            </div>
-            <label className="block space-y-1 sm:col-span-2">
-              <span className="text-xs font-medium text-zinc-600">Phone</span>
-              <input
-                className={FIELD_INPUT_CLASS}
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+1 …"
-              />
-            </label>
-            <div className="flex flex-col gap-3 sm:col-span-2">
-              <label className="flex cursor-pointer items-start gap-3 text-sm text-zinc-700">
-                <input
-                  type="checkbox"
-                  className="mt-1 rounded border-zinc-300 text-amber-900 focus:ring-amber-900/30"
-                  checked={phoneContact}
-                  onChange={(e) => setPhoneContact(e.target.checked)}
-                />
-                <span>
-                  I’m OK with clients contacting me by phone for booking-related
-                  questions. Your number appears only when this is checked.
+              <label className="block space-y-1">
+                <span className="text-xs font-medium text-zinc-600">
+                  General pricing notes (optional)
                 </span>
-              </label>
-              <label className="flex cursor-pointer items-start gap-3 text-sm text-zinc-700">
-                <input
-                  type="checkbox"
-                  className="mt-1 rounded border-zinc-300 text-amber-900 focus:ring-amber-900/30"
-                  checked={emailContact}
-                  onChange={(e) => setEmailContact(e.target.checked)}
+                <textarea
+                  rows={3}
+                  className={FIELD_TEXTAREA_CLASS}
+                  placeholder="Share how pricing works across your shoots (minimums, deposits, typical add-ons)…"
+                  value={pricingNotes}
+                  onChange={(e) => setPricingNotes(e.target.value)}
                 />
-                <span>
-                  I’m OK with clients reaching me by email for booking-related
-                  questions.
-                </span>
-              </label>
-              <label className="flex cursor-pointer items-start gap-3 text-sm text-zinc-700">
-                <input
-                  type="checkbox"
-                  className="mt-1 rounded border-zinc-300 text-amber-900 focus:ring-amber-900/30"
-                  checked={publicPhoneOnProfile}
-                  onChange={(e) => setPublicPhoneOnProfile(e.target.checked)}
-                />
-                <span>
-                  Show my phone on my public profile page (only when a number is
-                  saved above).
-                </span>
-              </label>
-              <label className="flex cursor-pointer items-start gap-3 text-sm text-zinc-700">
-                <input
-                  type="checkbox"
-                  className="mt-1 rounded border-zinc-300 text-amber-900 focus:ring-amber-900/30"
-                  checked={publicEmailOnProfile}
-                  onChange={(e) => setPublicEmailOnProfile(e.target.checked)}
-                />
-                <span>
-                  Show my account email on my public profile page.
-                </span>
               </label>
             </div>
-            <label className="block space-y-1 sm:col-span-2">
-              <span className="text-xs font-medium text-zinc-600">
-                Primary service area
-              </span>
-              <input
-                className={FIELD_INPUT_CLASS}
-                value={serviceArea}
-                onChange={(e) => setServiceArea(e.target.value)}
-                placeholder="e.g. Greater Accra, metro Phoenix"
-              />
-            </label>
-            <label className="flex cursor-pointer items-start gap-3 text-sm text-zinc-700 sm:col-span-2">
-              <input
-                type="checkbox"
-                className="mt-1 rounded border-zinc-300 text-amber-900 focus:ring-amber-900/30"
-                checked={openToOtherAreas}
-                onChange={(e) => setOpenToOtherAreas(e.target.checked)}
-              />
-              <span>Open to traveling or serving nearby regions beyond my primary area.</span>
-            </label>
-          </div>
+          </CollapsibleCard>
+
+          <CollapsibleCard title="Service area & contact details" defaultOpen>
+            <div className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-3">
+                  <label className="block space-y-1">
+                    <span className="text-xs font-medium text-zinc-600">
+                      Primary service area
+                    </span>
+                    <input
+                      className={FIELD_INPUT_CLASS}
+                      value={serviceArea}
+                      onChange={(e) => setServiceArea(e.target.value)}
+                      placeholder="e.g. Greater Accra"
+                    />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="text-xs font-medium text-zinc-600">
+                      Interests
+                    </span>
+                    <input
+                      className={FIELD_INPUT_CLASS}
+                      value={interests}
+                      onChange={(e) => setInterests(e.target.value)}
+                    />
+                  </label>
+                </div>
+                <div className="space-y-3">
+                  <label className="block space-y-1">
+                    <span className="text-xs font-medium text-zinc-600">
+                      Phone
+                    </span>
+                    <div className="flex gap-2">
+                      <select
+                        className={`${FIELD_INPUT_CLASS} w-[9.5rem] shrink-0`}
+                        aria-label="Country calling code"
+                        value={phoneDial}
+                        onChange={(e) => {
+                          const dial = e.target.value;
+                          setPhoneDial(dial);
+                          const entry = Object.entries(COUNTRY_DIAL_BY_NAME).find(
+                            ([, info]) => info.dial === dial,
+                          );
+                          if (entry) {
+                            setPhoneAbbr(entry[1].abbr);
+                            if (!country.trim()) setCountry(entry[0]);
+                          }
+                        }}
+                      >
+                        <option value="">Code</option>
+                        {Object.entries(COUNTRY_DIAL_BY_NAME)
+                          .slice()
+                          .sort((a, b) => a[0].localeCompare(b[0]))
+                          .map(([name, info]) => (
+                            <option key={name} value={info.dial}>
+                              {info.abbr} +{info.dial}
+                            </option>
+                          ))}
+                      </select>
+                      <input
+                        inputMode="tel"
+                        className={FIELD_INPUT_CLASS}
+                        value={phoneNational}
+                        onChange={(e) =>
+                          setPhoneNational(
+                            e.target.value.replace(/[^\d\s-]/g, ''),
+                          )
+                        }
+                        placeholder="0209277789"
+                        aria-label="Phone number"
+                      />
+                    </div>
+                    {composeInternationalPhone(phoneDial, phoneNational) ? (
+                      <span className="text-[11px] text-zinc-500">
+                        Saves as{' '}
+                        {composeInternationalPhone(phoneDial, phoneNational)}
+                      </span>
+                    ) : null}
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="text-xs font-medium text-zinc-600">
+                      Email
+                    </span>
+                    <input
+                      type="email"
+                      className={FIELD_INPUT_CLASS}
+                      value={contactEmail}
+                      onChange={(e) => setContactEmail(e.target.value)}
+                      placeholder="you@example.com"
+                    />
+                  </label>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-zinc-700">
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="rounded border-zinc-300 text-amber-900 focus:ring-amber-900/30"
+                    checked={openToOtherAreas}
+                    onChange={(e) => setOpenToOtherAreas(e.target.checked)}
+                  />
+                  <span>Open to work outside primary area</span>
+                </label>
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="rounded border-zinc-300 text-amber-900 focus:ring-amber-900/30"
+                    checked={phoneContact}
+                    onChange={(e) => setPhoneContact(e.target.checked)}
+                  />
+                  <span>OK to contact by phone</span>
+                </label>
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="rounded border-zinc-300 text-amber-900 focus:ring-amber-900/30"
+                    checked={emailContact}
+                    onChange={(e) => setEmailContact(e.target.checked)}
+                  />
+                  <span>OK to contact by email</span>
+                </label>
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="rounded border-zinc-300 text-amber-900 focus:ring-amber-900/30"
+                    checked={publicPhoneOnProfile}
+                    onChange={(e) => setPublicPhoneOnProfile(e.target.checked)}
+                  />
+                  <span>Show phone publicly</span>
+                </label>
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="rounded border-zinc-300 text-amber-900 focus:ring-amber-900/30"
+                    checked={publicEmailOnProfile}
+                    onChange={(e) => setPublicEmailOnProfile(e.target.checked)}
+                  />
+                  <span>Show email publicly</span>
+                </label>
+              </div>
+            </div>
+          </CollapsibleCard>
+
           {showMediaUploads ? (
-            <div className="mt-4 space-y-8">
-              <ImageUploadField
-                label="Banner image"
-                hint="Wide image across the top of your public profile. JPG, PNG, WebP, or iPhone HEIC — up to 8MB."
-                captureFacing="environment"
-                uploading={uploading === 'banner'}
-                disabled={uploading !== null && uploading !== 'banner'}
-                onPick={(files) => void onUpload('banner', files)}
-              >
-                <div className="relative mt-3 aspect-[21/9] w-full max-w-xl overflow-hidden rounded-xl bg-zinc-100 ring-1 ring-zinc-200">
-                  {bannerImageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- Firebase Storage URL
-                    <img
-                      src={bannerImageUrl}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full min-h-[120px] items-center justify-center text-sm text-zinc-400">
-                      No banner yet
-                    </div>
-                  )}
+            <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+                <div className="text-center sm:text-left">
+                  <p className="text-sm font-semibold text-zinc-900">
+                    Portfolio gallery
+                  </p>
+                  <p className="text-[11px] text-zinc-500">
+                    {galleryImageUrls.length} / {DIRECTORY_GALLERY_MAX} images ·
+                    scroll horizontally
+                  </p>
                 </div>
-              </ImageUploadField>
-
-              <ImageUploadField
-                label="Profile image"
-                hint="Square-ish photo works best; shown on directory cards and your public page."
-                captureFacing="user"
-                uploading={uploading === 'profile'}
-                disabled={uploading !== null && uploading !== 'profile'}
-                onPick={(files) => void onUpload('profile', files)}
-              >
-                <div className="relative mt-3 h-28 w-28 shrink-0 overflow-hidden rounded-full bg-zinc-100 ring-2 ring-zinc-200">
-                  {profileImageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={profileImageUrl}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-zinc-400">
-                      Photo
+                <ImageEditMenu
+                  label="Add portfolio photos"
+                  captureFacing="environment"
+                  uploading={uploading === 'gallery'}
+                  disabled={
+                    galleryImageUrls.length >= DIRECTORY_GALLERY_MAX ||
+                    (uploading !== null && uploading !== 'gallery')
+                  }
+                  onPick={onGalleryPickMultiple}
+                />
+              </div>
+              <div className="mt-4 flex justify-center">
+                <div className="flex w-full max-w-4xl justify-center gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:thin]">
+                  {galleryImageUrls.length === 0 ? (
+                    <div className="flex h-32 w-full items-center justify-center rounded-xl border border-dashed border-zinc-200 bg-zinc-50 text-sm text-zinc-500">
+                      No gallery images yet — use the edit button to add photos
                     </div>
-                  )}
-                </div>
-              </ImageUploadField>
-
-              <ImageUploadField
-                label="Portfolio gallery"
-                hint="Add 3–15 images for your public listing. Choose multiple files at once when using “Choose image”. HEIC from iPhone is supported."
-                captureFacing="environment"
-                multiple
-                uploading={uploading === 'gallery'}
-                disabled={
-                  galleryImageUrls.length >= DIRECTORY_GALLERY_MAX ||
-                  (uploading !== null && uploading !== 'gallery')
-                }
-                onPick={onGalleryPickMultiple}
-              >
-                <div className="space-y-2">
-                <p className="text-[11px] text-zinc-500">
-                  {galleryImageUrls.length} / {DIRECTORY_GALLERY_MAX} · minimum 3
-                  when you include any portfolio images
-                </p>
-                {galleryImageUrls.length > 0 ? (
-                  <ul className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">
-                    {galleryImageUrls.map((url, i) => (
-                      <li key={`${url}-${i}`} className="relative aspect-square">
+                  ) : (
+                    galleryImageUrls.map((url, i) => (
+                      <div
+                        key={`${url}-${i}`}
+                        className="relative h-32 w-32 shrink-0 sm:h-36 sm:w-36"
+                      >
                         {/* eslint-disable-next-line @next/next/no-img-element -- remote uploads */}
                         <img
                           src={url}
                           alt=""
-                          className="h-full w-full rounded-lg object-cover ring-1 ring-zinc-200"
+                          className="h-full w-full rounded-xl object-cover ring-1 ring-zinc-200"
                         />
                         <button
                           type="button"
@@ -722,51 +1018,25 @@ export function ProfileSettingsForm({
                               prev.filter((_, j) => j !== i),
                             )
                           }
-                          className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-zinc-900/85 text-white shadow hover:bg-zinc-900"
+                          className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-zinc-900/85 text-white shadow hover:bg-zinc-900"
                         >
-                          <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+                          <X className="h-3 w-3" strokeWidth={2.5} />
                         </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
+                      </div>
+                    ))
+                  )}
                 </div>
-              </ImageUploadField>
+              </div>
             </div>
           ) : null}
-          <div className="mt-4 grid gap-4">
-            <label className="block space-y-1">
-              <span className="text-xs font-medium text-zinc-600">Bio</span>
-              <textarea
-                rows={3}
-                maxLength={2000}
-                className={FIELD_TEXTAREA_CLASS}
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-              />
-              <span className="text-[11px] text-zinc-500">
-                {bio.trim().split(/\s+/).filter(Boolean).length} / ~150 words suggested max
-              </span>
-            </label>
-            <PhotographyFocusPicker
-              className="sm:col-span-2"
-              selected={photoFocusSelected}
-              onChange={setPhotoFocusSelected}
-              otherText={photoFocusOther}
-              onOtherTextChange={setPhotoFocusOther}
-              required
-            />
-            <label className="block space-y-1">
-              <span className="text-xs font-medium text-zinc-600">Interests</span>
-              <input
-                className={FIELD_INPUT_CLASS}
-                value={interests}
-                onChange={(e) => setInterests(e.target.value)}
-              />
-            </label>
-            <div className="grid gap-4 sm:grid-cols-2">
+
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-5">
+            <p className="text-sm font-semibold text-zinc-900">Social & links</p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <label className="block space-y-1">
-                <span className="text-xs font-medium text-zinc-600">Behance</span>
+                <span className="text-xs font-medium text-zinc-600">
+                  Behance
+                </span>
                 <input
                   className={FIELD_INPUT_CLASS}
                   value={behance}
@@ -775,7 +1045,9 @@ export function ProfileSettingsForm({
                 />
               </label>
               <label className="block space-y-1">
-                <span className="text-xs font-medium text-zinc-600">Instagram</span>
+                <span className="text-xs font-medium text-zinc-600">
+                  Instagram
+                </span>
                 <input
                   className={FIELD_INPUT_CLASS}
                   value={instagram}
@@ -783,7 +1055,9 @@ export function ProfileSettingsForm({
                 />
               </label>
               <label className="block space-y-1">
-                <span className="text-xs font-medium text-zinc-600">Twitter / X</span>
+                <span className="text-xs font-medium text-zinc-600">
+                  Twitter / X
+                </span>
                 <input
                   className={FIELD_INPUT_CLASS}
                   value={twitter}
@@ -791,7 +1065,9 @@ export function ProfileSettingsForm({
                 />
               </label>
               <label className="block space-y-1">
-                <span className="text-xs font-medium text-zinc-600">Facebook</span>
+                <span className="text-xs font-medium text-zinc-600">
+                  Facebook
+                </span>
                 <input
                   className={FIELD_INPUT_CLASS}
                   value={facebook}
@@ -800,22 +1076,26 @@ export function ProfileSettingsForm({
                 />
               </label>
               <label className="block space-y-1">
-                <span className="text-xs font-medium text-zinc-600">LinkedIn</span>
+                <span className="text-xs font-medium text-zinc-600">
+                  LinkedIn
+                </span>
                 <input
                   className={FIELD_INPUT_CLASS}
                   value={linkedin}
                   onChange={(e) => setLinkedin(e.target.value)}
                 />
               </label>
-              <label className="block space-y-1 sm:col-span-2">
-                <span className="text-xs font-medium text-zinc-600">Website</span>
+              <label className="block space-y-1">
+                <span className="text-xs font-medium text-zinc-600">
+                  Website
+                </span>
                 <input
                   className={FIELD_INPUT_CLASS}
                   value={website}
                   onChange={(e) => setWebsite(e.target.value)}
                 />
               </label>
-              <label className="block space-y-1 sm:col-span-2">
+              <label className="block space-y-1 sm:col-span-2 lg:col-span-3">
                 <span className="text-xs font-medium text-zinc-600">
                   Portfolio / other link
                 </span>
@@ -830,9 +1110,36 @@ export function ProfileSettingsForm({
         </div>
       ) : null}
 
+      <ImageCropDialog
+        open={Boolean(cropSession)}
+        imageSrc={cropSession?.src ?? null}
+        fileName={cropSession?.fileName}
+        aspect={
+          cropSession?.kind === 'banner'
+            ? 21 / 7
+            : cropSession?.kind === 'profile' ||
+                cropSession?.kind === 'clientAvatar'
+              ? 1
+              : 1
+        }
+        circular={
+          cropSession?.kind === 'profile' ||
+          cropSession?.kind === 'clientAvatar'
+        }
+        title={
+          cropSession?.kind === 'banner'
+            ? 'Adjust banner'
+            : cropSession?.kind === 'gallery'
+              ? 'Adjust gallery photo'
+              : 'Adjust profile photo'
+        }
+        onCancel={closeCrop}
+        onConfirm={uploadCroppedFile}
+      />
+
       <button
         type="submit"
-        disabled={saving}
+        disabled={saving || Boolean(usernameHint)}
         className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-zinc-900 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60 sm:w-auto sm:px-8"
       >
         {saving ? (
@@ -847,3 +1154,4 @@ export function ProfileSettingsForm({
     </form>
   );
 }
+

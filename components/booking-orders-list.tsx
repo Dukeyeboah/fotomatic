@@ -240,6 +240,10 @@ export function BookingOrdersList({
                             </dt>
                             <dd className="mt-1 font-semibold text-zinc-900">
                               ${active.acceptedTotalPrice.toFixed(2)}
+                              {active.acceptedPriceUnit &&
+                              typeof active.acceptedHourlyRate === 'number'
+                                ? ` (${active.acceptedHourlyRate.toFixed(2)}/${active.acceptedPriceUnit})`
+                                : ''}
                             </dd>
                           </div>
                         ) : null}

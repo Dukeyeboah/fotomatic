@@ -116,24 +116,10 @@ export function AccountMenuDropdown() {
           {isPhotographer ? (
             <>
               <Row href="/photographer" icon={Camera} onClick={close}>
-                Photographer dashboard
+                Home
               </Row>
               <Row href="/photographer/profile" icon={UserRound} onClick={close}>
                 My profile
-              </Row>
-              <Row
-                href="/photographer/requests"
-                icon={Search}
-                onClick={close}
-              >
-                Requests
-              </Row>
-              <Row
-                href="/photographer/bookings"
-                icon={CalendarCheck}
-                onClick={close}
-              >
-                Bookings
               </Row>
               <Row
                 href="/photographer/messages"
@@ -141,6 +127,13 @@ export function AccountMenuDropdown() {
                 onClick={close}
               >
                 Messages
+              </Row>
+              <Row
+                href="/photographer/bookings"
+                icon={CalendarCheck}
+                onClick={close}
+              >
+                Bookings
               </Row>
               <Row
                 href="/photographer/earnings"

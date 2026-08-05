@@ -1,12 +1,10 @@
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import {
-  CalendarDays,
   Clock,
-  HelpCircle,
+  MessageCircle,
   Pencil,
-  Tag,
-  Wallet,
+  Settings,
 } from 'lucide-react';
 
 const actions: Array<{
@@ -15,34 +13,27 @@ const actions: Array<{
   icon: LucideIcon;
 }> = [
   { label: 'Edit Profile', href: '/photographer/profile', icon: Pencil },
-  { label: 'Update Pricing', href: '/photographer/earnings', icon: Tag },
-  {
-    label: 'Manage Availability',
-    href: '/photographer/calendar',
-    icon: Clock,
-  },
-  { label: 'View Calendar', href: '/photographer/calendar', icon: CalendarDays },
-  {
-    label: 'Payout Settings',
-    href: '/photographer/earnings',
-    icon: Wallet,
-  },
-  { label: 'Help Center', href: '/photographer/contact', icon: HelpCircle },
+  { label: 'Messages', href: '/photographer/messages', icon: MessageCircle },
+  { label: 'Availability', href: '/photographer/calendar', icon: Clock },
+  { label: 'Account settings', href: '/photographer/settings', icon: Settings },
 ];
 
 export function PhotographerQuickActionGrid() {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="flex flex-wrap items-stretch gap-2 sm:flex-nowrap">
       {actions.map(({ label, href, icon: Icon }) => (
         <Link
           key={label}
           href={href}
-          className="flex flex-col items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-5 text-center shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50"
+          className="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2 py-2 text-center shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50 sm:px-2.5 sm:py-2.5"
         >
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#faf8f5] text-zinc-800 ring-1 ring-zinc-900/5">
-            <Icon className="h-5 w-5" strokeWidth={1.75} />
+          <Icon
+            className="h-3.5 w-3.5 shrink-0 text-zinc-600"
+            strokeWidth={1.75}
+          />
+          <span className="truncate text-[11px] font-semibold text-zinc-900 sm:text-xs">
+            {label}
           </span>
-          <span className="text-sm font-semibold text-zinc-900">{label}</span>
         </Link>
       ))}
     </div>

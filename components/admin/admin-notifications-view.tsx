@@ -272,16 +272,16 @@ export function AdminNotificationsView({
           to view notifications.
         </p>
       ) : merged.length === 0 ? (
-        <div className="mt-10 rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">
+        <div className="mt-8 h-[min(60vh,560px)] overflow-y-auto rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">
           No notifications yet.
         </div>
       ) : filtered.length === 0 ? (
-        <div className="mt-10 rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">
+        <div className="mt-8 h-[min(60vh,560px)] overflow-y-auto rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">
           Nothing matches these filters. Change category or read status above
           to see more.
         </div>
       ) : (
-        <div className="mt-8 space-y-3">
+        <div className="mt-8 h-[min(60vh,560px)] space-y-3 overflow-y-auto rounded-2xl border border-zinc-200 bg-zinc-50/50 p-3 shadow-sm sm:p-4">
           {filtered.map((row) => {
             if (row.kind === 'notification') {
               const n = row.item;

@@ -12,11 +12,8 @@ export default function PhotographerProfileEditorPage() {
   const { openLoginModal } = useLoginModal();
 
   return (
-    <div className="px-4 py-8 sm:px-6 lg:px-10">
-      <p className="text-[11px] font-semibold tracking-[0.2em] text-amber-900/70">
-        PHOTOGRAPHER
-      </p>
-      <h1 className="mt-2 font-serif text-2xl font-medium text-zinc-900">
+    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <h1 className="font-serif text-2xl font-medium text-zinc-900">
         Photographer profile
       </h1>
       <p className="mt-2 max-w-2xl text-sm text-zinc-600">
@@ -25,7 +22,10 @@ export default function PhotographerProfileEditorPage() {
         to the client-facing photographer list after you save.
       </p>
       <p className="mt-2 text-xs text-zinc-500">
-        <Link href="/photographer" className="font-medium text-amber-900 underline">
+        <Link
+          href="/photographer"
+          className="font-medium text-amber-900 underline"
+        >
           ← Photographer home
         </Link>
       </p>
@@ -38,7 +38,9 @@ export default function PhotographerProfileEditorPage() {
         <p className="mt-8 text-sm text-zinc-600">
           <button
             type="button"
-            onClick={() => openLoginModal({ redirectTo: '/photographer/profile' })}
+            onClick={() =>
+              openLoginModal({ redirectTo: '/photographer/profile' })
+            }
             className="cursor-pointer font-medium text-amber-900 underline"
           >
             Log in
@@ -46,7 +48,7 @@ export default function PhotographerProfileEditorPage() {
           to edit your profile.
         </p>
       ) : (
-        <div className="mt-8 max-w-2xl">
+        <div className="mt-8">
           {!userData ? (
             <p className="mb-6 rounded-xl border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
               Your account is signed in, but the app could not load your

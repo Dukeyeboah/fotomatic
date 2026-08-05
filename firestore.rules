@@ -564,6 +564,11 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    /** Admin-managed platform config (payment floors, etc.). */
+    match /platformSettings/{docId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
 
     match /{document=**} {
       allow read, write: if false;

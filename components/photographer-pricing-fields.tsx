@@ -16,7 +16,41 @@ type Props = {
   onEventPricingChange: (rows: FocusEventPricing[]) => void;
   inputClassName?: string;
   textareaClassName?: string;
+  /** Pricing card body: starting price + scrollable specialty prices; notes rendered by parent. */
+  compact?: boolean;
 };
+
+function DollarInput({
+  value,
+  onChange,
+  placeholder,
+  required,
+  className,
+  inputClassName,
+}: {
+  value: number | '';
+  onChange: (raw: string) => void;
+  placeholder?: string;
+  required?: boolean;
+  className?: string;
+  inputClassName: string;
+}) {
+  return (
+    <div className={`relative ${className ?? ''}`}>
+      <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-zinc-500">
+        $
+      </span>
+      <input
+        inputMode="decimal"
+        required={required}
+        className={`${inputClassName} pl-7`}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value.trim())}
+      />
+    </div>
+  );
+}
 
 export function PhotographerPricingFields({
   startingPrice,
@@ -28,6 +62,7 @@ export function PhotographerPricingFields({
   onEventPricingChange,
   inputClassName = inputClass,
   textareaClassName = inputClass,
+  compact = false,
 }: Props) {
   const presetFocuses = selectedFocuses.filter((f) => f !== 'Other');
 
@@ -66,86 +101,104 @@ export function PhotographerPricingFields({
     );
   };
 
+  const specialtyBlock =
+    presetFocuses.length > 0 ? (
+      <div className="space-y-3">
+        <div>
+          <p className="text-xs font-medium text-zinc-700">
+            Optional: starting price per specialty
+          </p>
+          <p className="mt-0.5 text-[11px] leading-snug text-zinc-500">
+            Leave blank to use your default starting price. Add notes for
+            possible add-ons (outfit changes, extra locations, larger groups,
+            etc.).
+          </p>
+        </div>
+        <ul className="space-y-3">
+          {presetFocuses.map((focus) => {
+            const row = rowFor(focus);
+            return (
+              <li
+                key={focus}
+                className="rounded-xl border border-zinc-200/80 bg-white p-3"
+              >
+                <p className="text-sm font-semibold text-zinc-900">{focus}</p>
+                <div className="mt-2 grid gap-2 sm:grid-cols-[8rem_minmax(0,1fr)]">
+                  <DollarInput
+                    value={
+                      row?.startingPrice && row.startingPrice > 0
+                        ? row.startingPrice
+                        : ''
+                    }
+                    placeholder="Default"
+                    inputClassName={inputClassName}
+                    onChange={(v) => setRowPrice(focus, v)}
+                  />
+                  <input
+                    className={inputClassName}
+                    placeholder="Notes (optional)"
+                    value={row?.notes ?? ''}
+                    onChange={(e) => setRowNotes(focus, e.target.value)}
+                  />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    ) : (
+      <p className="text-sm text-zinc-500">
+        Select specialties above to set optional per-specialty prices.
+      </p>
+    );
+
+  if (compact) {
+    return (
+      <div className="space-y-3">
+        <label className="block space-y-1">
+          <span className="text-xs font-medium text-zinc-600">
+            Default starting price (USD){' '}
+            <span className="font-normal text-zinc-500">*</span>
+          </span>
+          <DollarInput
+            className="max-w-[10rem]"
+            value={startingPrice}
+            required
+            placeholder="500"
+            inputClassName={inputClassName}
+            onChange={(v) => {
+              if (!v) onStartingPriceChange('');
+              else onStartingPriceChange(Number(v));
+            }}
+          />
+        </label>
+        <div className="max-h-52 overflow-y-auto rounded-xl border border-zinc-100 bg-zinc-50/80 p-3">
+          {specialtyBlock}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <label className="block space-y-1">
         <span className="text-xs font-medium text-zinc-600">
           Default starting price (USD){' '}
           <span className="font-normal text-zinc-500">*</span>
         </span>
-        <p className="text-[11px] leading-snug text-zinc-500">
-          Your general starting price for events. Final quotes may be higher
-          depending on the shoot type, outfit or location changes, headcount,
-          and other extras.
-        </p>
-        <input
-          inputMode="decimal"
-          required
-          className={inputClassName}
-          placeholder="e.g. 500"
+        <DollarInput
+          className="max-w-[10rem]"
           value={startingPrice}
-          onChange={(e) => {
-            const v = e.target.value.trim();
+          required
+          placeholder="500"
+          inputClassName={inputClassName}
+          onChange={(v) => {
             if (!v) onStartingPriceChange('');
             else onStartingPriceChange(Number(v));
           }}
         />
       </label>
-
-      {presetFocuses.length > 0 ? (
-        <div className="space-y-3 rounded-xl border border-zinc-100 bg-zinc-50/80 p-4">
-          <p className="text-xs font-medium text-zinc-700">
-            Optional: starting price per specialty
-          </p>
-          <p className="text-[11px] leading-snug text-zinc-500">
-            Leave blank to use your default starting price. Add notes for
-            possible add-ons (outfit changes, extra locations, larger groups,
-            etc.).
-          </p>
-          <ul className="space-y-4">
-            {presetFocuses.map((focus) => {
-              const row = rowFor(focus);
-              return (
-                <li
-                  key={focus}
-                  className="rounded-xl border border-zinc-200/80 bg-white p-3"
-                >
-                  <p className="text-sm font-semibold text-zinc-900">{focus}</p>
-                  <label className="mt-2 block space-y-1">
-                    <span className="text-[11px] font-medium text-zinc-500">
-                      Starting price (USD)
-                    </span>
-                    <input
-                      inputMode="decimal"
-                      className={inputClassName}
-                      placeholder="Uses default if empty"
-                      value={
-                        row?.startingPrice && row.startingPrice > 0
-                          ? row.startingPrice
-                          : ''
-                      }
-                      onChange={(e) => setRowPrice(focus, e.target.value)}
-                    />
-                  </label>
-                  <label className="mt-2 block space-y-1">
-                    <span className="text-[11px] font-medium text-zinc-500">
-                      Notes (optional)
-                    </span>
-                    <textarea
-                      rows={2}
-                      className={textareaClassName}
-                      placeholder="e.g. +$150 per outfit change, travel fees…"
-                      value={row?.notes ?? ''}
-                      onChange={(e) => setRowNotes(focus, e.target.value)}
-                    />
-                  </label>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ) : null}
-
+      {specialtyBlock}
       <label className="block space-y-1">
         <span className="text-xs font-medium text-zinc-600">
           General pricing notes (optional)
@@ -161,4 +214,3 @@ export function PhotographerPricingFields({
     </div>
   );
 }
-

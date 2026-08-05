@@ -11,9 +11,8 @@ import {
   CalendarCheck,
   CircleDollarSign,
   CircleUserRound,
-  ClipboardList,
   HelpCircle,
-  LayoutDashboard,
+  Home,
   LogOut,
   MessageCircle,
   Search,
@@ -75,7 +74,6 @@ export function PhotographerAccountMenu() {
     );
   }, [user, userData?.role, userData?.photographer?.directoryId]);
 
-  /** Site header (outside photographer shell) has no threads provider. */
   useEffect(() => {
     if (threadsCtx || !user || !directoryId) {
       setStandaloneRequestCount(0);
@@ -142,19 +140,15 @@ export function PhotographerAccountMenu() {
             Signed in as{' '}
             <span className="font-medium text-zinc-800">{greet}</span>
           </p>
+          <MenuRow href="/photographer" icon={Home} onNavigate={close}>
+            Home
+          </MenuRow>
           <MenuRow
             href="/photographer/directory"
             icon={Search}
             onNavigate={close}
           >
             Photographers
-          </MenuRow>
-          <MenuRow
-            href="/photographer"
-            icon={LayoutDashboard}
-            onNavigate={close}
-          >
-            Dashboard
           </MenuRow>
           <MenuRow
             href="/photographer/messages"
@@ -164,8 +158,8 @@ export function PhotographerAccountMenu() {
             Messages
           </MenuRow>
           <MenuRow
-            href="/photographer/requests"
-            icon={ClipboardList}
+            href="/photographer/bookings"
+            icon={CalendarCheck}
             onNavigate={close}
             suffix={
               openRequests > 0 ? (
@@ -174,13 +168,6 @@ export function PhotographerAccountMenu() {
                 </span>
               ) : null
             }
-          >
-            Requests
-          </MenuRow>
-          <MenuRow
-            href="/photographer/bookings"
-            icon={CalendarCheck}
-            onNavigate={close}
           >
             Bookings
           </MenuRow>

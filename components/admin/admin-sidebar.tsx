@@ -13,9 +13,6 @@ import {
   CalendarCheck,
   MessageSquare,
   Bell,
-  Tags,
-  MapPin,
-  CircleDollarSign,
   SlidersHorizontal,
   Inbox,
   PanelLeftClose,
@@ -27,28 +24,20 @@ import { subscribeUnreadAdminEventCount } from '@/lib/firebase/admin';
 
 const mainNav = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { href: '/admin/users', label: 'Users', icon: Users, end: false },
-  { href: '/admin/photographers', label: 'Photographers', icon: Camera, end: false },
+  { href: '/admin/notifications', label: 'Notifications', icon: Bell, end: false },
   { href: '/admin/bookings', label: 'Bookings', icon: CalendarCheck, end: false },
   { href: '/admin/messages', label: 'Messages', icon: MessageSquare, end: false },
-  { href: '/admin/notifications', label: 'Notifications', icon: Bell, end: false },
+  { href: '/admin/photographers', label: 'Photographers', icon: Camera, end: false },
   {
     href: '/admin/inbox',
     label: 'Applications',
     icon: Inbox,
     end: false,
-    title: 'Applications & bookings',
   },
+  { href: '/admin/users', label: 'Users', icon: Users, end: false },
 ] as const;
 
 const settingsNav = [
-  { href: '/admin/settings/categories', label: 'Categories', icon: Tags },
-  { href: '/admin/settings/locations', label: 'Locations', icon: MapPin },
-  {
-    href: '/admin/settings/pricing-fees',
-    label: 'Pricing & Fees',
-    icon: CircleDollarSign,
-  },
   {
     href: '/admin/settings/system',
     label: 'System Settings',
@@ -105,14 +94,14 @@ export function AdminSidebar({
   return (
     <aside
       className={[
-        'flex h-full min-h-0 shrink-0 flex-col overflow-y-auto border-r border-zinc-800 bg-zinc-950 text-zinc-100 transition-[width] duration-200',
+        'relative flex h-full min-h-0 shrink-0 flex-col overflow-visible border-r border-zinc-800 bg-zinc-950 text-zinc-100 transition-[width] duration-200',
         collapsed ? 'w-[72px]' : 'w-60',
       ].join(' ')}
     >
       <div
         className={[
-          'flex h-[4.5rem] shrink-0 items-center border-b border-zinc-800 px-2 py-3',
-          collapsed ? 'relative justify-center' : 'justify-between gap-2',
+          'relative flex h-[4.5rem] shrink-0 items-center border-b border-zinc-800 px-2 py-3',
+          collapsed ? 'justify-center' : 'justify-start gap-2 pr-8',
         ].join(' ')}
       >
         {!collapsed ? (
@@ -157,29 +146,21 @@ export function AdminSidebar({
             type="button"
             onClick={onNavigate}
             aria-label="Close menu"
-            className={[
-              'inline-flex rounded-lg p-2 text-zinc-300 hover:bg-zinc-800 hover:text-white lg:hidden',
-              collapsed
-                ? 'absolute right-2 top-1/2 -translate-y-1/2'
-                : 'ml-auto shrink-0',
-            ].join(' ')}
+            className="absolute right-1 top-1/2 z-10 inline-flex -translate-y-1/2 rounded-md p-1.5 text-zinc-300 hover:bg-zinc-800 hover:text-white lg:hidden"
           >
-            <X className="h-5 w-5" strokeWidth={2} />
+            <X className="h-4 w-4" strokeWidth={2} />
           </button>
         ) : null}
         <button
           type="button"
           onClick={onToggleCollapse}
-          className={[
-            'hidden rounded-xl border border-zinc-600 bg-zinc-800 p-2 text-amber-100 shadow-sm transition hover:border-amber-500/50 hover:bg-zinc-700 hover:text-white lg:inline-flex',
-            collapsed ? 'absolute right-1 top-1/2 -translate-y-1/2' : '',
-          ].join(' ')}
+          className="absolute -right-3 top-1/2 z-20 hidden h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-zinc-600 bg-zinc-900 text-zinc-200 shadow-md hover:border-amber-500/60 hover:bg-zinc-800 hover:text-white lg:inline-flex"
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {collapsed ? (
-            <PanelLeft className="h-5 w-5" />
+            <PanelLeft className="h-3.5 w-3.5" strokeWidth={2} />
           ) : (
-            <PanelLeftClose className="h-5 w-5" />
+            <PanelLeftClose className="h-3.5 w-3.5" strokeWidth={2} />
           )}
         </button>
       </div>
@@ -191,7 +172,7 @@ export function AdminSidebar({
         <div className="h-1" />
       )}
 
-      <nav className="flex-1 overflow-y-auto px-2 py-3">
+      <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-3">
         {!collapsed ? (
           <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
             Main
@@ -200,8 +181,7 @@ export function AdminSidebar({
         <div className="space-y-0.5">
           {mainNav.map((item) => {
             const { href, label, icon: Icon, end } = item;
-            const collapsedTitle =
-              'title' in item && item.title ? item.title : label;
+            const collapsedTitle = label;
             const showAppBadge =
               href === '/admin/inbox' && newApplicationsCount > 0;
             const showNotifBadge =

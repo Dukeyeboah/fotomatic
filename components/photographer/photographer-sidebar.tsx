@@ -28,16 +28,12 @@ const nav: Array<{
   label: string;
   icon: typeof LayoutDashboard;
 }> = [
-  { href: '/photographer', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/photographer', label: 'Home', icon: LayoutDashboard },
   { href: '/photographer/directory', label: 'Find photographers', icon: Search },
-  {
-    href: '/photographer/requests',
-    label: 'Requests',
-    icon: Inbox,
-  },
+  { href: '/photographer/messages', label: 'Messages', icon: Inbox },
   { href: '/photographer/bookings', label: 'Bookings', icon: CalendarCheck },
-  { href: '/photographer/notifications', label: 'Notifications', icon: Bell },
   { href: '/photographer/calendar', label: 'Calendar', icon: Calendar },
+  { href: '/photographer/notifications', label: 'Notifications', icon: Bell },
   { href: '/photographer/earnings', label: 'Earnings', icon: CircleDollarSign },
   { href: '/photographer/reviews', label: 'Reviews', icon: Star },
   { href: '/photographer/profile', label: 'Photographer profile', icon: UserRound },
@@ -144,7 +140,7 @@ export function PhotographerSidebar({
             const effectiveBadge =
               href === '/photographer/notifications'
                 ? notificationsUnreadCount
-                : href === '/photographer/requests'
+                : href === '/photographer/bookings'
                   ? openRequestsCount
                   : 0;
             const active =

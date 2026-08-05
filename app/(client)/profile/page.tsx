@@ -12,11 +12,10 @@ export default function DashboardProfilePage() {
   const { openLoginModal } = useLoginModal();
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6 lg:px-10">
+    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       <h1 className="font-serif text-2xl font-medium text-zinc-900">Profile</h1>
-      <p className="mt-1 text-sm text-zinc-600">
-        Update how you appear and, for photographers, your public details and
-        links.
+      <p className="mt-1 max-w-2xl text-sm text-zinc-600">
+        Update how you appear and your account details.
       </p>
       <p className="mt-2 text-xs text-zinc-500">
         <Link href="/account" className="underline">

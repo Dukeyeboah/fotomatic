@@ -42,7 +42,7 @@ export const MOCK_REQUESTS: MockPhotographerRequest[] = [
   {
     id: 'r1',
     clientName: 'Emily Thomas',
-    clientImage: '/photographerImages/3.jpg',
+    clientImage: '/fotomaticImages/fotomatic0.jpg',
     shootType: 'Graduation Shoot',
     location: 'Phoenix, AZ',
     date: 'Jun 14, 2026',
@@ -51,7 +51,7 @@ export const MOCK_REQUESTS: MockPhotographerRequest[] = [
   {
     id: 'r2',
     clientName: 'Jordan Williams',
-    clientImage: '/photographerImages/7.jpg',
+    clientImage: '/fotomaticImages/fotomatic1.jpg',
     shootType: 'Portrait Session',
     location: 'Scottsdale, AZ',
     date: 'Jun 18, 2026',

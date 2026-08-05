@@ -7,7 +7,7 @@ import {
   ChevronDown,
   ChevronRight,
   Loader2,
-  UserRound,
+  MessageCircle,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePhotographerBookingThreads } from '@/contexts/PhotographerBookingThreadsContext';
@@ -15,36 +15,64 @@ import {
   photographerAccept,
   photographerDecline,
   photographerSuggestAlternative,
-  sendThreadMessage,
-  subscribeMessagesForThread,
   type BookingThread,
-  type BookingThreadMessage,
 } from '@/lib/firebase/booking-threads';
 import {
   clientBookingAvatarUrl,
   effectivePhotographerDirectoryId,
 } from '@/lib/photographer-booking-dashboard';
+import { bookingStatusBadge } from '@/lib/booking-status-display';
 
 const FIELD =
   'w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-500 caret-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20';
 
-function statusLabel(s: BookingThread['status']): string {
-  switch (s) {
-    case 'requested':
-      return 'Requested';
-    case 'accepted_pending_payment':
-      return 'Accepted – Pending payment';
-    case 'confirmed':
-      return 'Confirmed';
-    case 'pending_client_response':
-      return 'Pending client response';
-    case 'declined':
-      return 'Declined';
-    case 'expired':
-      return 'Expired';
-    default:
-      return s;
+type PriceUnit = 'hour' | 'day' | 'event';
+
+function clientInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return `${parts[0]![0] ?? ''}${parts[1]![0] ?? ''}`.toUpperCase();
+}
+
+function BookingAvatar({
+  photoUrl,
+  name,
+}: {
+  photoUrl: string | null;
+  name: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  const show = Boolean(photoUrl) && !failed;
+  return (
+    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-zinc-100 ring-1 ring-zinc-900/5">
+      {show ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={photoUrl!}
+          alt=""
+          referrerPolicy="no-referrer"
+          className="h-full w-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center bg-[#e8dfd2] text-[11px] font-semibold text-zinc-700">
+          {clientInitials(name)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function photographerStatusBadge(status: BookingThread['status']) {
+  const base = bookingStatusBadge(status);
+  if (status === 'accepted_pending_payment') {
+    return { ...base, label: 'Accepted · Pending payment' };
   }
+  if (status === 'pending_client_response') {
+    return { ...base, label: 'Awaiting client' };
+  }
+  return base;
 }
 
 function durationToHoursApprox(duration: string): number {
@@ -56,6 +84,27 @@ function durationToHoursApprox(duration: string): number {
   return 1;
 }
 
+function durationToDaysApprox(duration: string): number {
+  const t = duration.toLowerCase();
+  const m = /(\d+(?:\.\d+)?)\s*day/.exec(t);
+  if (m) return Math.max(1, Number(m[1]));
+  if (t.includes('full day')) return 1;
+  if (t.includes('half day')) return 0.5;
+  return 1;
+}
+
+function computeAcceptTotal(
+  price: number,
+  unit: PriceUnit,
+  duration: string,
+): number {
+  if (unit === 'event') return Math.round(price * 100) / 100;
+  if (unit === 'day') {
+    return Math.round(price * durationToDaysApprox(duration) * 100) / 100;
+  }
+  return Math.round(price * durationToHoursApprox(duration) * 100) / 100;
+}
+
 export function PhotographerBookingsInbox() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -65,17 +114,12 @@ export function PhotographerBookingsInbox() {
     usePhotographerBookingThreads();
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<BookingThreadMessage[]>([]);
-  const [messagesLoading, setMessagesLoading] = useState(false);
-
-  const [acceptRate, setAcceptRate] = useState<number | ''>('');
-  /** Final amount charged to the client (USD). Defaults from rate × duration. */
-  const [acceptTotal, setAcceptTotal] = useState<number | ''>('');
+  const [acceptPrice, setAcceptPrice] = useState<number | ''>('');
+  const [acceptUnit, setAcceptUnit] = useState<PriceUnit>('hour');
   const [declineReason, setDeclineReason] = useState('');
   const [suggestDate, setSuggestDate] = useState('');
   const [suggestTimeframe, setSuggestTimeframe] = useState('');
   const [suggestMessage, setSuggestMessage] = useState('');
-  const [replyText, setReplyText] = useState('');
   const [saving, setSaving] = useState(false);
   const [banner, setBanner] = useState<{
     kind: 'ok' | 'err';
@@ -117,44 +161,32 @@ export function PhotographerBookingsInbox() {
   }, [threadsLoading, threads, threadParam]);
 
   useEffect(() => {
-    if (!expandedId) {
-      setMessages([]);
-      return;
-    }
-    setMessagesLoading(true);
-    const unsub = subscribeMessagesForThread(expandedId, (m) => {
-      setMessages(m);
-      setMessagesLoading(false);
-    });
-    return () => unsub();
-  }, [expandedId]);
-
-  useEffect(() => {
     if (!activeThread) return;
     const fromProfile =
       typeof userData?.photographer?.hourlyRate === 'number'
         ? userData.photographer.hourlyRate
-        : null;
+        : typeof userData?.photographer?.startingPrice === 'number'
+          ? userData.photographer.startingPrice
+          : null;
     const fromRequest = activeThread.photographerStartingHourlyRate;
-    const rate = fromProfile ?? fromRequest ?? '';
-    setAcceptRate(rate);
-    if (typeof rate === 'number' && rate > 0) {
-      const hrs = durationToHoursApprox(activeThread.duration);
-      const total = Math.round(rate * hrs * 100) / 100;
-      setAcceptTotal(total);
-    } else {
-      setAcceptTotal('');
-    }
+    setAcceptPrice(fromProfile ?? fromRequest ?? '');
+    setAcceptUnit(
+      activeThread.acceptedPriceUnit === 'day' ||
+        activeThread.acceptedPriceUnit === 'event'
+        ? activeThread.acceptedPriceUnit
+        : 'hour',
+    );
     setDeclineReason('');
     setSuggestDate('');
     setSuggestTimeframe('');
     setSuggestMessage('');
-    setReplyText('');
     setBanner(null);
   }, [
     activeThread?.id,
     userData?.photographer?.hourlyRate,
+    userData?.photographer?.startingPrice,
     activeThread?.status,
+    activeThread?.acceptedPriceUnit,
   ]);
 
   if (authLoading || !user || !userData) {
@@ -191,14 +223,14 @@ export function PhotographerBookingsInbox() {
   }
 
   return (
-    <div className="px-4 pb-8 pt-0 sm:px-6 lg:px-10">
-      <div className="sticky top-14 z-20 -mx-4 border-b border-zinc-200/70 bg-[#f4f1ec]/95 px-4 py-4 backdrop-blur-md supports-[backdrop-filter]:bg-[#f4f1ec]/90 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
+    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <div>
         <h1 className="font-serif text-2xl font-medium text-zinc-900">
-          Bookings inbox
+          Bookings
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-zinc-600">
-          Review each request, reply in the thread, then accept, suggest an
-          alternative, or decline.
+          Review each request, accept or suggest an alternative, then message
+          the client from Messages when you need to chat.
         </p>
       </div>
 
@@ -229,6 +261,11 @@ export function PhotographerBookingsInbox() {
             const open = expandedId === t.id;
             const photo = clientBookingAvatarUrl(t);
             const actionsLocked = t.status !== 'requested';
+            const badge = photographerStatusBadge(t.status);
+            const quotePreview =
+              typeof acceptPrice === 'number' && acceptPrice > 0
+                ? computeAcceptTotal(acceptPrice, acceptUnit, t.duration)
+                : null;
             return (
               <div
                 key={t.id}
@@ -244,24 +281,10 @@ export function PhotographerBookingsInbox() {
                   ) : (
                     <ChevronRight className="h-5 w-5 shrink-0 text-zinc-500" />
                   )}
-                  <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-zinc-100 ring-1 ring-zinc-900/5">
-                    {photo ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={photo}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center">
-                        <UserRound
-                          className="h-5 w-5 text-zinc-400"
-                          strokeWidth={1.5}
-                          aria-hidden
-                        />
-                      </div>
-                    )}
-                  </div>
+                  <BookingAvatar
+                    photoUrl={photo}
+                    name={t.clientName || 'Client'}
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold text-zinc-900">
                       {t.clientName || 'Client'}
@@ -270,24 +293,24 @@ export function PhotographerBookingsInbox() {
                       {t.eventType} · {t.eventDate}
                     </p>
                   </div>
-                  <span className="shrink-0 rounded-full border border-zinc-200 px-2 py-0.5 text-[11px] font-semibold text-zinc-700">
-                    {statusLabel(t.status)}
+                  <span
+                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${badge.className}`}
+                  >
+                    {badge.label}
                   </span>
                 </button>
 
                 {open && t.id ? (
-                  <div className="space-y-6 border-t border-zinc-100 px-4 pb-6 pt-4">
+                  <div className="space-y-5 border-t border-zinc-100 px-4 pb-6 pt-4">
                     {actionsLocked ? (
                       <p className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-700">
-                        Accept, suggest alternative, and decline are only
-                        available while this booking is{' '}
-                        <strong>Requested</strong>. You can still message the
-                        client in this thread.
+                        Accept / decline / suggest are only available while this
+                        booking is <strong>Requested</strong>.
                       </p>
                     ) : null}
 
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
+                      <div className="min-w-0 shrink-0 xl:max-w-[220px]">
                         <p className="text-sm font-semibold text-zinc-900">
                           {t.clientName}
                         </p>
@@ -299,307 +322,245 @@ export function PhotographerBookingsInbox() {
                           {t.duration} · {t.eventLocation}
                         </p>
                         <p className="mt-2 text-xs text-zinc-500">
-                          Shown to client: From ${t.photographerStartingHourlyRate}
+                          Shown to client: From $
+                          {t.photographerStartingHourlyRate}
                         </p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                        Thread
-                      </p>
-                      <div className="mt-2 max-h-64 space-y-2 overflow-y-auto rounded-xl bg-zinc-50 p-3">
-                        {messagesLoading ? (
-                          <p className="text-center text-sm text-zinc-500">
-                            Loading messages…
-                          </p>
-                        ) : messages.length === 0 ? (
-                          <p className="text-center text-sm text-zinc-500">
-                            No messages yet.
-                          </p>
-                        ) : (
-                          messages.map((m) => (
-                            <div
-                              key={m.id ?? `${m.createdAt}-${m.text}`}
-                              className={[
-                                'rounded-xl px-3 py-2 text-sm',
-                                m.senderRole === 'system'
-                                  ? 'bg-amber-50 text-amber-950'
-                                  : m.senderRole === 'photographer'
-                                    ? 'ml-6 bg-emerald-50 text-emerald-950'
-                                    : 'mr-6 bg-white text-zinc-900 ring-1 ring-zinc-200',
-                              ].join(' ')}
-                            >
-                              {m.text}
-                            </div>
-                          ))
-                        )}
-                      </div>
-                      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                        <textarea
-                          rows={2}
-                          className={`${FIELD} min-h-[72px] flex-1 resize-y`}
-                          placeholder="Write a message to the client…"
-                          value={replyText}
-                          onChange={(e) => setReplyText(e.target.value)}
-                        />
-                        <button
-                          type="button"
-                          disabled={saving || !replyText.trim()}
-                          onClick={async () => {
-                            if (!user || !t.id) return;
-                            setSaving(true);
-                            setBanner(null);
-                            const res = await sendThreadMessage({
-                              threadId: t.id,
-                              senderUserId: user.uid,
-                              senderRole: 'photographer',
-                              text: replyText,
-                            });
-                            setSaving(false);
-                            if (res.ok) {
-                              setReplyText('');
-                              setBanner({
-                                kind: 'ok',
-                                text: 'Message sent.',
-                              });
-                            } else {
-                              setBanner({ kind: 'err', text: res.message });
-                            }
-                          }}
-                          className="h-fit shrink-0 rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-50"
+                        <Link
+                          href={`/photographer/messages?thread=${encodeURIComponent(t.id)}`}
+                          className="mt-4 inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
                         >
-                          Send message
-                        </button>
+                          <MessageCircle className="h-4 w-4" strokeWidth={1.75} />
+                          Message client
+                        </Link>
                       </div>
-                    </div>
 
-                    <div className="grid gap-4 lg:grid-cols-3">
-                      <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                        <p className="text-sm font-semibold text-zinc-900">
-                          Accept
-                        </p>
-                        <p className="mt-1 text-xs text-zinc-600">
-                          Set the final amount the client will pay on Stripe
-                          (you can override the suggested total).
-                        </p>
-                        <label className="mt-3 block space-y-1">
-                          <span className="text-xs font-medium text-zinc-600">
-                            Reference rate ($)
-                          </span>
-                          <input
-                            inputMode="decimal"
-                            className={FIELD}
-                            disabled={actionsLocked}
-                            value={acceptRate}
-                            onChange={(e) => {
-                              const v = e.target.value.trim();
-                              if (!v) {
-                                setAcceptRate('');
+                      <div className="grid min-w-0 flex-1 gap-3 lg:grid-cols-3">
+                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                          <p className="text-sm font-semibold text-zinc-900">
+                            Accept
+                          </p>
+                          <div className="mt-2 flex gap-2">
+                            <div className="relative min-w-0 flex-1">
+                              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-zinc-500">
+                                $
+                              </span>
+                              <input
+                                inputMode="decimal"
+                                className={`${FIELD} pl-7`}
+                                disabled={actionsLocked}
+                                value={acceptPrice}
+                                onChange={(e) => {
+                                  const v = e.target.value.trim();
+                                  if (!v) setAcceptPrice('');
+                                  else setAcceptPrice(Number(v));
+                                }}
+                              />
+                            </div>
+                            <select
+                              className={`${FIELD} w-[7.5rem] shrink-0`}
+                              disabled={actionsLocked}
+                              value={acceptUnit}
+                              onChange={(e) =>
+                                setAcceptUnit(e.target.value as PriceUnit)
+                              }
+                            >
+                              <option value="hour">/ hour</option>
+                              <option value="day">/ day</option>
+                              <option value="event">/ event</option>
+                            </select>
+                          </div>
+                          {quotePreview != null ? (
+                            <p className="mt-2 text-[11px] text-zinc-500">
+                              Client pays ${quotePreview.toFixed(2)} for this
+                              booking ({t.duration})
+                            </p>
+                          ) : null}
+                          <button
+                            type="button"
+                            disabled={
+                              saving ||
+                              typeof acceptPrice !== 'number' ||
+                              !Number.isFinite(acceptPrice) ||
+                              acceptPrice <= 0 ||
+                              actionsLocked
+                            }
+                            className="mt-2 w-full rounded-xl bg-zinc-900 px-3 py-2 text-xs font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
+                            onClick={async () => {
+                              if (
+                                !t.id ||
+                                typeof acceptPrice !== 'number' ||
+                                !user
+                              )
+                                return;
+                              const total = computeAcceptTotal(
+                                acceptPrice,
+                                acceptUnit,
+                                t.duration,
+                              );
+                              if (!Number.isFinite(total) || total < 0.5) {
+                                setBanner({
+                                  kind: 'err',
+                                  text: 'Quote total must be at least $0.50.',
+                                });
                                 return;
                               }
-                              const n = Number(v);
-                              setAcceptRate(n);
-                              if (Number.isFinite(n) && n > 0) {
-                                const hrs = durationToHoursApprox(t.duration);
-                                setAcceptTotal(
-                                  Math.round(n * hrs * 100) / 100,
-                                );
+                              setSaving(true);
+                              setBanner(null);
+                              const res = await photographerAccept({
+                                threadId: t.id,
+                                photographerUserId: user.uid,
+                                acceptedHourlyRate: acceptPrice,
+                                acceptedPriceUnit: acceptUnit,
+                                acceptedTotalPrice: total,
+                                clientUserId: t.clientUserId,
+                                photographerName: t.photographerName,
+                              });
+                              setSaving(false);
+                              if (!res.ok)
+                                setBanner({ kind: 'err', text: res.message });
+                              else {
+                                setBanner({
+                                  kind: 'ok',
+                                  text: `Accepted at $${acceptPrice}/${acceptUnit}. Client can pay $${total.toFixed(2)}.`,
+                                });
+                                await refreshUserData();
                               }
                             }}
-                          />
-                        </label>
-                        <label className="mt-3 block space-y-1">
-                          <span className="text-xs font-medium text-zinc-600">
-                            Final total to charge ($)
-                          </span>
-                          <input
-                            inputMode="decimal"
-                            className={FIELD}
-                            disabled={actionsLocked}
-                            placeholder="e.g. 2.00"
-                            value={acceptTotal}
-                            onChange={(e) => {
-                              const v = e.target.value.trim();
-                              if (!v) setAcceptTotal('');
-                              else setAcceptTotal(Number(v));
+                          >
+                            {saving
+                              ? 'Saving…'
+                              : quotePreview != null
+                                ? `Accept · $${quotePreview.toFixed(2)}`
+                                : 'Accept'}
+                          </button>
+                        </div>
+
+                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                          <p className="text-sm font-semibold text-zinc-900">
+                            Decline
+                          </p>
+                          <label className="mt-2 block space-y-1">
+                            <span className="text-[11px] font-medium text-zinc-600">
+                              Reason (optional)
+                            </span>
+                            <input
+                              className={FIELD}
+                              disabled={actionsLocked}
+                              value={declineReason}
+                              onChange={(e) =>
+                                setDeclineReason(e.target.value)
+                              }
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            disabled={saving || actionsLocked}
+                            className="mt-2 w-full rounded-xl bg-red-700 px-3 py-2 text-xs font-semibold text-white hover:bg-red-800 disabled:opacity-60"
+                            onClick={async () => {
+                              if (!t.id || !user) return;
+                              setSaving(true);
+                              setBanner(null);
+                              const res = await photographerDecline({
+                                threadId: t.id,
+                                photographerUserId: user.uid,
+                                clientUserId: t.clientUserId,
+                                photographerName: t.photographerName,
+                                reason: declineReason,
+                              });
+                              setSaving(false);
+                              if (!res.ok)
+                                setBanner({ kind: 'err', text: res.message });
+                              else
+                                setBanner({
+                                  kind: 'ok',
+                                  text: 'Request declined. The client has been notified.',
+                                });
                             }}
-                          />
-                          <span className="text-[11px] text-zinc-500">
-                            Duration: {t.duration} (
-                            {durationToHoursApprox(t.duration)}h approx)
-                          </span>
-                        </label>
-                        <button
-                          type="button"
-                          disabled={
-                            saving ||
-                            typeof acceptTotal !== 'number' ||
-                            !Number.isFinite(acceptTotal) ||
-                            acceptTotal < 0.5 ||
-                            actionsLocked
-                          }
-                          className="mt-3 w-full rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
-                          onClick={async () => {
-                            if (
-                              !t.id ||
-                              typeof acceptTotal !== 'number' ||
-                              !user
-                            )
-                              return;
-                            const total =
-                              Math.round(acceptTotal * 100) / 100;
-                            if (!Number.isFinite(total) || total < 0.5) {
-                              setBanner({
-                                kind: 'err',
-                                text: 'Final total must be at least $0.50.',
-                              });
-                              return;
-                            }
-                            const hrs = durationToHoursApprox(t.duration);
-                            const rate =
-                              typeof acceptRate === 'number' && acceptRate > 0
-                                ? acceptRate
-                                : Math.round((total / hrs) * 100) / 100;
-                            setSaving(true);
-                            setBanner(null);
-                            const res = await photographerAccept({
-                              threadId: t.id,
-                              photographerUserId: user.uid,
-                              acceptedHourlyRate: rate,
-                              acceptedTotalPrice: total,
-                              clientUserId: t.clientUserId,
-                              photographerName: t.photographerName,
-                            });
-                            setSaving(false);
-                            if (!res.ok) setBanner({ kind: 'err', text: res.message });
-                            else {
-                              setBanner({
-                                kind: 'ok',
-                                text: `Booking accepted at $${total.toFixed(2)}. Client can pay now.`,
-                              });
-                              await refreshUserData();
-                            }
-                          }}
-                        >
-                          {saving
-                            ? 'Saving…'
-                            : typeof acceptTotal === 'number'
-                              ? `Accept · charge $${acceptTotal.toFixed(2)}`
-                              : 'Accept booking'}
-                        </button>
-                      </div>
+                          >
+                            {saving ? 'Saving…' : 'Decline'}
+                          </button>
+                        </div>
 
-                      <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                        <p className="text-sm font-semibold text-zinc-900">
-                          Suggest alternative
-                        </p>
-                        <label className="mt-3 block space-y-1">
-                          <span className="text-xs font-medium text-zinc-600">
-                            Suggested date
-                          </span>
-                          <input
-                            type="date"
-                            className={FIELD}
-                            disabled={actionsLocked}
-                            value={suggestDate}
-                            onChange={(e) => setSuggestDate(e.target.value)}
-                          />
-                        </label>
-                        <label className="mt-3 block space-y-1">
-                          <span className="text-xs font-medium text-zinc-600">
-                            Timeframe (optional)
-                          </span>
-                          <input
-                            className={FIELD}
-                            disabled={actionsLocked}
-                            value={suggestTimeframe}
-                            onChange={(e) => setSuggestTimeframe(e.target.value)}
-                            placeholder="e.g. 10am"
-                          />
-                        </label>
-                        <label className="mt-3 block space-y-1">
-                          <span className="text-xs font-medium text-zinc-600">
-                            Note (optional)
-                          </span>
-                          <input
-                            className={FIELD}
-                            disabled={actionsLocked}
-                            value={suggestMessage}
-                            onChange={(e) => setSuggestMessage(e.target.value)}
-                          />
-                        </label>
-                        <button
-                          type="button"
-                          disabled={saving || !suggestDate || actionsLocked}
-                          className="mt-3 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-60"
-                          onClick={async () => {
-                            if (!t.id || !user || !suggestDate) return;
-                            setSaving(true);
-                            setBanner(null);
-                            const res = await photographerSuggestAlternative({
-                              threadId: t.id,
-                              photographerUserId: user.uid,
-                              clientUserId: t.clientUserId,
-                              photographerName: t.photographerName,
-                              suggestedDate: suggestDate,
-                              suggestedTimeframe: suggestTimeframe,
-                              message: suggestMessage,
-                            });
-                            setSaving(false);
-                            if (!res.ok) setBanner({ kind: 'err', text: res.message });
-                            else
-                              setBanner({
-                                kind: 'ok',
-                                text: 'Suggestion sent to the client.',
-                              });
-                          }}
-                        >
-                          {saving ? 'Saving…' : 'Send suggestion'}
-                        </button>
-                      </div>
-
-                      <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-                        <p className="text-sm font-semibold text-zinc-900">
-                          Decline
-                        </p>
-                        <label className="mt-3 block space-y-1">
-                          <span className="text-xs font-medium text-zinc-600">
-                            Reason (optional)
-                          </span>
-                          <input
-                            className={FIELD}
-                            disabled={actionsLocked}
-                            value={declineReason}
-                            onChange={(e) => setDeclineReason(e.target.value)}
-                          />
-                        </label>
-                        <button
-                          type="button"
-                          disabled={saving || actionsLocked}
-                          className="mt-3 w-full rounded-xl bg-red-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-800 disabled:opacity-60"
-                          onClick={async () => {
-                            if (!t.id || !user) return;
-                            setSaving(true);
-                            setBanner(null);
-                            const res = await photographerDecline({
-                              threadId: t.id,
-                              photographerUserId: user.uid,
-                              clientUserId: t.clientUserId,
-                              photographerName: t.photographerName,
-                              reason: declineReason,
-                            });
-                            setSaving(false);
-                            if (!res.ok) setBanner({ kind: 'err', text: res.message });
-                            else
-                              setBanner({
-                                kind: 'ok',
-                                text: 'Request declined. The client has been notified.',
-                              });
-                          }}
-                        >
-                          {saving ? 'Saving…' : 'Decline request'}
-                        </button>
+                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                          <p className="text-sm font-semibold text-zinc-900">
+                            Suggest alternative
+                          </p>
+                          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                            <label className="block space-y-1">
+                              <span className="text-[11px] font-medium text-zinc-600">
+                                Date
+                              </span>
+                              <input
+                                type="date"
+                                className={FIELD}
+                                disabled={actionsLocked}
+                                value={suggestDate}
+                                onChange={(e) =>
+                                  setSuggestDate(e.target.value)
+                                }
+                              />
+                            </label>
+                            <label className="block space-y-1">
+                              <span className="text-[11px] font-medium text-zinc-600">
+                                Time
+                              </span>
+                              <input
+                                className={FIELD}
+                                disabled={actionsLocked}
+                                value={suggestTimeframe}
+                                onChange={(e) =>
+                                  setSuggestTimeframe(e.target.value)
+                                }
+                                placeholder="e.g. 10am"
+                              />
+                            </label>
+                          </div>
+                          <label className="mt-2 block space-y-1">
+                            <span className="text-[11px] font-medium text-zinc-600">
+                              Note
+                            </span>
+                            <input
+                              className={FIELD}
+                              disabled={actionsLocked}
+                              value={suggestMessage}
+                              onChange={(e) =>
+                                setSuggestMessage(e.target.value)
+                              }
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            disabled={
+                              saving || !suggestDate || actionsLocked
+                            }
+                            className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-60"
+                            onClick={async () => {
+                              if (!t.id || !user || !suggestDate) return;
+                              setSaving(true);
+                              setBanner(null);
+                              const res =
+                                await photographerSuggestAlternative({
+                                  threadId: t.id,
+                                  photographerUserId: user.uid,
+                                  clientUserId: t.clientUserId,
+                                  photographerName: t.photographerName,
+                                  suggestedDate: suggestDate,
+                                  suggestedTimeframe: suggestTimeframe,
+                                  message: suggestMessage,
+                                });
+                              setSaving(false);
+                              if (!res.ok)
+                                setBanner({ kind: 'err', text: res.message });
+                              else
+                                setBanner({
+                                  kind: 'ok',
+                                  text: 'Suggestion sent to the client.',
+                                });
+                            }}
+                          >
+                            {saving ? 'Saving…' : 'Send suggestion'}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -5,7 +5,7 @@ import { Star } from 'lucide-react';
 
 export default function PhotographerReviewsPage() {
   return (
-    <div className="px-4 py-10 sm:px-6 lg:px-10">
+    <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
       <h1 className="font-serif text-2xl font-medium text-zinc-900">
         Reviews
       </h1>

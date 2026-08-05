@@ -90,8 +90,8 @@ export async function createPhotographerAccountLink(args: {
   const base = appBaseUrl();
   const link = await stripe.accountLinks.create({
     account: accountId,
-    refresh_url: `${base}/photographer/earnings?connect=refresh`,
-    return_url: `${base}/photographer/earnings?connect=return`,
+  refresh_url: `${base}/photographer/settings?connect=refresh`,
+  return_url: `${base}/photographer/settings?connect=return`,
     type: 'account_onboarding',
   });
   return { url: link.url, accountId };

@@ -80,9 +80,22 @@ export function placeholderImageIndexFromDirectoryId(id: string): number {
   return (h % 26) + 1;
 }
 
+/** Local stock images under `public/fotomaticImages/` (folder is never empty). */
+const DIRECTORY_PLACEHOLDER_FILES = [
+  'photographer1.jpeg',
+  'photographer2.jpeg',
+  'fotomatic0.jpg',
+  'fotomatic1.jpg',
+  'fotomatic2.jpg',
+  'fotomatic3.jpg',
+  'fotomatic4.jpg',
+] as const;
+
 export function photographerPlaceholderImagePath(id: string): string {
   const n = placeholderImageIndexFromDirectoryId(id);
-  return `/photographerImages/${n}.jpg`;
+  const file =
+    DIRECTORY_PLACEHOLDER_FILES[(n - 1) % DIRECTORY_PLACEHOLDER_FILES.length]!;
+  return `/fotomaticImages/${file}`;
 }
 
 /** Map a public `photographers/{docId}` document to directory shape. */

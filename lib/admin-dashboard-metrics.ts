@@ -37,11 +37,13 @@ export function computeAdminDashboardMetrics(
   threads: BookingThread[],
   users: UserData[],
   directoryPhotographerCount: number,
+  /** Window length in days for “this period” stats (default 7). */
+  rangeDays = 7,
 ): AdminDashboardMetrics {
   const now = Date.now();
-  const week = 7 * 24 * 60 * 60 * 1000;
-  const thisStart = now - week;
-  const prevStart = now - 2 * week;
+  const windowMs = Math.max(1, rangeDays) * 24 * 60 * 60 * 1000;
+  const thisStart = now - windowMs;
+  const prevStart = now - 2 * windowMs;
 
   const bookingsThis = threads.filter((t) => threadMs(t) >= thisStart).length;
   const bookingsPrev = threads.filter(
@@ -90,7 +92,7 @@ export function computeAdminDashboardMetrics(
   ).length;
 
   return {
-    totalBookings: threads.length,
+    totalBookings: threads.filter((t) => threadMs(t) >= thisStart).length,
     totalBookingsDeltaPct: pctChange(bookingsThis, bookingsPrev),
     revenueThisWeek: revenueThis,
     revenueDeltaPct: pctChange(revenueThis, revenuePrev),

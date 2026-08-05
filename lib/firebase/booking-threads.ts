@@ -59,6 +59,8 @@ export type BookingThread = {
 
   /** Filled when photographer accepts. */
   acceptedHourlyRate?: number | null;
+  /** Quote billing unit shown to the client. */
+  acceptedPriceUnit?: 'hour' | 'day' | 'event' | null;
   acceptedTotalPrice?: number | null;
 
   /** Stripe Checkout (set server-side on pay / webhook). */
@@ -500,15 +502,24 @@ export async function photographerAccept(args: {
   threadId: string;
   photographerUserId: string;
   acceptedHourlyRate: number;
+  acceptedPriceUnit: 'hour' | 'day' | 'event';
   acceptedTotalPrice: number;
   clientUserId: string;
   photographerName: string;
 }): Promise<Result<true>> {
   try {
+    const unitLabel =
+      args.acceptedPriceUnit === 'hour'
+        ? 'hour'
+        : args.acceptedPriceUnit === 'day'
+          ? 'day'
+          : 'event';
+    const quoteLabel = `$${args.acceptedHourlyRate.toFixed(2)}/${unitLabel}`;
     await updateDoc(doc(threadsCol, args.threadId), {
       status: 'accepted_pending_payment',
       photographerUserId: args.photographerUserId,
       acceptedHourlyRate: args.acceptedHourlyRate,
+      acceptedPriceUnit: args.acceptedPriceUnit,
       acceptedTotalPrice: args.acceptedTotalPrice,
       updatedAt: serverTimestamp(),
     });
@@ -516,7 +527,7 @@ export async function photographerAccept(args: {
       threadId: args.threadId,
       senderUserId: 'system',
       senderRole: 'system',
-      text: `Your booking has been accepted at $${args.acceptedTotalPrice}.`,
+      text: `Your booking has been accepted at ${quoteLabel} (amount due: $${args.acceptedTotalPrice.toFixed(2)}).`,
       createdAt: serverTimestamp(),
     } satisfies BookingThreadMessage);
     try {
@@ -529,7 +540,7 @@ export async function photographerAccept(args: {
       threadId: args.threadId,
       type: 'booking_accepted',
       title: 'Booking accepted',
-      body: `${args.photographerName} accepted your booking. Confirm & pay when ready.`,
+      body: `${args.photographerName} accepted your booking at ${quoteLabel}. Confirm & pay when ready.`,
       read: false,
       createdAt: serverTimestamp(),
     } satisfies AppNotification);

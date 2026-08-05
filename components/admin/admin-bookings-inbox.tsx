@@ -147,16 +147,25 @@ export function AdminBookingsInbox() {
                         src={photo}
                         alt=""
                         className="h-full w-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          const fallback = e.currentTarget.nextElementSibling;
+                          if (fallback instanceof HTMLElement) {
+                            fallback.style.display = 'flex';
+                          }
+                        }}
                       />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center">
-                        <UserRound
-                          className="h-5 w-5 text-zinc-400"
-                          strokeWidth={1.5}
-                          aria-hidden
-                        />
-                      </div>
-                    )}
+                    ) : null}
+                    <div
+                      className="flex h-full w-full items-center justify-center"
+                      style={photo ? { display: 'none' } : undefined}
+                    >
+                      <UserRound
+                        className="h-5 w-5 text-zinc-400"
+                        strokeWidth={1.5}
+                        aria-hidden
+                      />
+                    </div>
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold text-zinc-900">

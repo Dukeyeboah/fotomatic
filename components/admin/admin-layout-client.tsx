@@ -9,19 +9,21 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
 import { AdminSidebar } from '@/components/admin/admin-sidebar';
 import { AdminHeader } from '@/components/admin/admin-header';
+import { AdminDateRangeProvider } from '@/contexts/AdminDateRangeContext';
 
 export function AdminLayoutClient({ children }: { children: ReactNode }) {
   const { user, userData, loading } = useAuth();
   const { openLoginModal } = useLoginModal();
   const router = useRouter();
   const [mobileNav, setMobileNav] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
 
   useEffect(() => {
     try {
-      if (typeof window !== 'undefined' && window.localStorage.getItem(ADMIN_SIDEBAR_COLLAPSED_KEY) === '1') {
-        setSidebarCollapsed(true);
-      }
+      if (typeof window === 'undefined') return;
+      const stored = window.localStorage.getItem(ADMIN_SIDEBAR_COLLAPSED_KEY);
+      if (stored === '0') setSidebarCollapsed(false);
+      else setSidebarCollapsed(true);
     } catch {
       /* ignore */
     }
@@ -86,6 +88,7 @@ export function AdminLayoutClient({ children }: { children: ReactNode }) {
   }
 
   return (
+    <AdminDateRangeProvider>
     <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 w-full overflow-hidden bg-zinc-100">
       <div
         className={[
@@ -97,7 +100,7 @@ export function AdminLayoutClient({ children }: { children: ReactNode }) {
       />
       <div
         className={[
-          'fixed inset-y-0 left-0 z-50 flex h-full min-h-0 flex-col lg:static lg:h-full',
+          'fixed inset-y-0 left-0 z-50 flex h-full min-h-0 flex-col overflow-visible lg:static lg:h-full',
           'pl-[env(safe-area-inset-left)] lg:pl-0',
           mobileNav
             ? 'translate-x-0 shadow-2xl shadow-black/25'
@@ -130,5 +133,6 @@ export function AdminLayoutClient({ children }: { children: ReactNode }) {
         </main>
       </div>
     </div>
+    </AdminDateRangeProvider>
   );
 }

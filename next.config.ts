@@ -70,6 +70,11 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
       { source: "/orders", destination: "/bookings", permanent: false },
+      {
+        source: "/photographer/requests",
+        destination: "/photographer/bookings",
+        permanent: false,
+      },
     ];
   },
 };

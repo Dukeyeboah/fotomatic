@@ -151,7 +151,10 @@ export function BookingRequestModal({
       clientMessage: notes.trim(),
       agreedToContract,
       promoNote: promoNote ?? null,
-      clientPhotoURL: user.photoURL?.trim() || null,
+      clientPhotoURL:
+        user.photoURL?.trim() ||
+        userData?.photoURL?.trim() ||
+        null,
     });
     setSending(false);
     if (result.ok) {

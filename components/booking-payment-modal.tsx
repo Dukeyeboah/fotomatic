@@ -20,6 +20,8 @@ export function BookingPaymentModal({ thread, user, open, onClose }: Props) {
   if (!open) return null;
 
   const total = thread.acceptedTotalPrice;
+  const unit = thread.acceptedPriceUnit;
+  const rate = thread.acceptedHourlyRate;
   const quoteLabel =
     typeof total === 'number' && Number.isFinite(total)
       ? `$${total.toLocaleString('en-US', {
@@ -27,6 +29,12 @@ export function BookingPaymentModal({ thread, user, open, onClose }: Props) {
           maximumFractionDigits: 2,
         })}`
       : '—';
+  const rateLabel =
+    typeof rate === 'number' &&
+    Number.isFinite(rate) &&
+    (unit === 'hour' || unit === 'day' || unit === 'event')
+      ? `$${rate.toFixed(2)}/${unit}`
+      : null;
 
   const startCheckout = async () => {
     setError(null);
@@ -118,8 +126,14 @@ export function BookingPaymentModal({ thread, user, open, onClose }: Props) {
         </div>
 
         <dl className="mt-5 space-y-2 rounded-xl bg-zinc-50 px-4 py-3 text-sm">
+          {rateLabel ? (
+            <div className="flex justify-between gap-4">
+              <dt className="text-zinc-600">Quote</dt>
+              <dd className="font-medium text-zinc-900">{rateLabel}</dd>
+            </div>
+          ) : null}
           <div className="flex justify-between gap-4">
-            <dt className="text-zinc-600">Quoted total</dt>
+            <dt className="text-zinc-600">Amount due</dt>
             <dd className="font-semibold text-zinc-900">{quoteLabel}</dd>
           </div>
           <div className="flex justify-between gap-4 text-xs text-zinc-500">

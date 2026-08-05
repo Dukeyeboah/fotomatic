@@ -6,7 +6,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { signOutUser } from '@/lib/firebase/auth';
 import {
   Bell,
-  ChevronDown,
   CircleUserRound,
   LayoutDashboard,
   LogOut,
@@ -41,7 +40,7 @@ function Row({
 }
 
 export function AdminAccountMenu() {
-  const { user, userData, loading } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -58,14 +57,13 @@ export function AdminAccountMenu() {
 
   if (loading || !user) return null;
 
-  const label = userData?.username?.trim() || user.email?.split('@')[0] || 'Admin';
-
   return (
     <div className="relative" ref={ref}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-full border border-zinc-200 bg-white py-1 pl-1 pr-2 text-sm font-medium text-zinc-800 shadow-sm hover:bg-zinc-50 sm:pr-3"
+        className="flex items-center rounded-full border border-zinc-200 bg-white p-0.5 shadow-sm hover:bg-zinc-50"
+        aria-label="Account menu"
       >
         {user.photoURL ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -82,8 +80,6 @@ export function AdminAccountMenu() {
             <CircleUserRound className="h-5 w-5" />
           </span>
         )}
-        <span className="hidden max-w-[120px] truncate sm:inline">{label}</span>
-        <ChevronDown className="hidden h-4 w-4 text-zinc-500 sm:block" />
       </button>
       {open ? (
         <div className="absolute right-0 z-50 mt-2 w-56 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg">

@@ -1,15 +1,6 @@
-import Link from 'next/link';
+import { redirect } from 'next/navigation';
 
-export default function AdminCategoriesSettingsPage() {
-  return (
-    <div className="px-4 py-6 sm:px-6 lg:px-8">
-      <h1 className="font-serif text-2xl font-medium text-zinc-900">Categories</h1>
-      <p className="mt-2 text-sm text-zinc-600">
-        Configure shoot categories and filters. Coming soon.
-      </p>
-      <Link href="/admin" className="mt-6 inline-block text-sm font-semibold text-amber-900 hover:underline">
-        ← Dashboard
-      </Link>
-    </div>
-  );
+/** Categories settings temporarily removed from admin nav. */
+export default function AdminCategoriesRedirectPage() {
+  redirect('/admin/settings/system');
 }

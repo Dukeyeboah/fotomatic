@@ -116,10 +116,12 @@ export function subscribePhotographersDirectory(
 
 export async function adminUpsertPhotographer(
   id: string,
-  patch: Partial<Photographer>,
+  patch: Partial<Photographer> & Record<string, unknown>,
 ): Promise<Result<true>> {
   try {
-    const { id: _ignore, ...rest } = patch as Photographer & { id?: string };
+    const { id: _ignore, ...rest } = patch as Photographer & {
+      id?: string;
+    } & Record<string, unknown>;
     const cleaned = omitUndefinedDeep(rest as Record<string, unknown>);
     await setDoc(
       doc(photographersCol, id),

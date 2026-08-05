@@ -1,7 +1,45 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { UserRound } from 'lucide-react';
+
+function ClientAvatar({
+  photoUrl,
+  name,
+}: {
+  photoUrl?: string | null;
+  name: string;
+}) {
+  const url = photoUrl?.trim();
+  const hasPhoto = Boolean(url && /^https?:\/\//i.test(url));
+  const [failed, setFailed] = useState(false);
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const initials =
+    parts.length === 0
+      ? '?'
+      : parts.length === 1
+        ? parts[0]!.slice(0, 2).toUpperCase()
+        : `${parts[0]![0] ?? ''}${parts[1]![0] ?? ''}`.toUpperCase();
+
+  return (
+    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-zinc-100 ring-1 ring-zinc-900/5">
+      {hasPhoto && !failed ? (
+        // eslint-disable-next-line @next/next/no-img-element -- Firebase Storage URL
+        <img
+          src={url!}
+          alt=""
+          referrerPolicy="no-referrer"
+          className="h-full w-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center bg-[#e8dfd2] text-sm font-semibold text-zinc-700">
+          {initials}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function PhotographerRequestCard({
   clientName,
@@ -16,7 +54,7 @@ export function PhotographerRequestCard({
   onDecline,
 }: {
   clientName: string;
-  /** HTTPS profile photo from booking; if missing, a generic user icon is shown. */
+  /** HTTPS profile photo from booking; if missing, initials are shown. */
   clientAvatarUrl?: string | null;
   shootType: string;
   location: string;
@@ -27,27 +65,11 @@ export function PhotographerRequestCard({
   onSuggest?: () => void;
   onDecline?: () => void;
 }) {
-  const url = clientAvatarUrl?.trim();
-  const hasPhoto = Boolean(url && /^https?:\/\//i.test(url));
-
   return (
     <div className="rounded-2xl border border-zinc-200/90 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="flex gap-3">
-          <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-zinc-100 ring-1 ring-zinc-900/5">
-            {hasPhoto ? (
-              // eslint-disable-next-line @next/next/no-img-element -- Firebase Storage URL
-              <img
-                src={url!}
-                alt=""
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center">
-                <UserRound className="h-7 w-7 text-zinc-400" strokeWidth={1.5} aria-hidden />
-              </div>
-            )}
-          </div>
+          <ClientAvatar photoUrl={clientAvatarUrl} name={clientName} />
           <div className="min-w-0">
             <p className="font-semibold text-zinc-900">{clientName}</p>
             <p className="mt-0.5 text-sm text-zinc-600">{shootType}</p>

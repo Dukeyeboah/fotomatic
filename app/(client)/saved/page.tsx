@@ -2,15 +2,60 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useMergedDirectoryPhotographers } from '@/lib/hooks/use-merged-directory-photographers';
 import { useSavedPhotographerIds } from '@/lib/hooks/use-saved-photographer-ids';
 import { Heart } from 'lucide-react';
-import { photographerPlaceholderImagePath } from '@/lib/photographers-directory';
+import {
+  directoryPhotographerHeroImageUrl,
+  photographerPlaceholderImagePath,
+  type DirectoryPhotographer,
+} from '@/lib/photographers-directory';
 import { formatDirectoryStartingPrice } from '@/lib/photographer-pricing';
+import { DirectoryListingPlaceholderImage } from '@/components/directory-listing-placeholder-image';
 
-function cardImage(id: string): string {
-  return photographerPlaceholderImagePath(id);
+function SavedCardImage({ photographer }: { photographer: DirectoryPhotographer }) {
+  const hero = directoryPhotographerHeroImageUrl(photographer);
+  const remote = hero && /^https?:\/\//i.test(hero) ? hero : null;
+  const local =
+    hero && hero.startsWith('/')
+      ? hero
+      : photographerPlaceholderImagePath(photographer.id);
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <DirectoryListingPlaceholderImage
+        alt=""
+        fill
+        className="object-contain bg-white p-4"
+        sizes="112px"
+      />
+    );
+  }
+
+  if (remote) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={remote}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+
+  return (
+    <Image
+      src={local}
+      alt=""
+      fill
+      className="object-cover"
+      sizes="112px"
+      onError={() => setFailed(true)}
+    />
+  );
 }
 
 export default function DashboardSavedPage() {
@@ -51,13 +96,7 @@ export default function DashboardSavedPage() {
               className="flex overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm"
             >
               <div className="relative h-28 w-28 shrink-0 bg-zinc-100">
-                <Image
-                  src={cardImage(p.id)}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="112px"
-                />
+                <SavedCardImage photographer={p} />
               </div>
               <div className="flex min-w-0 flex-1 flex-col justify-center p-4">
                 <p className="font-semibold text-zinc-900">
@@ -78,8 +117,8 @@ export default function DashboardSavedPage() {
                     onClick={() => toggle(p.id)}
                     className="inline-flex items-center gap-1 text-xs font-medium text-zinc-600 hover:text-red-600"
                   >
-                    <Heart className="h-3.5 w-3.5 fill-red-500 text-red-500" />
-                    Remove
+                    <Heart className="h-3.5 w-3.5 fill-current" />
+                    Unsave
                   </button>
                 </div>
               </div>
