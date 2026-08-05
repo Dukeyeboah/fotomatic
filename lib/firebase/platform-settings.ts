@@ -27,7 +27,14 @@ export const DEFAULT_PLATFORM_PAYMENT_SETTINGS: PlatformPaymentSettings = {
   notes: '',
 };
 
-const SETTINGS_REF = doc(db, 'platformSettings', 'payment');
+/**
+ * Reserved photographers doc id used until `platformSettings` rules are deployed.
+ * Filtered out of directory listings. Admins already have write access to
+ * `photographers/{id}` in production rules.
+ */
+export const PLATFORM_PAYMENT_SETTINGS_DOC_ID = '__fotomatic_platform_payment';
+
+const SETTINGS_REF = doc(db, 'photographers', PLATFORM_PAYMENT_SETTINGS_DOC_ID);
 
 export type Result<T> = { ok: true; value: T } | { ok: false; message: string };
 
@@ -56,6 +63,10 @@ function normalize(data: Record<string, unknown> | undefined): PlatformPaymentSe
         : DEFAULT_PLATFORM_PAYMENT_SETTINGS.notes,
     updatedAt: data?.updatedAt,
   };
+}
+
+export function isPlatformConfigPhotographerDocId(id: string | undefined | null): boolean {
+  return Boolean(id && id.startsWith('__fotomatic_'));
 }
 
 export function subscribePlatformPaymentSettings(
@@ -88,6 +99,16 @@ export async function savePlatformPaymentSettings(
 ): Promise<Result<true>> {
   try {
     const cleaned: Record<string, unknown> = {
+      // Keep out of public directory + mark as system config
+      listed: false,
+      isSystemConfig: true,
+      firstName: 'Fotomatic',
+      lastName: 'Platform Config',
+      name: 'Fotomatic Platform Config',
+      status: 'not-contacted',
+      instagramContact: false,
+      emailContact: false,
+      phoneContact: false,
       updatedAt: serverTimestamp(),
     };
     if (typeof patch.minPhotographerStartingPrice === 'number') {

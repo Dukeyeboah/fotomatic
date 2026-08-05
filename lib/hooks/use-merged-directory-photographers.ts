@@ -27,6 +27,7 @@ export function useMergedDirectoryPhotographers(): DirectoryPhotographer[] {
       (snap) => {
         const out: DirectoryPhotographer[] = [];
         for (const d of snap.docs) {
+          if (d.id.startsWith('__fotomatic_')) continue;
           const mapped = firestoreDocToDirectory(d.id, d.data());
           if (mapped) out.push(mapped);
         }

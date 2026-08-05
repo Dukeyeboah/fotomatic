@@ -101,10 +101,12 @@ export function subscribePhotographersDirectory(
     photographersCol,
     (snap) => {
       cb(
-        snap.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as Omit<Photographer, 'id'>),
-        })),
+        snap.docs
+          .filter((d) => !d.id.startsWith('__fotomatic_'))
+          .map((d) => ({
+            id: d.id,
+            ...(d.data() as Omit<Photographer, 'id'>),
+          })),
       );
     },
     (err) => {
