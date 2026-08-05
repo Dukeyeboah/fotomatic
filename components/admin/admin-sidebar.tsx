@@ -165,7 +165,7 @@ export function AdminSidebar({
         </button>
       </div>
       {!collapsed ? (
-        <p className="px-4 pb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-500/90">
+        <p className="px-4 pb-2 pt-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-500/90">
           Admin
         </p>
       ) : (
