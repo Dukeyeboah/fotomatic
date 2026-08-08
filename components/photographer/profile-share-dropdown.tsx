@@ -19,6 +19,7 @@ export function ProfileShareDropdown({
   menuZClass = 'z-[100]',
   className = '',
   buttonLabel = 'Share',
+  iconOnly = false,
 }: {
   profileSlug: string | null | undefined;
   /** Open menu toward top of screen (typical on banner bottom). */
@@ -28,6 +29,8 @@ export function ProfileShareDropdown({
   menuZClass?: string;
   className?: string;
   buttonLabel?: string;
+  /** Round icon button without label / chevron. */
+  iconOnly?: boolean;
 }) {
   const slug = (profileSlug ?? '').trim().toLowerCase();
   const [open, setOpen] = useState(false);
@@ -80,6 +83,10 @@ export function ProfileShareDropdown({
     'flex items-center gap-2 rounded-full border border-white/40 bg-black/45 px-4 py-2.5 text-sm font-semibold text-white shadow-lg backdrop-blur-md transition hover:bg-black/55';
   const btnLight =
     'flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 shadow-sm transition hover:bg-zinc-50';
+  const btnIconDark =
+    'inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/50 bg-white text-zinc-800 shadow-md transition hover:bg-zinc-50';
+  const btnIconLight =
+    'inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-800 shadow-sm transition hover:bg-zinc-50';
 
   const menuPos =
     placement === 'above'
@@ -92,16 +99,30 @@ export function ProfileShareDropdown({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={tone === 'onDark' ? btnDark : btnLight}
+        aria-label={buttonLabel}
+        title={buttonLabel}
+        className={
+          iconOnly
+            ? tone === 'onDark'
+              ? btnIconDark
+              : btnIconLight
+            : tone === 'onDark'
+              ? btnDark
+              : btnLight
+        }
       >
         <Share2 className="h-4 w-4" strokeWidth={1.75} />
-        {buttonLabel}
-        <ChevronDown
-          className={[
-            'h-4 w-4 transition-transform',
-            open ? 'rotate-180' : '',
-          ].join(' ')}
-        />
+        {!iconOnly ? (
+          <>
+            {buttonLabel}
+            <ChevronDown
+              className={[
+                'h-4 w-4 transition-transform',
+                open ? 'rotate-180' : '',
+              ].join(' ')}
+            />
+          </>
+        ) : null}
       </button>
       {open ? (
         <div

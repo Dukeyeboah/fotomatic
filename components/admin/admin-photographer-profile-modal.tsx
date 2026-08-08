@@ -343,6 +343,38 @@ export function AdminPhotographerProfileModal({
     }
   };
 
+  const onGalleryPick = async (files: FileList | null) => {
+    if (!files?.length || !uid) return;
+    const room = DIRECTORY_GALLERY_MAX - galleryImageUrls.length;
+    if (room <= 0) {
+      setMessage(`Portfolio is limited to ${DIRECTORY_GALLERY_MAX} images.`);
+      return;
+    }
+    const selected = Array.from(files).slice(0, room);
+    if (selected.length === 1) {
+      await beginCropFromFiles('gallery', selected);
+      return;
+    }
+    setUploading('gallery');
+    setMessage(null);
+    try {
+      for (const file of selected) {
+        try {
+          const url = await uploadPhotographerGalleryImage(uid, file);
+          if (url) {
+            setGalleryImageUrls((prev) =>
+              [...prev, url].slice(0, DIRECTORY_GALLERY_MAX),
+            );
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    } finally {
+      setUploading(null);
+    }
+  };
+
   const onSave = async () => {
     if (!dir?.id) return;
     setSaving(true);
@@ -758,12 +790,16 @@ export function AdminPhotographerProfileModal({
                         Bio
                       </span>
                       <textarea
-                        maxLength={2000}
+                        maxLength={500}
                         className={`${FIELD_TEXTAREA_CLASS} h-[240px] resize-none`}
                         value={bio}
                         disabled={readOnly}
-                        onChange={(e) => setBio(e.target.value)}
+                        onChange={(e) => setBio(e.target.value.slice(0, 500))}
+                        placeholder="A short intro clients will read on the public page…"
                       />
+                      <span className="text-[11px] text-zinc-500">
+                        {bio.length} / 500 characters
+                      </span>
                     </label>
                     <div
                       className={`flex h-[calc(240px+1.25rem)] flex-col ${
@@ -840,9 +876,9 @@ export function AdminPhotographerProfileModal({
                         <span className="text-xs font-medium text-zinc-600">
                           Phone
                         </span>
-                        <div className="flex gap-2">
+                        <div className="flex min-w-0 gap-1.5">
                           <select
-                            className={`${FIELD_INPUT_CLASS} w-[9.5rem] shrink-0`}
+                            className={`${FIELD_INPUT_CLASS} w-[5.75rem] shrink-0 px-1.5 text-xs sm:w-[6.25rem]`}
                             aria-label="Country calling code"
                             value={phoneDial}
                             disabled={readOnly}
@@ -863,14 +899,14 @@ export function AdminPhotographerProfileModal({
                               .slice()
                               .sort((a, b) => a[0].localeCompare(b[0]))
                               .map(([name, info]) => (
-                                <option key={name} value={info.dial}>
+                                <option key={name} value={info.dial} title={name}>
                                   {info.abbr} +{info.dial}
                                 </option>
                               ))}
                           </select>
                           <input
                             inputMode="tel"
-                            className={FIELD_INPUT_CLASS}
+                            className={`${FIELD_INPUT_CLASS} min-w-0 flex-1`}
                             value={phoneNational}
                             disabled={readOnly}
                             onChange={(e) =>
@@ -958,13 +994,14 @@ export function AdminPhotographerProfileModal({
                   {editing && uid ? (
                     <ImageEditMenu
                       label="Add portfolio photos"
-                      captureFacing="environment"
+                      allowCamera={false}
+                      multiple
                       uploading={uploading === 'gallery'}
                       disabled={
                         galleryImageUrls.length >= DIRECTORY_GALLERY_MAX ||
                         (uploading !== null && uploading !== 'gallery')
                       }
-                      onPick={(files) => void beginCropFromFiles('gallery', files)}
+                      onPick={(files) => void onGalleryPick(files)}
                     />
                   ) : null}
                 </div>
@@ -1014,14 +1051,44 @@ export function AdminPhotographerProfileModal({
                 <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {(
                     [
-                      ['Behance', behance, setBehance],
-                      ['Instagram', instagram, setInstagram],
-                      ['Twitter / X', twitter, setTwitter],
-                      ['Facebook', facebook, setFacebook],
-                      ['LinkedIn', linkedin, setLinkedin],
-                      ['Website', website, setWebsite],
+                      [
+                        'Behance',
+                        behance,
+                        setBehance,
+                        'https://www.behance.net/yourname',
+                      ],
+                      [
+                        'Instagram',
+                        instagram,
+                        setInstagram,
+                        'https://www.instagram.com/yourname',
+                      ],
+                      [
+                        'Twitter / X',
+                        twitter,
+                        setTwitter,
+                        'https://x.com/yourname',
+                      ],
+                      [
+                        'Facebook',
+                        facebook,
+                        setFacebook,
+                        'https://www.facebook.com/yourname',
+                      ],
+                      [
+                        'LinkedIn',
+                        linkedin,
+                        setLinkedin,
+                        'https://www.linkedin.com/in/yourname',
+                      ],
+                      [
+                        'Website',
+                        website,
+                        setWebsite,
+                        'https://www.yourwebsite.com',
+                      ],
                     ] as const
-                  ).map(([label, value, set]) => (
+                  ).map(([label, value, set, placeholder]) => (
                     <label key={label} className="block space-y-1">
                       <span className="text-xs font-medium text-zinc-600">
                         {label}
@@ -1031,6 +1098,7 @@ export function AdminPhotographerProfileModal({
                         value={value}
                         disabled={readOnly}
                         onChange={(e) => set(e.target.value)}
+                        placeholder={placeholder}
                       />
                     </label>
                   ))}
@@ -1043,6 +1111,7 @@ export function AdminPhotographerProfileModal({
                       value={portfolioUrl}
                       disabled={readOnly}
                       onChange={(e) => setPortfolioUrl(e.target.value)}
+                      placeholder="https://"
                     />
                   </label>
                 </div>

@@ -27,7 +27,7 @@ const nav = [
   { href: '/bookings', label: 'My Bookings', icon: CalendarCheck },
   { href: '/messages', label: 'Messages', icon: MessageCircle },
   { href: '/notifications', label: 'Notifications', icon: Bell },
-  { href: '/saved', label: 'Saved Photographers', icon: Heart },
+  { href: '/saved', label: 'Favorites', icon: Heart },
   { href: '/payments', label: 'Payments', icon: CreditCard },
   { href: '/profile', label: 'Profile', icon: UserRound },
   { href: '/settings', label: 'Account Settings', icon: Settings },

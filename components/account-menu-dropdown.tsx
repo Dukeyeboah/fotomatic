@@ -176,7 +176,7 @@ export function AccountMenuDropdown() {
                 My bookings
               </Row>
               <Row href="/saved" icon={Heart} onClick={close}>
-                Saved
+                Favorites
               </Row>
               <Row
                 href="/payments"

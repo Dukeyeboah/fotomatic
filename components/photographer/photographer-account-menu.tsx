@@ -14,6 +14,8 @@ import {
   HelpCircle,
   Home,
   LogOut,
+  Bell,
+  Heart,
   MessageCircle,
   Search,
   Settings,
@@ -156,6 +158,20 @@ export function PhotographerAccountMenu() {
             onNavigate={close}
           >
             Messages
+          </MenuRow>
+          <MenuRow
+            href="/photographer/notifications"
+            icon={Bell}
+            onNavigate={close}
+          >
+            Notifications
+          </MenuRow>
+          <MenuRow
+            href="/photographer/favorites"
+            icon={Heart}
+            onNavigate={close}
+          >
+            Favorites
           </MenuRow>
           <MenuRow
             href="/photographer/bookings"

@@ -11,13 +11,16 @@ type Props = {
   /** `user` = front/selfie camera on phones; `environment` = rear camera. */
   captureFacing?: 'user' | 'environment';
   multiple?: boolean;
+  /** When false, hide Take photo (library upload only). */
+  allowCamera?: boolean;
   onPick: (files: FileList | null) => void | Promise<void>;
   children?: React.ReactNode;
   actionsClassName?: string;
 };
 
 /**
- * Hidden file inputs + “Take photo” / “Choose image” actions (camera-friendly on mobile).
+ * Hidden file inputs + “Take photo” / “Upload image” actions (camera-friendly on mobile).
+ * Camera and library use separate inputs so Upload always opens the photo library.
  */
 export function ImageUploadField({
   label,
@@ -26,6 +29,7 @@ export function ImageUploadField({
   disabled = false,
   captureFacing = 'environment',
   multiple = false,
+  allowCamera = true,
   onPick,
   children,
   actionsClassName = '',
@@ -35,17 +39,6 @@ export function ImageUploadField({
 
   const pick = (files: FileList | null) => {
     void onPick(files);
-  };
-
-  const inputProps = {
-    accept: 'image/*,.heic,.heif',
-    className: 'sr-only' as const,
-    disabled: disabled || uploading,
-    multiple,
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-      pick(e.target.files);
-      e.target.value = '';
-    },
   };
 
   const btnClass =
@@ -58,29 +51,49 @@ export function ImageUploadField({
         <p className="mt-1 text-[11px] leading-snug text-zinc-500">{hint}</p>
       ) : null}
       {children}
-      <input ref={libraryRef} type="file" {...inputProps} />
       <input
-        ref={cameraRef}
+        ref={libraryRef}
         type="file"
-        {...inputProps}
-        capture={captureFacing}
-        multiple={false}
+        accept="image/*,.heic,.heif"
+        className="sr-only"
+        disabled={disabled || uploading}
+        multiple={multiple}
+        onChange={(e) => {
+          pick(e.target.files);
+          e.target.value = '';
+        }}
       />
+      {allowCamera ? (
+        <input
+          ref={cameraRef}
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          disabled={disabled || uploading}
+          capture={captureFacing}
+          onChange={(e) => {
+            pick(e.target.files);
+            e.target.value = '';
+          }}
+        />
+      ) : null}
       <div
         className={[
           'mt-3 flex flex-wrap items-center gap-2',
           actionsClassName,
         ].join(' ')}
       >
-        <button
-          type="button"
-          className={btnClass}
-          disabled={disabled || uploading}
-          onClick={() => cameraRef.current?.click()}
-        >
-          <Camera className="h-4 w-4 shrink-0" />
-          Take photo
-        </button>
+        {allowCamera ? (
+          <button
+            type="button"
+            className={btnClass}
+            disabled={disabled || uploading}
+            onClick={() => cameraRef.current?.click()}
+          >
+            <Camera className="h-4 w-4 shrink-0" />
+            Take photo
+          </button>
+        ) : null}
         <button
           type="button"
           className={btnClass}
@@ -88,7 +101,7 @@ export function ImageUploadField({
           onClick={() => libraryRef.current?.click()}
         >
           <ImageIcon className="h-4 w-4 shrink-0" />
-          Choose image
+          {multiple ? 'Upload photos' : 'Upload image'}
         </button>
         {uploading ? (
           <span className="inline-flex items-center gap-2 text-sm text-zinc-500">

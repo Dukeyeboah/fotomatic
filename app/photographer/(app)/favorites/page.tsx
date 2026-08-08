@@ -2,11 +2,11 @@
 
 import { FavoritesPhotographersView } from '@/components/favorites-photographers-view';
 
-export default function ClientFavoritesPage() {
+export default function PhotographerFavoritesPage() {
   return (
     <FavoritesPhotographersView
-      browseHref="/photographers"
-      loginRedirectTo="/saved"
+      browseHref="/photographer/directory"
+      loginRedirectTo="/photographer/favorites"
     />
   );
 }

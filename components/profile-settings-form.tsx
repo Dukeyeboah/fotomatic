@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { User } from 'firebase/auth';
 import { updateProfile } from 'firebase/auth';
 import {
@@ -53,11 +53,14 @@ import {
   ImageCropDialog,
   fileToObjectUrl,
 } from '@/components/image-crop-dialog';
-import { prepareImageForUpload } from '@/lib/prepare-image-upload';
+import { prepareImageForUpload, IMAGE_UPLOAD_MAX_BYTES } from '@/lib/prepare-image-upload';
 import { Loader2, X, ChevronDown } from 'lucide-react';
 
 const FIELD_INPUT_CLASS =
   'w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-500 caret-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20';
+
+const BIO_MAX_CHARS = 500;
+const IMAGE_MAX_MB = Math.round(IMAGE_UPLOAD_MAX_BYTES / (1024 * 1024));
 
 const FIELD_TEXTAREA_CLASS =
   'w-full resize-y rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-500 caret-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20';
@@ -129,6 +132,10 @@ type Props = {
   onSaved: () => Promise<void>;
   /** Extra prominence for banner + profile image (photographer onboarding). */
   showMediaUploads?: boolean;
+  /** Leave edit mode without saving (shows Cancel). */
+  onCancel?: () => void;
+  /** Leave edit mode after finishing (shows Done). */
+  onDone?: () => void;
 };
 
 export function ProfileSettingsForm({
@@ -136,6 +143,8 @@ export function ProfileSettingsForm({
   userData,
   onSaved,
   showMediaUploads = false,
+  onCancel,
+  onDone,
 }: Props) {
   const { refreshAuthUser } = useAuth();
   const ph = userData.photographer ?? {};
@@ -239,6 +248,119 @@ export function ProfileSettingsForm({
       ? (userData.photoURL ?? user.photoURL ?? '').trim()
       : '',
   );
+  const [saveToast, setSaveToast] = useState<string | null>(null);
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+  const leaveActionRef = useRef<'cancel' | 'done' | null>(null);
+
+  const formSnapshot = useMemo(
+    () =>
+      JSON.stringify({
+        displayName,
+        username,
+        city,
+        state,
+        country,
+        bio,
+        photoFocusSelected,
+        photoFocusOther,
+        interests,
+        behance,
+        instagram,
+        twitter,
+        facebook,
+        linkedin,
+        website,
+        portfolioUrl,
+        phoneDial,
+        phoneNational,
+        phoneContact,
+        emailContact,
+        publicPhoneOnProfile,
+        publicEmailOnProfile,
+        serviceArea,
+        openToOtherAreas,
+        startingPrice,
+        pricingNotes,
+        eventPricing,
+        bannerImageUrl,
+        profileImageUrl,
+        galleryImageUrls,
+        contactEmail,
+        clientProfilePhotoUrl,
+      }),
+    [
+      displayName,
+      username,
+      city,
+      state,
+      country,
+      bio,
+      photoFocusSelected,
+      photoFocusOther,
+      interests,
+      behance,
+      instagram,
+      twitter,
+      facebook,
+      linkedin,
+      website,
+      portfolioUrl,
+      phoneDial,
+      phoneNational,
+      phoneContact,
+      emailContact,
+      publicPhoneOnProfile,
+      publicEmailOnProfile,
+      serviceArea,
+      openToOtherAreas,
+      startingPrice,
+      pricingNotes,
+      eventPricing,
+      bannerImageUrl,
+      profileImageUrl,
+      galleryImageUrls,
+      contactEmail,
+      clientProfilePhotoUrl,
+    ],
+  );
+
+  const baselineRef = useRef(formSnapshot);
+  const dirty = formSnapshot !== baselineRef.current;
+
+  useEffect(() => {
+    if (!dirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [dirty]);
+
+  useEffect(() => {
+    if (!saveToast) return;
+    const t = window.setTimeout(() => setSaveToast(null), 3200);
+    return () => window.clearTimeout(t);
+  }, [saveToast]);
+
+  const requestLeave = (action: 'cancel' | 'done') => {
+    const leave = action === 'cancel' ? onCancel : onDone;
+    if (!leave) return;
+    if (!dirty) {
+      leave();
+      return;
+    }
+    leaveActionRef.current = action;
+    setLeaveConfirmOpen(true);
+  };
+
+  const confirmLeave = () => {
+    const action = leaveActionRef.current;
+    setLeaveConfirmOpen(false);
+    leaveActionRef.current = null;
+    if (action === 'cancel') onCancel?.();
+    else if (action === 'done') onDone?.();
+  };
 
   const closeCrop = () => {
     if (cropSession?.src) URL.revokeObjectURL(cropSession.src);
@@ -335,8 +457,60 @@ export function ProfileSettingsForm({
 
   const onGalleryPickMultiple = async (files: FileList | null) => {
     if (!files?.length || !showMediaUploads) return;
-    // Crop the first selected image (preview + adjust), then user can add more.
-    await beginCropFromFiles('gallery', files);
+    setMessage(null);
+    const room = DIRECTORY_GALLERY_MAX - galleryImageUrls.length;
+    if (room <= 0) {
+      setMessage(`Portfolio is limited to ${DIRECTORY_GALLERY_MAX} images.`);
+      return;
+    }
+
+    const selected = Array.from(files).slice(0, room);
+    // Single image: crop/adjust first. Multi-select: upload directly to fill slots.
+    if (selected.length === 1) {
+      const dt = new DataTransfer();
+      dt.items.add(selected[0]!);
+      await beginCropFromFiles('gallery', dt.files);
+      return;
+    }
+
+    setUploading('gallery');
+    let added = 0;
+    const errors: string[] = [];
+    try {
+      for (const file of selected) {
+        try {
+          const url = await uploadPhotographerGalleryImage(user.uid, file);
+          if (url) {
+            added += 1;
+            setGalleryImageUrls((prev) =>
+              [...prev, url].slice(0, DIRECTORY_GALLERY_MAX),
+            );
+          } else {
+            errors.push(file.name);
+          }
+        } catch (e) {
+          errors.push(
+            e instanceof Error ? `${file.name}: ${e.message}` : file.name,
+          );
+        }
+      }
+      if (added > 0 && errors.length === 0) {
+        setMessage(
+          `Added ${added} photo${added === 1 ? '' : 's'} to your portfolio.`,
+        );
+      } else if (added > 0 && errors.length > 0) {
+        setMessage(
+          `Added ${added} photo${added === 1 ? '' : 's'}. Some failed (${errors.length}). Max ${IMAGE_MAX_MB}MB each.`,
+        );
+      } else if (errors.length > 0) {
+        setMessage(
+          errors[0] ??
+            `Could not upload photos. Each image must be under ${IMAGE_MAX_MB}MB.`,
+        );
+      }
+    } finally {
+      setUploading(null);
+    }
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -356,7 +530,7 @@ export function ProfileSettingsForm({
     ) {
       setSaving(false);
       setMessage(
-        'Portfolio: add at least 3 images or remove them all for now (maximum 15).',
+        'Portfolio: add at least 3 images or remove them all for now (maximum 20).',
       );
       return;
     }
@@ -433,7 +607,7 @@ export function ProfileSettingsForm({
     );
     if (isPhotographer) {
       patch.photographer = {
-        bio: bio.trim() || undefined,
+        bio: bio.trim().slice(0, BIO_MAX_CHARS) || undefined,
         style: focusSummary || undefined,
         photographyFocus: focusSummary || undefined,
         photographyFocuses:
@@ -473,7 +647,9 @@ export function ProfileSettingsForm({
     const ok = await updateUserDocument(user.uid, patch);
     setSaving(false);
     if (ok) {
-      setMessage('Saved.');
+      baselineRef.current = formSnapshot;
+      setSaveToast('Profile saved');
+      setMessage(null);
       if (showClientProfilePhoto) {
         try {
           const u = clientProfilePhotoUrl.trim();
@@ -746,14 +922,14 @@ export function ProfileSettingsForm({
                       Bio
                     </span>
                     <textarea
-                      maxLength={2000}
+                      maxLength={BIO_MAX_CHARS}
                       className={`${FIELD_TEXTAREA_CLASS} h-[240px] resize-none`}
                       value={bio}
-                      onChange={(e) => setBio(e.target.value)}
+                      onChange={(e) => setBio(e.target.value.slice(0, BIO_MAX_CHARS))}
+                      placeholder="A short intro clients will read on your public page…"
                     />
                     <span className="text-[11px] text-zinc-500">
-                      {bio.trim().split(/\s+/).filter(Boolean).length} / ~150
-                      words suggested
+                      {bio.length} / {BIO_MAX_CHARS} characters
                     </span>
                   </label>
                   <div className="flex h-[calc(240px+1.25rem)] flex-col">
@@ -774,11 +950,15 @@ export function ProfileSettingsForm({
                 <label className="flex flex-col space-y-1">
                   <span className="text-xs font-medium text-zinc-600">Bio</span>
                   <textarea
-                    maxLength={2000}
+                    maxLength={BIO_MAX_CHARS}
                     className={`${FIELD_TEXTAREA_CLASS} h-[240px] resize-none`}
                     value={bio}
-                    onChange={(e) => setBio(e.target.value)}
+                    onChange={(e) => setBio(e.target.value.slice(0, BIO_MAX_CHARS))}
+                    placeholder="A short intro clients will read on your public page…"
                   />
+                  <span className="text-[11px] text-zinc-500">
+                    {bio.length} / {BIO_MAX_CHARS} characters
+                  </span>
                 </label>
                 <div className="flex h-[calc(240px+1.25rem)] flex-col">
                   <PhotographyFocusPicker
@@ -858,9 +1038,9 @@ export function ProfileSettingsForm({
                     <span className="text-xs font-medium text-zinc-600">
                       Phone
                     </span>
-                    <div className="flex gap-2">
+                    <div className="flex min-w-0 gap-1.5">
                       <select
-                        className={`${FIELD_INPUT_CLASS} w-[9.5rem] shrink-0`}
+                        className={`${FIELD_INPUT_CLASS} w-[5.75rem] shrink-0 px-1.5 text-xs sm:w-[6.25rem]`}
                         aria-label="Country calling code"
                         value={phoneDial}
                         onChange={(e) => {
@@ -880,14 +1060,14 @@ export function ProfileSettingsForm({
                           .slice()
                           .sort((a, b) => a[0].localeCompare(b[0]))
                           .map(([name, info]) => (
-                            <option key={name} value={info.dial}>
+                            <option key={name} value={info.dial} title={name}>
                               {info.abbr} +{info.dial}
                             </option>
                           ))}
                       </select>
                       <input
                         inputMode="tel"
-                        className={FIELD_INPUT_CLASS}
+                        className={`${FIELD_INPUT_CLASS} min-w-0 flex-1`}
                         value={phoneNational}
                         onChange={(e) =>
                           setPhoneNational(
@@ -898,12 +1078,6 @@ export function ProfileSettingsForm({
                         aria-label="Phone number"
                       />
                     </div>
-                    {composeInternationalPhone(phoneDial, phoneNational) ? (
-                      <span className="text-[11px] text-zinc-500">
-                        Saves as{' '}
-                        {composeInternationalPhone(phoneDial, phoneNational)}
-                      </span>
-                    ) : null}
                   </label>
                   <label className="block space-y-1">
                     <span className="text-xs font-medium text-zinc-600">
@@ -983,7 +1157,8 @@ export function ProfileSettingsForm({
                 </div>
                 <ImageEditMenu
                   label="Add portfolio photos"
-                  captureFacing="environment"
+                  allowCamera={false}
+                  multiple
                   uploading={uploading === 'gallery'}
                   disabled={
                     galleryImageUrls.length >= DIRECTORY_GALLERY_MAX ||
@@ -992,6 +1167,11 @@ export function ProfileSettingsForm({
                   onPick={onGalleryPickMultiple}
                 />
               </div>
+              <p className="mt-2 text-center text-[11px] text-zinc-500 sm:text-left">
+                Select multiple images at once (up to {DIRECTORY_GALLERY_MAX}).
+                Max {IMAGE_MAX_MB}MB each · photos are compressed for faster
+                loading.
+              </p>
               <div className="mt-4 flex justify-center">
                 <div className="flex w-full max-w-4xl justify-center gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:thin]">
                   {galleryImageUrls.length === 0 ? (
@@ -1041,7 +1221,7 @@ export function ProfileSettingsForm({
                   className={FIELD_INPUT_CLASS}
                   value={behance}
                   onChange={(e) => setBehance(e.target.value)}
-                  placeholder="https://"
+                  placeholder="https://www.behance.net/yourname"
                 />
               </label>
               <label className="block space-y-1">
@@ -1052,6 +1232,7 @@ export function ProfileSettingsForm({
                   className={FIELD_INPUT_CLASS}
                   value={instagram}
                   onChange={(e) => setInstagram(e.target.value)}
+                  placeholder="https://www.instagram.com/yourname"
                 />
               </label>
               <label className="block space-y-1">
@@ -1062,6 +1243,7 @@ export function ProfileSettingsForm({
                   className={FIELD_INPUT_CLASS}
                   value={twitter}
                   onChange={(e) => setTwitter(e.target.value)}
+                  placeholder="https://x.com/yourname"
                 />
               </label>
               <label className="block space-y-1">
@@ -1072,7 +1254,7 @@ export function ProfileSettingsForm({
                   className={FIELD_INPUT_CLASS}
                   value={facebook}
                   onChange={(e) => setFacebook(e.target.value)}
-                  placeholder="https://"
+                  placeholder="https://www.facebook.com/yourname"
                 />
               </label>
               <label className="block space-y-1">
@@ -1083,6 +1265,7 @@ export function ProfileSettingsForm({
                   className={FIELD_INPUT_CLASS}
                   value={linkedin}
                   onChange={(e) => setLinkedin(e.target.value)}
+                  placeholder="https://www.linkedin.com/in/yourname"
                 />
               </label>
               <label className="block space-y-1">
@@ -1093,6 +1276,7 @@ export function ProfileSettingsForm({
                   className={FIELD_INPUT_CLASS}
                   value={website}
                   onChange={(e) => setWebsite(e.target.value)}
+                  placeholder="https://www.yourwebsite.com"
                 />
               </label>
               <label className="block space-y-1 sm:col-span-2 lg:col-span-3">
@@ -1103,6 +1287,7 @@ export function ProfileSettingsForm({
                   className={FIELD_INPUT_CLASS}
                   value={portfolioUrl}
                   onChange={(e) => setPortfolioUrl(e.target.value)}
+                  placeholder="https://"
                 />
               </label>
             </div>
@@ -1137,20 +1322,97 @@ export function ProfileSettingsForm({
         onConfirm={uploadCroppedFile}
       />
 
-      <button
-        type="submit"
-        disabled={saving || Boolean(usernameHint)}
-        className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-zinc-900 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60 sm:w-auto sm:px-8"
-      >
-        {saving ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Saving…
-          </>
-        ) : (
-          'Save profile'
-        )}
-      </button>
+      <div className="flex flex-wrap items-center gap-3 border-t border-zinc-100 pt-6">
+        {onCancel ? (
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => requestLeave('cancel')}
+            className="rounded-xl border border-zinc-300 bg-white px-5 py-3 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 disabled:opacity-60"
+          >
+            Cancel
+          </button>
+        ) : null}
+        <button
+          type="submit"
+          disabled={saving || Boolean(usernameHint)}
+          className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-zinc-900 px-6 py-3 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
+        >
+          {saving ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Saving…
+            </>
+          ) : (
+            'Save profile'
+          )}
+        </button>
+        {onDone ? (
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => requestLeave('done')}
+            className="rounded-xl border border-zinc-300 bg-white px-5 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 disabled:opacity-60"
+          >
+            Done
+          </button>
+        ) : null}
+      </div>
+
+      {saveToast ? (
+        <div
+          className="fixed bottom-6 left-1/2 z-[220] -translate-x-1/2 rounded-xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white shadow-2xl"
+          role="status"
+        >
+          {saveToast}
+        </div>
+      ) : null}
+
+      {leaveConfirmOpen ? (
+        <div
+          className="fixed inset-0 z-[230] flex items-center justify-center bg-black/45 p-4"
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setLeaveConfirmOpen(false);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="leave-edit-title"
+            className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xl"
+          >
+            <h2
+              id="leave-edit-title"
+              className="font-serif text-xl font-medium text-zinc-900"
+            >
+              Discard unsaved changes?
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+              Leaving this page will cause your unsaved changes to be lost.
+            </p>
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 hover:bg-zinc-50"
+                onClick={() => {
+                  setLeaveConfirmOpen(false);
+                  leaveActionRef.current = null;
+                }}
+              >
+                Keep editing
+              </button>
+              <button
+                type="button"
+                className="rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800"
+                onClick={confirmLeave}
+              >
+                Leave without saving
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </form>
   );
 }

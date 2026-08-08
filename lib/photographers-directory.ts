@@ -1,6 +1,8 @@
 import type { FocusEventPricing } from '@/lib/photographer-pricing';
 import { parseEventPricingFromFirestore } from '@/lib/photographer-pricing';
 import { parsePhotographyFocusesFromFirestore } from '@/lib/photography-focus';
+import type { UserData } from '@/lib/firebase/user-profile';
+import { normalizePublicProfileSlug } from '@/lib/public-profile-slug';
 
 /** Normalized photographer for the public directory (Firestore `photographers` docs). */
 export type DirectoryPhotographer = {
@@ -49,7 +51,88 @@ export type DirectoryPhotographer = {
   publicEmailOnProfile?: boolean;
 };
 
-export const DIRECTORY_GALLERY_MAX = 15;
+export const DIRECTORY_GALLERY_MAX = 20;
+
+/**
+ * Build a directory-shaped photographer from the signed-in user's profile
+ * (for “preview my public listing” on `/photographer/profile`).
+ */
+export function directoryPhotographerFromUserData(
+  userData: UserData,
+  authUid: string,
+): DirectoryPhotographer {
+  const ph = userData.photographer ?? {};
+  const display =
+    userData.displayName?.trim() ||
+    userData.username?.trim() ||
+    'Photographer';
+  const parts = display.split(/\s+/).filter(Boolean);
+  const firstName = parts[0] || 'Photographer';
+  const lastName =
+    parts.length > 1 ? parts.slice(1).join(' ') : undefined;
+  const rateRaw =
+    typeof ph.startingPrice === 'number' && ph.startingPrice > 0
+      ? ph.startingPrice
+      : typeof ph.hourlyRate === 'number' && ph.hourlyRate > 0
+        ? ph.hourlyRate
+        : 150;
+  const focuses = parsePhotographyFocusesFromFirestore({
+    photographyFocuses: ph.photographyFocuses,
+    photographyFocus: ph.photographyFocus ?? ph.style,
+  });
+  const eventPricing = parseEventPricingFromFirestore(ph.eventPricing);
+  const gallery = Array.isArray(ph.galleryImageUrls)
+    ? ph.galleryImageUrls
+        .filter((u): u is string => typeof u === 'string' && u.trim().length > 0)
+        .map((u) => u.trim())
+        .slice(0, DIRECTORY_GALLERY_MAX)
+    : [];
+  const slug = normalizePublicProfileSlug(userData.username ?? '');
+  const docId =
+    (ph.directoryId?.trim() || `p-${authUid}`).trim() || `p-${authUid}`;
+
+  return {
+    id: docId,
+    source: 'firestore',
+    firstName,
+    lastName,
+    email: userData.email ?? undefined,
+    website: ph.website,
+    instagram: ph.instagram,
+    twitter: ph.twitter,
+    facebook: ph.facebook,
+    city: ph.city ?? userData.city ?? undefined,
+    state: ph.state ?? userData.state ?? undefined,
+    country: ph.country ?? userData.country ?? undefined,
+    photoUrl: ph.profileImageUrl ?? userData.photoURL ?? undefined,
+    galleryImageUrls: gallery.length > 0 ? gallery : undefined,
+    startingPrice: rateRaw,
+    startingHourlyRate: rateRaw,
+    bio: ph.bio,
+    interests: ph.interests,
+    bannerImageUrl: ph.bannerImageUrl,
+    photographyFocus:
+      focuses.length > 0 ? focuses.join(', ') : ph.photographyFocus,
+    photographyFocuses: focuses.length > 0 ? focuses : undefined,
+    eventPricing: eventPricing.length > 0 ? eventPricing : undefined,
+    pricingNotes: ph.pricingNotes,
+    serviceArea: ph.serviceArea,
+    portfolioLinks: ph.portfolioUrl,
+    openToOtherAreas: ph.openToOtherAreas === true ? true : undefined,
+    profileSlug: slug.length >= 3 ? slug : undefined,
+    phone: ph.phone,
+    phoneContact: ph.phoneContact === true ? true : undefined,
+    emailContact: ph.emailContact === true ? true : undefined,
+    publicPhoneOnProfile:
+      typeof ph.publicPhoneOnProfile === 'boolean'
+        ? ph.publicPhoneOnProfile
+        : undefined,
+    publicEmailOnProfile:
+      typeof ph.publicEmailOnProfile === 'boolean'
+        ? ph.publicEmailOnProfile
+        : undefined,
+  };
+}
 
 /** Card / modal hero: profile image, else first gallery shot, else placeholder. */
 export function directoryPhotographerHeroImageUrl(

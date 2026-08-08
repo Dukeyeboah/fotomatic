@@ -156,7 +156,7 @@ export function DashboardAccountMenu() {
             My bookings
           </MenuRow>
           <MenuRow href="/saved" icon={Heart} onNavigate={close}>
-            Saved
+            Favorites
           </MenuRow>
           <MenuRow
             href="/payments"

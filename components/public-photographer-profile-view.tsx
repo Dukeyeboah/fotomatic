@@ -2,8 +2,13 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import {
   DIRECTORY_GALLERY_MAX,
   type DirectoryPhotographer,
@@ -21,16 +26,25 @@ import {
   isPhoneShownOnPublicProfile,
 } from '@/lib/public-profile-contact';
 import { PhotographerSocialIconButtons } from '@/components/photographer-social-icon-buttons';
-import { PublicProfileBannerShare } from '@/components/photographer/public-profile-banner-share';
+import { ProfileShareDropdown } from '@/components/photographer/profile-share-dropdown';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
 import { isOwnDirectoryPhotographerListing } from '@/lib/directory-photographer-self';
-import { Loader2, MapPin, X } from 'lucide-react';
+import {
+  Globe2,
+  Heart,
+  Loader2,
+  Mail,
+  MapPin,
+  Phone,
+  X,
+} from 'lucide-react';
 import { PhotographerReviewsPanel } from '@/components/photographer-reviews-panel';
 import { PhotographerFocusPricingDisplay } from '@/components/photographer-focus-pricing-display';
 import { formatDirectoryStartingPrice } from '@/lib/photographer-pricing';
 import { isDirectoryListingFallbackUrl } from '@/lib/fotomatic-marketing-images';
 import { DirectoryListingPlaceholderImage } from '@/components/directory-listing-placeholder-image';
+import { parsePhotographyFocusesFromFirestore } from '@/lib/photography-focus';
 
 function displayName(p: DirectoryPhotographer): string {
   if (p.lastName) return `${p.firstName} ${p.lastName}`.trim();
@@ -49,17 +63,72 @@ function formatLocation(p: DirectoryPhotographer): string {
   return '';
 }
 
-type InfoTab = 'bio' | 'coverage' | 'contact' | 'reviews';
+type InfoTab =
+  | 'gallery'
+  | 'bio'
+  | 'pricing'
+  | 'preferences'
+  | 'contact'
+  | 'reviews';
 
-export function PublicPhotographerProfileView({ handle }: { handle: string }) {
+export function PublicPhotographerProfileView({
+  handle,
+  photographer: photographerProp,
+  headerActions,
+  toolbarLeft,
+  bannerOverlay,
+  hideBackLink = false,
+  hideBookingCta = false,
+  hideShare = false,
+  compactChrome = false,
+}: {
+  /** Public slug — used when `photographer` is not passed. */
+  handle?: string;
+  /** Prefetched / local listing (e.g. own profile preview). */
+  photographer?: DirectoryPhotographer | null;
+  /** Optional actions on the right of the toolbar (e.g. Edit). */
+  headerActions?: ReactNode;
+  /** Optional left toolbar content when back link is hidden (e.g. View public page). */
+  toolbarLeft?: ReactNode;
+  /** Layered over the banner (e.g. Edit profile). */
+  bannerOverlay?: ReactNode;
+  hideBackLink?: boolean;
+  hideBookingCta?: boolean;
+  hideShare?: boolean;
+  /** Tighter vertical spacing under the banner (own-profile preview). */
+  compactChrome?: boolean;
+}) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, userData } = useAuth();
   const { openLoginModal } = useLoginModal();
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-  const [p, setP] = useState<DirectoryPhotographer | null | undefined>(
-    undefined,
+  const [fetched, setFetched] = useState<DirectoryPhotographer | null | undefined>(
+    photographerProp !== undefined ? photographerProp : undefined,
   );
-  const [tab, setTab] = useState<InfoTab>('bio');
+  const [tab, setTab] = useState<InfoTab>('gallery');
+
+  const usingProp = photographerProp !== undefined;
+
+  useEffect(() => {
+    if (usingProp) {
+      setFetched(photographerProp ?? null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const s = normalizePublicProfileSlug(handle ?? '');
+      if (!s || isReservedProfileSlug(s) || !isValidPublicProfileSlug(s)) {
+        if (!cancelled) setFetched(null);
+        return;
+      }
+      const row = await fetchPhotographerByProfileSlug(s);
+      if (!cancelled) setFetched(row);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [handle, usingProp, photographerProp]);
 
   useEffect(() => {
     if (!lightboxUrl) return;
@@ -70,36 +139,11 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [lightboxUrl]);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const s = normalizePublicProfileSlug(handle);
-      if (
-        !s ||
-        isReservedProfileSlug(s) ||
-        !isValidPublicProfileSlug(s)
-      ) {
-        if (!cancelled) setP(null);
-        return;
-      }
-      const row = await fetchPhotographerByProfileSlug(s);
-      if (!cancelled) setP(row);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [handle]);
+  const p = fetched;
 
   const bookHref = useMemo(() => {
     if (!user || !userData) return null;
     if (userData.role === 'photographer') return '/photographer/directory';
-    return '/photographers';
-  }, [user, userData]);
-
-  const directoryHref = useMemo(() => {
-    if (!user || !userData) return '/photographers';
-    if (userData.role === 'photographer') return '/photographer/directory';
-    if (userData.role === 'admin') return '/admin/photographers';
     return '/photographers';
   }, [user, userData]);
 
@@ -112,36 +156,52 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
     });
   }, [p, user, userData]);
 
-  const showBioTab = useMemo(
+  const focuses = useMemo(
     () =>
-      !!p &&
-      (Boolean(p.bio?.trim()) ||
-        Boolean(p.interests?.trim()) ||
-        Boolean(p.photographyFocus?.trim()) ||
-        Boolean(p.photographyFocuses?.length)),
+      p
+        ? parsePhotographyFocusesFromFirestore({
+            photographyFocuses: p.photographyFocuses,
+            photographyFocus: p.photographyFocus,
+          })
+        : [],
     [p],
   );
-  const showCoverageTab = useMemo(
-    () => !!p && (Boolean(p.serviceArea?.trim()) || p.openToOtherAreas === true),
+
+  const gallery = useMemo(
+    () =>
+      (p?.galleryImageUrls ?? [])
+        .filter(Boolean)
+        .slice(0, DIRECTORY_GALLERY_MAX),
     [p],
   );
-  const showContactTab = useMemo(
-    () => !!p && hasPublicContactTabContent(p),
-    [p],
-  );
-  const showReviewsTab = true;
+
+  const showBio = Boolean(p?.bio?.trim());
+  const showPricing =
+    !!p &&
+    (focuses.length > 0 ||
+      Boolean(p.pricingNotes?.trim()) ||
+      typeof p.startingPrice === 'number');
+  const showPreferences =
+    !!p &&
+    (Boolean(p.serviceArea?.trim()) ||
+      p.openToOtherAreas === true ||
+      Boolean(p.interests?.trim()));
+  const showContact = !!p && hasPublicContactTabContent(p);
+
+  const tabs: { id: InfoTab; label: string; show: boolean }[] = [
+    { id: 'gallery', label: 'Gallery', show: true },
+    { id: 'bio', label: 'Bio', show: showBio },
+    { id: 'pricing', label: 'Pricing', show: showPricing },
+    { id: 'preferences', label: 'Preferences', show: showPreferences },
+    { id: 'contact', label: 'Contact', show: showContact },
+    { id: 'reviews', label: 'Reviews', show: true },
+  ];
 
   const effectiveTab = useMemo((): InfoTab => {
-    if (tab === 'bio' && showBioTab) return 'bio';
-    if (tab === 'coverage' && showCoverageTab) return 'coverage';
-    if (tab === 'contact' && showContactTab) return 'contact';
-    if (tab === 'reviews' && showReviewsTab) return 'reviews';
-    if (showBioTab) return 'bio';
-    if (showCoverageTab) return 'coverage';
-    if (showContactTab) return 'contact';
-    if (showReviewsTab) return 'reviews';
-    return 'bio';
-  }, [tab, showBioTab, showCoverageTab, showContactTab, showReviewsTab]);
+    const visible = tabs.filter((t) => t.show).map((t) => t.id);
+    if (visible.includes(tab)) return tab;
+    return 'gallery';
+  }, [tab, showBio, showPricing, showPreferences, showContact]);
 
   if (p === undefined) {
     return (
@@ -163,7 +223,7 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
           profile so your listing syncs.
         </p>
         <Link
-          href="/photographer/directory"
+          href="/photographers"
           className="mt-8 inline-block rounded-xl bg-zinc-900 px-6 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
         >
           Browse photographers
@@ -174,8 +234,7 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
 
   const hero = directoryPhotographerHeroImageUrl(p);
   const photo = p.photoUrl?.trim() || '';
-  const bannerRaw =
-    p.bannerImageUrl?.trim() || hero || '';
+  const bannerRaw = p.bannerImageUrl?.trim() || hero || '';
   const bannerIsLogoFallback =
     !bannerRaw || isDirectoryListingFallbackUrl(bannerRaw);
   const banner = bannerIsLogoFallback ? null : bannerRaw;
@@ -186,41 +245,19 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
   const avatar = avatarIsLogoFallback ? null : avatarRaw;
   const avatarRemote = avatar != null && /^https?:\/\//i.test(avatar);
   const loc = formatLocation(p);
-  const gallery = (p.galleryImageUrls ?? [])
-    .filter(Boolean)
-    .slice(0, DIRECTORY_GALLERY_MAX);
 
   const phonePublic = isPhoneShownOnPublicProfile(p);
   const emailPublic = isEmailShownOnPublicProfile(p);
 
-  const tabBtn = (id: InfoTab, label: string, show: boolean) =>
-    show ? (
-      <button
-        key={id}
-        type="button"
-        role="tab"
-        aria-selected={effectiveTab === id}
-        onClick={() => setTab(id)}
-        className={[
-          'rounded-full px-4 py-2 text-sm font-semibold transition-colors',
-          effectiveTab === id
-            ? 'bg-zinc-900 text-white shadow-sm'
-            : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200',
-        ].join(' ')}
-      >
-        {label}
-      </button>
-    ) : null;
-
   return (
-    <div className="pb-16">
-      <div className="relative h-[min(52vw,320px)] w-full bg-zinc-900 sm:h-80">
+    <div className="pb-20">
+      <div className="relative h-[min(42vw,260px)] w-full bg-zinc-900 sm:h-[280px]">
         <div className="absolute inset-0 overflow-hidden">
           {bannerIsLogoFallback ? (
             <DirectoryListingPlaceholderImage
               alt=""
               fill
-              className="object-contain bg-white p-12 sm:p-16"
+              className="object-contain bg-white p-12 sm:p-20"
               priority
               sizes="100vw"
             />
@@ -241,215 +278,327 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
               sizes="100vw"
             />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/70 via-zinc-950/20 to-transparent" />
         </div>
-        <PublicProfileBannerShare profileSlug={p.profileSlug} />
-      </div>
 
-      <div className="relative mx-auto max-w-3xl px-4 sm:px-6">
-        <div className="-mt-16 flex flex-col items-center sm:-mt-20 sm:flex-row sm:items-start sm:gap-8">
-          <div className="relative h-32 w-32 shrink-0 overflow-hidden rounded-full border-4 border-white bg-zinc-100 shadow-xl ring-2 ring-zinc-200/80 sm:h-40 sm:w-40">
-            {avatarIsLogoFallback ? (
-              <DirectoryListingPlaceholderImage
-                alt=""
-                fill
-                className="object-contain bg-white p-4"
-                sizes="160px"
-              />
-            ) : avatarRemote ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={avatar!}
-                alt=""
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <Image
-                src={avatar!.startsWith('/') ? avatar! : `/${avatar!}`}
-                alt=""
-                fill
-                className="object-cover"
-                sizes="160px"
-              />
-            )}
+        {bannerOverlay ? (
+          <div className="absolute right-4 top-4 z-30 sm:right-6 sm:top-5">
+            {bannerOverlay}
           </div>
-          <div className="mt-4 w-full sm:mt-2 sm:min-w-0 sm:flex-1">
-            <div className="rounded-2xl bg-white/80 p-5 shadow-lg ring-1 ring-zinc-200/80 backdrop-blur-md sm:p-6">
-              <h1 className="text-center font-serif text-3xl font-semibold tracking-tight text-zinc-900 sm:text-left sm:text-4xl">
+        ) : null}
+
+        <div className="absolute inset-x-0 bottom-0 mx-auto max-w-5xl px-4 pb-4 sm:px-6 sm:pb-5">
+          <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-end sm:gap-5">
+            <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border-4 border-white/95 bg-zinc-100 shadow-2xl sm:h-28 sm:w-28">
+              {avatarIsLogoFallback ? (
+                <DirectoryListingPlaceholderImage
+                  alt=""
+                  fill
+                  className="object-contain bg-white p-4"
+                  sizes="112px"
+                />
+              ) : avatarRemote ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={avatar!}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <Image
+                  src={avatar!.startsWith('/') ? avatar! : `/${avatar!}`}
+                  alt=""
+                  fill
+                  className="object-cover"
+                  sizes="112px"
+                />
+              )}
+            </div>
+            <div className="w-full min-w-0 rounded-2xl bg-black/45 px-4 py-3 text-center shadow-lg backdrop-blur-md sm:w-[min(100%,28rem)] sm:px-5 sm:py-3.5 sm:text-left lg:w-[25rem]">
+              <h1 className="font-serif text-2xl font-medium tracking-tight text-white sm:text-3xl">
                 {displayName(p)}
               </h1>
               {loc ? (
-                <p className="mt-2 flex items-center justify-center gap-1.5 text-sm text-zinc-600 sm:justify-start">
-                  <MapPin className="h-4 w-4 shrink-0 text-zinc-400" />
+                <p className="mt-1.5 flex items-center justify-center gap-1.5 text-sm text-white/90 sm:justify-start">
+                  <MapPin className="h-4 w-4 shrink-0 opacity-80" />
                   {loc}
                 </p>
               ) : null}
-              <p className="mt-2 text-center text-sm font-bold text-zinc-800 sm:text-left">
-                {formatDirectoryStartingPrice(p)}
-              </p>
+              <div className="mt-2.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5 sm:justify-start">
+                <p className="text-base font-semibold text-amber-100 sm:text-lg">
+                  {formatDirectoryStartingPrice(p)}
+                </p>
+                {focuses.slice(0, 4).map((f) => (
+                  <span
+                    key={f}
+                    className="rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-medium text-white"
+                  >
+                    {f}
+                  </span>
+                ))}
+                {focuses.length > 4 ? (
+                  <span className="rounded-full bg-white/15 px-2.5 py-1 text-[11px] text-white/85">
+                    +{focuses.length - 4}
+                  </span>
+                ) : null}
+              </div>
+              <div className="mt-2.5 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                <PhotographerSocialIconButtons
+                  instagram={p.instagram}
+                  website={p.website}
+                  twitter={p.twitter}
+                  facebook={p.facebook}
+                  portfolioLinks={p.portfolioLinks}
+                  size="sm"
+                />
+                {!hideShare ? (
+                  <ProfileShareDropdown
+                    profileSlug={p.profileSlug}
+                    placement="below"
+                    tone="onDark"
+                    iconOnly
+                    menuZClass="z-[100]"
+                  />
+                ) : null}
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <p className="mt-6 text-center sm:text-left">
-          <Link
-            href={directoryHref}
-            className="text-sm font-medium text-amber-900 underline-offset-2 hover:underline"
-          >
-            ← Back to all photographers
-          </Link>
-        </p>
-
-        <div className="mt-8 flex flex-col gap-4 border-b border-zinc-200/80 pb-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-          <div className="flex justify-center sm:justify-start">
-            <PhotographerSocialIconButtons
-              instagram={p.instagram}
-              website={p.website}
-              twitter={p.twitter}
-              facebook={p.facebook}
-              portfolioLinks={p.portfolioLinks}
-            />
+      <div className="relative mx-auto max-w-5xl px-4 sm:px-6">
+        <div
+          className={`flex flex-wrap items-center gap-x-4 gap-y-2 ${
+            compactChrome ? 'mt-3' : 'mt-4'
+          }`}
+        >
+          <div className="shrink-0">
+            {!hideBackLink ? (
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="cursor-pointer text-sm font-medium text-amber-900 underline-offset-2 hover:underline"
+              >
+                ← Back
+              </button>
+            ) : (
+              toolbarLeft
+            )}
           </div>
-          {showBioTab || showCoverageTab || showContactTab || showReviewsTab ? (
-            <div
-              className="flex flex-wrap justify-center gap-2 sm:justify-end"
-              role="tablist"
-              aria-label="Profile sections"
-            >
-              {tabBtn('bio', 'Bio', showBioTab)}
-              {tabBtn('coverage', 'Coverage', showCoverageTab)}
-              {tabBtn('contact', 'Contact', showContactTab)}
-              {tabBtn('reviews', 'Reviews', showReviewsTab)}
-            </div>
+
+          <div
+            className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-x-4 gap-y-1"
+            role="tablist"
+            aria-label="Profile sections"
+          >
+            {tabs
+              .filter((t) => t.show)
+              .map((t) => {
+                const active = effectiveTab === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setTab(t.id)}
+                    className={`cursor-pointer bg-transparent px-0 py-1.5 text-sm transition-colors ${
+                      active
+                        ? 'border-b-2 border-zinc-900 font-bold text-zinc-900'
+                        : 'border-b-2 border-transparent font-normal text-zinc-500 hover:text-zinc-800'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
+          </div>
+
+          {headerActions ? (
+            <div className="shrink-0">{headerActions}</div>
           ) : null}
         </div>
 
-        {showBioTab || showCoverageTab || showContactTab || showReviewsTab ? (
-          <section
-            className="mt-6 rounded-2xl border border-zinc-200/90 bg-white p-5 shadow-sm sm:p-6"
-            role="tabpanel"
-          >
-            {effectiveTab === 'bio' && showBioTab ? (
-              <div className="space-y-4 text-sm leading-relaxed text-zinc-800">
-                {p.bio?.trim() ? (
-                  <p className="whitespace-pre-wrap text-base">{p.bio}</p>
-                ) : null}
-                <PhotographerFocusPricingDisplay photographer={p} />
-                {p.interests?.trim() ? (
-                  <div>
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                      Interests
-                    </h3>
-                    <p className="mt-1">{p.interests}</p>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-            {effectiveTab === 'coverage' && showCoverageTab ? (
-              <div className="text-sm text-zinc-800">
-                <p className="whitespace-pre-wrap text-base">
-                  {p.serviceArea?.trim() || '—'}
+        <section
+          className={compactChrome ? 'mt-4' : 'mt-6'}
+          role="tabpanel"
+        >
+          {effectiveTab === 'gallery' ? (
+            <div>
+              {gallery.length === 0 ? (
+                <p className="py-12 text-center text-sm text-zinc-500">
+                  No gallery photos yet.
                 </p>
-                {p.openToOtherAreas ? (
-                  <p className="mt-3 text-sm text-zinc-600">
-                    Open to serving other areas.
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-            {effectiveTab === 'contact' && showContactTab ? (
-              <div className="text-sm">
-                {phonePublic || emailPublic ? (
-                  <dl className="space-y-3">
-                    {phonePublic && p.phone?.trim() ? (
-                      <div>
-                        <dt className="text-zinc-500">Phone</dt>
-                        <dd className="font-medium text-zinc-900">
-                          <a href={`tel:${p.phone!.replace(/\s/g, '')}`}>
-                            {p.phone}
-                          </a>
-                        </dd>
-                      </div>
-                    ) : null}
-                    {emailPublic && p.email?.trim() ? (
-                      <div>
-                        <dt className="text-zinc-500">Email</dt>
-                        <dd className="font-medium text-zinc-900">
-                          <a href={`mailto:${p.email}`}>{p.email}</a>
-                        </dd>
-                      </div>
-                    ) : null}
-                  </dl>
-                ) : (
-                  <p className="text-zinc-600">
-                    This photographer has chosen not to display phone or email
-                    on their public page. Reach out through Fotomatic booking when
-                    available.
-                  </p>
-                )}
-              </div>
-            ) : null}
-            {effectiveTab === 'reviews' && showReviewsTab ? (
-              <PhotographerReviewsPanel
-                photographerDirectoryId={p.id}
-                photographerDisplayName={displayName(p)}
-                viewer={user}
-                viewerDisplayName={
-                  userData?.displayName?.trim() ||
-                  userData?.username?.trim() ||
-                  null
-                }
-                isSelf={isSelfListing}
-                onNeedLogin={() =>
-                  openLoginModal({
-                    redirectTo: pathname || undefined,
-                    introTitle: 'Sign in to leave a review',
-                    introMessage:
-                      'Log in to rate this photographer and share optional feedback.',
-                  })
-                }
-              />
-            ) : null}
-          </section>
-        ) : null}
-
-        {gallery.length > 0 ? (
-          <section className="mt-10">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Gallery
-            </h2>
-            <div className="mt-4 columns-2 gap-3 sm:columns-3">
-              {gallery.map((url) => (
-                <button
-                  key={url}
-                  type="button"
-                  className="mb-3 block w-full cursor-zoom-in break-inside-avoid overflow-hidden rounded-xl bg-zinc-100 text-left ring-1 ring-zinc-200 transition hover:ring-2 hover:ring-amber-900/30"
-                  onClick={() => setLightboxUrl(url)}
-                >
-                  {/^https?:\/\//i.test(url) ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={url}
-                      alt=""
-                      className="w-full object-cover"
-                    />
-                  ) : (
-                    <Image
-                      src={url.startsWith('/') ? url : `/${url}`}
-                      alt=""
-                      width={800}
-                      height={600}
-                      className="h-auto w-full object-cover"
-                    />
-                  )}
-                </button>
-              ))}
+              ) : (
+                <div className="relative left-1/2 w-[min(100vw-1.5rem,72rem)] -translate-x-1/2 sm:w-[min(100vw-3rem,72rem)]">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 lg:gap-5">
+                    {gallery.map((url) => (
+                      <button
+                        key={url}
+                        type="button"
+                        className="group aspect-square cursor-pointer overflow-hidden rounded-2xl bg-zinc-100"
+                        onClick={() => setLightboxUrl(url)}
+                      >
+                        {/^https?:\/\//i.test(url) ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={url}
+                            alt=""
+                            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                          />
+                        ) : (
+                          <Image
+                            src={url.startsWith('/') ? url : `/${url}`}
+                            alt=""
+                            width={900}
+                            height={900}
+                            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                          />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          </section>
-        ) : null}
+          ) : null}
 
-        {!isSelfListing ? (
-          <div className="mt-12">
+          {effectiveTab === 'bio' && showBio ? (
+            <div className="mx-auto max-w-3xl">
+              <p className="whitespace-pre-wrap text-base leading-relaxed text-zinc-700">
+                {p.bio}
+              </p>
+            </div>
+          ) : null}
+
+          {effectiveTab === 'pricing' && showPricing ? (
+            <PhotographerFocusPricingDisplay
+              photographer={p}
+              expandAll
+              hideTitle
+            />
+          ) : null}
+
+          {effectiveTab === 'preferences' && showPreferences ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {p.serviceArea?.trim() ? (
+                <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+                  <div className="flex items-center gap-2 text-zinc-500">
+                    <Globe2 className="h-4 w-4" />
+                    <span className="text-xs font-semibold uppercase tracking-wide">
+                      Service area
+                    </span>
+                  </div>
+                  <p className="mt-3 whitespace-pre-wrap text-base leading-relaxed text-zinc-900">
+                    {p.serviceArea}
+                  </p>
+                </div>
+              ) : null}
+              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center gap-2 text-zinc-500">
+                  <MapPin className="h-4 w-4" />
+                  <span className="text-xs font-semibold uppercase tracking-wide">
+                    Travel
+                  </span>
+                </div>
+                <p className="mt-3 text-base text-zinc-900">
+                  {p.openToOtherAreas
+                    ? 'Open to working outside their primary area'
+                    : 'Primarily serves their listed area'}
+                </p>
+              </div>
+              {p.interests?.trim() ? (
+                <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:col-span-2">
+                  <div className="flex items-center gap-2 text-zinc-500">
+                    <Heart className="h-4 w-4" />
+                    <span className="text-xs font-semibold uppercase tracking-wide">
+                      Interests
+                    </span>
+                  </div>
+                  <p className="mt-3 text-base leading-relaxed text-zinc-900">
+                    {p.interests}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {effectiveTab === 'contact' && showContact ? (
+            <div>
+              {phonePublic || emailPublic ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {phonePublic && p.phone?.trim() ? (
+                    <a
+                      href={`tel:${p.phone!.replace(/\s/g, '')}`}
+                      className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-zinc-300"
+                    >
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100 text-zinc-700">
+                        <Phone className="h-4 w-4" />
+                      </span>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                          Phone
+                        </p>
+                        <p className="mt-0.5 font-medium text-zinc-900">
+                          {p.phone}
+                        </p>
+                      </div>
+                    </a>
+                  ) : null}
+                  {emailPublic && p.email?.trim() ? (
+                    <a
+                      href={`mailto:${p.email}`}
+                      className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-zinc-300"
+                    >
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100 text-zinc-700">
+                        <Mail className="h-4 w-4" />
+                      </span>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                          Email
+                        </p>
+                        <p className="mt-0.5 font-medium text-zinc-900">
+                          {p.email}
+                        </p>
+                      </div>
+                    </a>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="text-sm text-zinc-600">
+                  This photographer has chosen not to display phone or email on
+                  their public page. Reach out through Fotomatic booking when
+                  available.
+                </p>
+              )}
+            </div>
+          ) : null}
+
+          {effectiveTab === 'reviews' ? (
+            <PhotographerReviewsPanel
+              photographerDirectoryId={p.id}
+              photographerDisplayName={displayName(p)}
+              viewer={user}
+              viewerDisplayName={
+                userData?.displayName?.trim() ||
+                userData?.username?.trim() ||
+                null
+              }
+              isSelf={isSelfListing}
+              onNeedLogin={() =>
+                openLoginModal({
+                  redirectTo: pathname || undefined,
+                  introTitle: 'Sign in to leave a review',
+                  introMessage:
+                    'Log in to rate this photographer and share optional feedback.',
+                })
+              }
+            />
+          ) : null}
+        </section>
+
+        {!hideBookingCta && !isSelfListing ? (
+          <div className="mt-10 flex justify-center">
             {!user ? (
               <button
                 type="button"
@@ -461,14 +610,14 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
                       'Create an account or log in to send booking requests and message photographers.',
                   })
                 }
-                className="w-full rounded-xl bg-zinc-900 px-6 py-3.5 text-center text-sm font-semibold text-white hover:bg-zinc-800"
+                className="rounded-xl bg-zinc-900 px-6 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
               >
                 Book through Fotomatic
               </button>
             ) : bookHref ? (
               <Link
                 href={bookHref}
-                className="flex w-full items-center justify-center rounded-xl bg-zinc-900 px-6 py-3.5 text-center text-sm font-semibold text-white hover:bg-zinc-800"
+                className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-6 py-3 text-sm font-semibold text-white hover:bg-zinc-800"
               >
                 Request booking
               </Link>
@@ -498,7 +647,7 @@ export function PublicPhotographerProfileView({ handle }: { handle: string }) {
           <img
             src={lightboxUrl}
             alt=""
-            className="max-h-[min(90vh,900px)] max-w-full object-contain"
+            className="max-h-[min(92vh,960px)] max-w-full object-contain"
             onClick={(e) => e.stopPropagation()}
           />
         </div>

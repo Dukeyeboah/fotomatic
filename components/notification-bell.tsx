@@ -10,12 +10,6 @@ import {
 } from '@/lib/firebase/booking-threads';
 import { subscribeUnreadAdminEventCount } from '@/lib/firebase/admin';
 
-function messagesHrefForRole(role: string | undefined): string {
-  if (role === 'photographer') return '/photographer/messages';
-  if (role === 'admin') return '/admin/notifications';
-  return '/messages';
-}
-
 function notificationsHrefForRole(role: string | undefined): string {
   if (role === 'photographer') return '/photographer/notifications';
   if (role === 'admin') return '/admin/notifications';
@@ -72,10 +66,7 @@ export function NotificationBell() {
 
   if (loading || !user) return null;
 
-  const href =
-    userData?.role === 'admin'
-      ? notificationsHrefForRole(userData?.role)
-      : messagesHrefForRole(userData?.role);
+  const href = notificationsHrefForRole(userData?.role);
 
   return (
     <div ref={rootRef} className="relative">

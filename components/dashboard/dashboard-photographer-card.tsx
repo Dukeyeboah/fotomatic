@@ -2,7 +2,8 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { CalendarPlus, Heart, UserRound } from 'lucide-react';
+import { useState } from 'react';
+import { CalendarPlus, Eye, Heart } from 'lucide-react';
 import {
   directoryPhotographerHeroImageUrl,
   type DirectoryPhotographer,
@@ -11,6 +12,10 @@ import { publicPhotographerProfilePath } from '@/lib/public-profile-url';
 import { DirectoryListingPlaceholderImage } from '@/components/directory-listing-placeholder-image';
 import { formatDirectoryStartingPrice } from '@/lib/photographer-pricing';
 import { StarRow } from '@/components/photographer-reviews-panel';
+import { parsePhotographyFocusesFromFirestore } from '@/lib/photography-focus';
+import { useAuth } from '@/contexts/AuthContext';
+import { isOwnDirectoryPhotographerListing } from '@/lib/directory-photographer-self';
+import { CannotFavoriteSelfDialog } from '@/components/cannot-favorite-self-dialog';
 
 function displayName(p: DirectoryPhotographer): string {
   if (p.lastName) return `${p.firstName} ${p.lastName}`.trim();
@@ -36,7 +41,12 @@ function cardImage(p: DirectoryPhotographer): string | null {
   return null;
 }
 
-const TAGS = ['Graduation', 'Portraits', 'Events', 'Weddings'] as const;
+function focusBadges(p: DirectoryPhotographer): string[] {
+  return parsePhotographyFocusesFromFirestore({
+    photographyFocuses: p.photographyFocuses,
+    photographyFocus: p.photographyFocus,
+  }).slice(0, 2);
+}
 
 export function DashboardPhotographerCard({
   photographer,
@@ -55,12 +65,19 @@ export function DashboardPhotographerCard({
   showRequestBooking?: boolean;
   reviewSummary?: { average: number; count: number };
 }) {
-  const tag = TAGS[photographer.id.length % TAGS.length]!;
+  const { user, userData } = useAuth();
+  const [selfFavoriteOpen, setSelfFavoriteOpen] = useState(false);
+  const badges = focusBadges(photographer);
   const imgSrc = cardImage(photographer);
   const remoteImg = imgSrc != null && /^https?:\/\//i.test(imgSrc);
   const profileHref = photographer.profileSlug
     ? publicPhotographerProfilePath(photographer.profileSlug)
     : null;
+  const isOwn = isOwnDirectoryPhotographerListing(photographer, {
+    uid: user?.uid,
+    role: userData?.role,
+    directoryId: userData?.photographer?.directoryId,
+  });
 
   return (
     <div
@@ -111,16 +128,32 @@ export function DashboardPhotographerCard({
           type="button"
           onClick={(e) => {
             e.stopPropagation();
+            if (isOwn) {
+              setSelfFavoriteOpen(true);
+              return;
+            }
             onToggleSave();
           }}
-          className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-zinc-700 shadow-md ring-1 ring-zinc-900/10 transition-colors hover:text-red-600"
-          aria-label={saved ? 'Remove from saved' : 'Save photographer'}
+          className="absolute right-2 top-2 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white/95 text-zinc-700 shadow-md ring-1 ring-zinc-900/10 transition-colors hover:bg-white hover:text-red-600"
+          aria-label={saved ? 'Remove from favorites' : 'Add to favorites'}
         >
           <Heart
-            className={`h-4 w-4 ${saved ? 'fill-red-500 text-red-500' : ''}`}
+            className={`h-4 w-4 transition-colors ${saved ? 'fill-red-500 text-red-500' : ''}`}
             strokeWidth={1.75}
           />
         </button>
+        {badges.length > 0 ? (
+          <div className="absolute bottom-2.5 left-2.5 z-10 flex max-w-[85%] flex-wrap gap-1">
+            {badges.map((b) => (
+              <span
+                key={b}
+                className="rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm"
+              >
+                {b}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
       <div className="flex flex-1 flex-col p-4">
         <p className="font-semibold text-zinc-900">{displayName(photographer)}</p>
@@ -140,11 +173,6 @@ export function DashboardPhotographerCard({
             <p className="text-sm font-semibold text-zinc-800">
               {formatDirectoryStartingPrice(photographer)}
             </p>
-            <p className="mt-1.5 flex flex-wrap gap-1">
-              <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-700">
-                {tag}
-              </span>
-            </p>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             {profileHref ? (
@@ -152,9 +180,10 @@ export function DashboardPhotographerCard({
                 href={profileHref}
                 onClick={(e) => e.stopPropagation()}
                 aria-label={`View ${displayName(photographer)} profile`}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 hover:text-zinc-900"
+                title="View profile"
+                className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 hover:text-zinc-900"
               >
-                <UserRound className="h-4 w-4" strokeWidth={1.75} />
+                <Eye className="h-4 w-4" strokeWidth={1.75} />
               </Link>
             ) : onOpenDetail ? (
               <button
@@ -164,9 +193,10 @@ export function DashboardPhotographerCard({
                   onOpenDetail();
                 }}
                 aria-label={`View ${displayName(photographer)} profile`}
+                title="View profile"
                 className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 hover:text-zinc-900"
               >
-                <UserRound className="h-4 w-4" strokeWidth={1.75} />
+                <Eye className="h-4 w-4" strokeWidth={1.75} />
               </button>
             ) : null}
             {showRequestBooking ? (
@@ -185,6 +215,11 @@ export function DashboardPhotographerCard({
           </div>
         </div>
       </div>
+
+      <CannotFavoriteSelfDialog
+        open={selfFavoriteOpen}
+        onClose={() => setSelfFavoriteOpen(false)}
+      />
     </div>
   );
 }

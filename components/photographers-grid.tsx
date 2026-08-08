@@ -14,11 +14,13 @@ import {
   MapPin,
   Heart,
   Search,
-  UserRound,
+  Eye,
   CalendarPlus,
+  ChevronDown,
 } from 'lucide-react';
 import { PhotographerSocialIconButtons } from '@/components/photographer-social-icon-buttons';
 import { PhotographerPublicDetailModal } from '@/components/photographer-public-detail-modal';
+import { CannotFavoriteSelfDialog } from '@/components/cannot-favorite-self-dialog';
 import { useSavedPhotographerIds } from '@/lib/hooks/use-saved-photographer-ids';
 import { useMergedDirectoryPhotographers } from '@/lib/hooks/use-merged-directory-photographers';
 import { publicPhotographerProfilePath } from '@/lib/public-profile-url';
@@ -27,6 +29,10 @@ import { usePhotographerDirectoryReviewStats } from '@/lib/hooks/use-directory-r
 import { StarRow } from '@/components/photographer-reviews-panel';
 import { DirectoryListingPlaceholderImage } from '@/components/directory-listing-placeholder-image';
 import { formatDirectoryStartingPrice } from '@/lib/photographer-pricing';
+import {
+  PHOTOGRAPHY_FOCUS_OPTIONS,
+  parsePhotographyFocusesFromFirestore,
+} from '@/lib/photography-focus';
 
 type SortMode = 'featured' | 'rating' | 'name-asc' | 'name-desc' | 'price-asc';
 
@@ -123,10 +129,12 @@ export function PhotographersGrid({
   const list = useMergedDirectoryPhotographers();
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<SortMode>('featured');
+  const [specialty, setSpecialty] = useState('');
   const [bookingPhotographer, setBookingPhotographer] =
     useState<DirectoryPhotographer | null>(null);
   const [detailPhotographer, setDetailPhotographer] =
     useState<DirectoryPhotographer | null>(null);
+  const [selfFavoriteOpen, setSelfFavoriteOpen] = useState(false);
   const { user, userData } = useAuth();
   const { openLoginModal } = useLoginModal();
   const { toggle, isSaved } = useSavedPhotographerIds();
@@ -143,18 +151,23 @@ export function PhotographersGrid({
 
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
+    const specialtyKey = specialty.trim().toLowerCase();
     let rows = list.filter((p) => {
+      const focuses = parsePhotographyFocusesFromFirestore({
+        photographyFocuses: p.photographyFocuses,
+        photographyFocus: p.photographyFocus,
+      });
+      if (
+        specialtyKey &&
+        !focuses.some((f) => f.toLowerCase() === specialtyKey)
+      ) {
+        return false;
+      }
       if (!qq) return true;
       const n = getPhotographerName(p).toLowerCase();
       const loc = formatLocation(p).toLowerCase();
-      const focus = (p.photographyFocuses ?? []).join(' ').toLowerCase();
-      const legacyFocus = (p.photographyFocus ?? '').toLowerCase();
-      return (
-        n.includes(qq) ||
-        loc.includes(qq) ||
-        focus.includes(qq) ||
-        legacyFocus.includes(qq)
-      );
+      const focus = focuses.join(' ').toLowerCase();
+      return n.includes(qq) || loc.includes(qq) || focus.includes(qq);
     });
 
     if (sort === 'featured') return rows;
@@ -183,7 +196,19 @@ export function PhotographersGrid({
       return 0;
     });
     return rows;
-  }, [list, q, sort, reviewStats]);
+  }, [list, q, sort, specialty, reviewStats]);
+
+  const tryToggleFavorite = (p: DirectoryPhotographer) => {
+    if (!user) {
+      openLoginModal();
+      return;
+    }
+    if (isOwnDirectoryPhotographerListing(p, viewerForSelf)) {
+      setSelfFavoriteOpen(true);
+      return;
+    }
+    toggle(p.id);
+  };
 
   const openBooking = (p: DirectoryPhotographer) => {
     if (!user) {
@@ -256,7 +281,7 @@ export function PhotographersGrid({
           <div
             className="flex flex-wrap justify-center gap-2"
             role="group"
-            aria-label="Sort photographers"
+            aria-label="Sort and filter photographers"
           >
             {SORT_OPTIONS.map((opt) => {
               const active = sort === opt.id;
@@ -266,7 +291,7 @@ export function PhotographersGrid({
                   type="button"
                   onClick={() => setSort(opt.id)}
                   className={[
-                    'rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors',
+                    'cursor-pointer rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors',
                     active
                       ? 'bg-zinc-900 text-white'
                       : 'bg-white text-zinc-600 ring-1 ring-zinc-200 hover:bg-zinc-50 hover:text-zinc-900',
@@ -276,6 +301,40 @@ export function PhotographersGrid({
                 </button>
               );
             })}
+            <label
+              className={[
+                'relative inline-flex cursor-pointer items-center rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors',
+                specialty
+                  ? 'bg-zinc-900 text-white'
+                  : 'bg-white text-zinc-600 ring-1 ring-zinc-200 hover:bg-zinc-50 hover:text-zinc-900',
+              ].join(' ')}
+            >
+              <span className="sr-only">Filter by specialty</span>
+              <select
+                value={specialty}
+                onChange={(e) => setSpecialty(e.target.value)}
+                className={[
+                  'cursor-pointer appearance-none bg-transparent py-0 pr-4 outline-none',
+                  specialty ? 'text-white' : 'text-inherit',
+                ].join(' ')}
+              >
+                <option value="">All specialties</option>
+                {PHOTOGRAPHY_FOCUS_OPTIONS.filter((o) => o !== 'Other').map(
+                  (opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ),
+                )}
+              </select>
+              <ChevronDown
+                className={[
+                  'pointer-events-none absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2',
+                  specialty ? 'text-white/80' : 'text-zinc-500',
+                ].join(' ')}
+                strokeWidth={2}
+              />
+            </label>
           </div>
         </div>
       </div>
@@ -290,6 +349,10 @@ export function PhotographersGrid({
           {filtered.map((p) => {
             const photo = directoryPhotographerHeroImageUrl(p);
             const canBook = !isOwnDirectoryPhotographerListing(p, viewerForSelf);
+            const badges = parsePhotographyFocusesFromFirestore({
+              photographyFocuses: p.photographyFocuses,
+              photographyFocus: p.photographyFocus,
+            }).slice(0, 2);
             return (
               <article
                 key={p.id}
@@ -315,24 +378,34 @@ export function PhotographersGrid({
                   <button
                     type="button"
                     title={
-                      isSaved(p.id) ? 'Remove from saved' : 'Save photographer'
+                      isSaved(p.id)
+                        ? 'Remove from favorites'
+                        : 'Add to favorites'
                     }
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (!user) {
-                        openLoginModal();
-                        return;
-                      }
-                      toggle(p.id);
+                      tryToggleFavorite(p);
                     }}
-                    className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-zinc-900 ring-1 ring-zinc-900/10 transition-colors hover:bg-white"
+                    className="absolute right-3 top-3 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white/95 text-zinc-900 ring-1 ring-zinc-900/10 transition-colors hover:bg-white hover:text-red-600"
                   >
                     <Heart
-                      className={`h-4 w-4 ${isSaved(p.id) ? 'fill-red-500 text-red-500' : 'text-zinc-700'}`}
+                      className={`h-4 w-4 transition-colors ${isSaved(p.id) ? 'fill-red-500 text-red-500' : 'text-zinc-700'}`}
                       strokeWidth={1.75}
                     />
                   </button>
                   <DirectoryHeroImage photo={photo} photographerId={p.id} />
+                  {badges.length > 0 ? (
+                    <div className="absolute bottom-3 left-3 z-10 flex max-w-[85%] flex-wrap gap-1.5">
+                      {badges.map((b) => (
+                        <span
+                          key={b}
+                          className="rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-sm"
+                        >
+                          {b}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="flex flex-1 flex-col gap-3 p-4">
                   <div>
@@ -389,9 +462,9 @@ export function PhotographersGrid({
                           href={publicPhotographerProfilePath(p.profileSlug)}
                           title="View profile"
                           aria-label={`View ${getPhotographerName(p)} profile`}
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-zinc-700 transition-colors hover:bg-zinc-200/70"
+                          className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-zinc-700 transition-colors hover:bg-zinc-200/70 hover:text-zinc-900"
                         >
-                          <UserRound className="h-4 w-4" strokeWidth={1.75} />
+                          <Eye className="h-4 w-4" strokeWidth={1.75} />
                         </Link>
                       ) : null}
                       {canBook ? (
@@ -425,7 +498,7 @@ export function PhotographersGrid({
         }}
         saved={detailPhotographer ? isSaved(detailPhotographer.id) : false}
         onToggleSave={() => {
-          if (detailPhotographer) toggle(detailPhotographer.id);
+          if (detailPhotographer) tryToggleFavorite(detailPhotographer);
         }}
         user={user}
         openLoginModal={() => openLoginModal()}
@@ -437,6 +510,11 @@ export function PhotographersGrid({
               )
             : true
         }
+      />
+
+      <CannotFavoriteSelfDialog
+        open={selfFavoriteOpen}
+        onClose={() => setSelfFavoriteOpen(false)}
       />
 
       {bookingPhotographer && user ? (

@@ -19,6 +19,10 @@ import {
 import type { FocusEventPricing } from '@/lib/photographer-pricing';
 import { PHOTOGRAPHY_FOCUS_OPTIONS } from '@/lib/photography-focus';
 import { CheckCircle2, Loader2, X } from 'lucide-react';
+import {
+  subscribeMyPhotographerApplication,
+  type MyPhotographerApplicationSummary,
+} from '@/lib/firebase/my-photographer-application';
 
 const DRAFT_STORAGE_KEY = 'fotomatic_join_photographer_draft_v1';
 
@@ -100,7 +104,21 @@ export function JoinPhotographerModal({
   const [applyStatus, setApplyStatus] = useState<
     'idle' | 'loading' | 'ok' | 'err'
   >('idle');
+  const [myApplication, setMyApplication] =
+    useState<MyPhotographerApplicationSummary | null>(null);
   const prevOpenRef = useRef(false);
+
+  useEffect(() => {
+    if (!user || alreadyPhotographer) {
+      setMyApplication(null);
+      return;
+    }
+    return subscribeMyPhotographerApplication(user.uid, setMyApplication);
+  }, [user, alreadyPhotographer]);
+
+  const pendingApplication = myApplication?.status === 'submitted';
+  const declinedApplication = myApplication?.status === 'declined';
+  const formBlocked = alreadyPhotographer || pendingApplication;
 
   /** When the dialog opens, hydrate from session draft + account defaults. */
   useEffect(() => {
@@ -173,7 +191,7 @@ export function JoinPhotographerModal({
   }, [open, user]);
 
   useEffect(() => {
-    if (!open || alreadyPhotographer || applyStatus === 'ok') return;
+    if (!open || formBlocked || applyStatus === 'ok') return;
     const t = window.setTimeout(() => {
       try {
         sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(apply));
@@ -182,7 +200,7 @@ export function JoinPhotographerModal({
       }
     }, 400);
     return () => window.clearTimeout(t);
-  }, [open, apply, alreadyPhotographer, applyStatus]);
+  }, [open, apply, formBlocked, applyStatus]);
 
   useEffect(() => {
     if (!open) return;
@@ -197,6 +215,7 @@ export function JoinPhotographerModal({
     async (e: React.FormEvent) => {
       e.preventDefault();
       if (userData?.role === 'photographer') return;
+      if (pendingApplication) return;
       if (!user) {
         try {
           sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(apply));
@@ -296,7 +315,7 @@ export function JoinPhotographerModal({
       }
       setApply(emptyApplyForm());
     },
-    [apply, user, userData?.role, openLoginModal, loginRedirectTo],
+    [apply, user, userData?.role, pendingApplication, openLoginModal, loginRedirectTo],
   );
 
   if (!open) return null;
@@ -369,6 +388,40 @@ export function JoinPhotographerModal({
                   are available from your account menu.
                 </div>
               ) : null}
+              {!loading && !alreadyPhotographer && pendingApplication ? (
+                <div className='rounded-2xl border border-amber-200/80 bg-amber-50/90 p-4 text-sm text-amber-950'>
+                  <p className='font-semibold'>Application under review</p>
+                  <p className='mt-1'>
+                    You already submitted a photographer application with this
+                    account. We&apos;ll email you when it&apos;s approved or if we
+                    need anything else. You can keep using Fotomatic as a client
+                    in the meantime.
+                  </p>
+                </div>
+              ) : null}
+              {!loading &&
+              !alreadyPhotographer &&
+              !pendingApplication &&
+              declinedApplication ? (
+                <div className='rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-800'>
+                  A previous application was declined. You can update your details
+                  below and submit again.
+                </div>
+              ) : null}
+              {!loading &&
+              user &&
+              userData?.role === 'user' &&
+              !pendingApplication &&
+              !alreadyPhotographer ? (
+                <div className='rounded-2xl border border-sky-200/80 bg-sky-50/80 p-4 text-sm text-sky-950'>
+                  <p className='font-semibold'>Applying with your client account</p>
+                  <p className='mt-1'>
+                    You&apos;re already signed in. Submit this form and we&apos;ll
+                    review it — your login stays the same. After approval,
+                    Fotomatic unlocks the photographer dashboard for this account.
+                  </p>
+                </div>
+              ) : null}
               {!loading && !user ? (
                 <div className='rounded-2xl border border-amber-200/80 bg-amber-50/90 p-4 text-sm text-amber-950'>
                   <p>
@@ -383,12 +436,13 @@ export function JoinPhotographerModal({
                     >
                       log in or sign up
                     </button>{' '}
-                    so we can receive it.
+                    so we can receive it. Existing client accounts can apply with
+                    the same login.
                   </p>
                 </div>
               ) : null}
               <fieldset
-                disabled={alreadyPhotographer}
+                disabled={formBlocked}
                 className='min-w-0 space-y-4 border-0 p-0 disabled:opacity-70'
               >
               <div className='grid gap-3 sm:grid-cols-2'>
@@ -747,7 +801,7 @@ export function JoinPhotographerModal({
               ) : null}
               <button
                 type='submit'
-                disabled={applyStatus === 'loading' || alreadyPhotographer}
+                disabled={applyStatus === 'loading' || formBlocked}
                 className='flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-zinc-900 py-3.5 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60'
               >
                 {applyStatus === 'loading' ? (

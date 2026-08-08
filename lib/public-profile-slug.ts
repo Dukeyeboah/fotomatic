@@ -25,6 +25,7 @@ const RESERVED = new Set([
   'legal',
   'settings',
   'saved',
+  'favorites',
   'bookings',
   /** App routes under `/photographer/…` — cannot be usernames. */
   'directory',
