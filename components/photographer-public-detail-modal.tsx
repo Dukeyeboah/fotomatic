@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { PhotographerSocialIconButtons } from '@/components/photographer-social-icon-buttons';
 import { ProfileShareDropdown } from '@/components/photographer/profile-share-dropdown';
 import {
+  CalendarPlus,
   ExternalLink,
   Globe2,
   Heart,
@@ -194,7 +195,7 @@ export function PhotographerPublicDetailModal({
         aria-modal="true"
         aria-labelledby="photographer-detail-title"
       >
-        {/* Banner + identity card straddling the bottom edge (~2/3 over, ~1/3 below) */}
+        {/* Banner + identity card overlapping the bottom edge */}
         <div className="relative shrink-0">
           <div className="relative h-[150px] w-full bg-zinc-900 sm:h-[168px]">
             <div className="absolute inset-0 overflow-hidden">
@@ -228,15 +229,15 @@ export function PhotographerPublicDetailModal({
 
             <button
               type="button"
-              className="absolute right-3 top-3 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white/95 text-zinc-800 shadow-md ring-1 ring-zinc-900/10 transition-colors hover:bg-white hover:text-zinc-950"
+              className="absolute right-1.5 top-1.5 z-30 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white/95 text-zinc-800 shadow-md ring-1 ring-zinc-900/10 transition-colors hover:bg-white hover:text-zinc-950 sm:right-2 sm:top-2"
               aria-label="Close"
               onClick={onClose}
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" strokeWidth={2} />
             </button>
             <button
               type="button"
-              className="absolute left-3 top-3 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white/95 text-zinc-900 shadow-md ring-1 ring-zinc-900/10 transition-colors hover:bg-white hover:text-red-600"
+              className="absolute left-1.5 top-1.5 z-30 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white/95 text-zinc-900 shadow-md ring-1 ring-zinc-900/10 transition-colors hover:bg-white hover:text-red-600 sm:left-2 sm:top-2"
               title={saved ? 'Remove from favorites' : 'Add to favorites'}
               onClick={() => {
                 if (!user) {
@@ -257,20 +258,20 @@ export function PhotographerPublicDetailModal({
               }}
             >
               <Heart
-                className={`h-4 w-4 transition-colors ${saved ? 'fill-red-500 text-red-500' : 'text-zinc-700'}`}
+                className={`h-3.5 w-3.5 transition-colors ${saved ? 'fill-red-500 text-red-500' : 'text-zinc-700'}`}
                 strokeWidth={1.75}
               />
             </button>
 
-            <div className="absolute inset-x-0 top-full z-20 -translate-y-2/3 px-4 sm:px-5">
-              <div className="flex items-end gap-3">
-                <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full border-[3px] border-white bg-zinc-100 shadow-lg sm:h-24 sm:w-24">
+            <div className="absolute left-1/2 top-full z-20 w-[min(calc(100%-2rem),16.75rem)] -translate-x-1/2 -translate-y-2/3 sm:w-[18rem]">
+              <div className="flex w-full items-start gap-2.5 rounded-2xl bg-black/45 px-2.5 py-2 shadow-lg backdrop-blur-md sm:gap-3 sm:px-3 sm:py-2.5">
+                <div className="relative mt-0.5 h-12 w-12 shrink-0 overflow-hidden rounded-full border-[2.5px] border-white/95 bg-zinc-100 shadow-md sm:h-14 sm:w-14">
                   {avatarIsLogoFallback ? (
                     <DirectoryListingPlaceholderImage
                       alt=""
                       fill
-                      className="object-contain bg-white p-2"
-                      sizes="96px"
+                      className="object-contain bg-white p-1.5"
+                      sizes="56px"
                     />
                   ) : avatarRemote ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -285,67 +286,97 @@ export function PhotographerPublicDetailModal({
                       alt=""
                       fill
                       className="object-cover"
-                      sizes="96px"
+                      sizes="56px"
                     />
                   )}
                 </div>
-                <div className="min-w-0 w-full max-w-[16rem] rounded-xl bg-black/45 px-3 py-2.5 shadow-lg backdrop-blur-md sm:max-w-[18rem]">
-                  <h2
-                    id="photographer-detail-title"
-                    className="truncate font-serif text-xl font-semibold text-white"
-                  >
-                    {displayName(p)}
-                  </h2>
-                  <p className="mt-0.5 truncate text-xs text-white/85">{loc}</p>
-                  <p className="mt-1.5 text-sm font-semibold text-amber-100">
-                    {formatDirectoryStartingPrice(p)}
-                  </p>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <h2
+                      id="photographer-detail-title"
+                      className="min-w-0 flex-1 font-serif text-sm font-semibold leading-snug text-white sm:text-base"
+                    >
+                      {displayName(p)}
+                    </h2>
+                    <p className="shrink-0 pt-0.5 text-right text-[11px] font-semibold text-amber-100 sm:text-xs">
+                      {formatDirectoryStartingPrice(p)}
+                    </p>
+                  </div>
+
+                  {loc ? (
+                    <p className="mt-0.5 flex items-center gap-1 text-[10px] text-white/85 sm:text-[11px]">
+                      <MapPin className="h-3 w-3 shrink-0 opacity-80" />
+                      <span className="truncate">{loc}</span>
+                    </p>
+                  ) : null}
+
                   {focuses.length > 0 ? (
-                    <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                    <div className="mt-1 flex flex-wrap items-center gap-1">
                       {focuses.slice(0, 3).map((f) => (
                         <span
                           key={f}
-                          className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-medium text-white"
+                          className="rounded-full bg-white/20 px-1.5 py-0.5 text-[9px] font-medium text-white"
                         >
                           {f}
                         </span>
                       ))}
                       {focuses.length > 3 ? (
-                        <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] text-white/85">
+                        <span className="rounded-full bg-white/15 px-1.5 py-0.5 text-[9px] text-white/85">
                           +{focuses.length - 3}
                         </span>
                       ) : null}
                     </div>
                   ) : null}
-                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    <PhotographerSocialIconButtons
-                      instagram={p.instagram}
-                      website={p.website}
-                      twitter={p.twitter}
-                      facebook={p.facebook}
-                      portfolioLinks={undefined}
-                      size="sm"
-                    />
-                    <ProfileShareDropdown
-                      profileSlug={p.profileSlug}
-                      placement="below"
-                      tone="onDark"
-                      iconOnly
-                      menuZClass="z-[150]"
-                    />
+
+                  <div className="mt-1.5 flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                      <PhotographerSocialIconButtons
+                        instagram={p.instagram}
+                        website={p.website}
+                        twitter={p.twitter}
+                        facebook={p.facebook}
+                        portfolioLinks={undefined}
+                        size="sm"
+                      />
+                      <ProfileShareDropdown
+                        profileSlug={p.profileSlug}
+                        placement="below"
+                        tone="onDark"
+                        iconOnly
+                        menuZClass="z-[150]"
+                      />
+                    </div>
+                    {canRequestBooking ? (
+                      <button
+                        type="button"
+                        aria-label="Request booking"
+                        title="Request booking"
+                        className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border border-white/50 bg-white text-zinc-900 shadow-sm transition hover:bg-amber-50 hover:text-amber-900"
+                        onClick={() => {
+                          if (!user) {
+                            openLoginModal();
+                            return;
+                          }
+                          onRequestBooking(p);
+                        }}
+                      >
+                        <CalendarPlus className="h-4 w-4" strokeWidth={1.75} />
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Reserve space for the ~1/3 of the identity block that hangs below the banner */}
-          <div className="h-14 sm:h-16" aria-hidden />
+          {/* Reserve space for the ~1/3 of the identity card that hangs below the banner */}
+          <div className="h-11 sm:h-12" aria-hidden />
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col px-4 pt-2 sm:px-6">
+        <div className="flex min-h-0 flex-1 flex-col px-4 pt-3 sm:px-6">
           <div
-            className="flex shrink-0 flex-wrap items-center justify-center gap-x-3 gap-y-1"
+            className="flex shrink-0 flex-nowrap items-center justify-center gap-x-2.5 overflow-x-auto sm:gap-x-3"
             role="tablist"
             aria-label="Profile sections"
           >
@@ -360,7 +391,7 @@ export function PhotographerPublicDetailModal({
                     role="tab"
                     aria-selected={active}
                     onClick={() => setTab(t.id)}
-                    className={`cursor-pointer bg-transparent px-0 py-1.5 text-sm transition-colors ${
+                    className={`shrink-0 cursor-pointer whitespace-nowrap bg-transparent px-0 py-1 text-xs transition-colors sm:text-sm ${
                       active
                         ? 'border-b-2 border-zinc-900 font-bold text-zinc-900'
                         : 'border-b-2 border-transparent font-normal text-zinc-500 hover:text-zinc-800'

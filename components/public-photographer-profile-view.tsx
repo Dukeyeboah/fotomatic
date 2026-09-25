@@ -31,6 +31,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
 import { isOwnDirectoryPhotographerListing } from '@/lib/directory-photographer-self';
 import {
+  ArrowLeft,
+  CalendarPlus,
   Globe2,
   Heart,
   Loader2,
@@ -250,9 +252,41 @@ export function PublicPhotographerProfileView({
   const phonePublic = isPhoneShownOnPublicProfile(p);
   const emailPublic = isEmailShownOnPublicProfile(p);
 
+  const showCardBooking = !hideBookingCta && !isSelfListing;
+  const bookingIconClass =
+    'inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-white/50 bg-white text-zinc-900 shadow-sm transition hover:bg-amber-50 hover:text-amber-900';
+  const bookingIcon =
+    showCardBooking && !user ? (
+      <button
+        type="button"
+        onClick={() =>
+          openLoginModal({
+            redirectTo: pathname || undefined,
+            introTitle: 'Sign in to book on Fotomatic',
+            introMessage:
+              'Create an account or log in to send booking requests and message photographers.',
+          })
+        }
+        aria-label="Request booking"
+        title="Request booking"
+        className={bookingIconClass}
+      >
+        <CalendarPlus className="h-4 w-4" strokeWidth={1.75} />
+      </button>
+    ) : showCardBooking && bookHref ? (
+      <Link
+        href={bookHref}
+        aria-label="Request booking"
+        title="Request booking"
+        className={bookingIconClass}
+      >
+        <CalendarPlus className="h-4 w-4" strokeWidth={1.75} />
+      </Link>
+    ) : null;
+
   return (
     <div className="pb-20">
-      <div className="relative h-[min(42vw,260px)] w-full bg-zinc-900 sm:h-[280px]">
+      <div className="relative h-[240px] w-full bg-zinc-900 sm:h-[280px]">
         <div className="absolute inset-0 overflow-hidden">
           {bannerIsLogoFallback ? (
             <DirectoryListingPlaceholderImage
@@ -282,85 +316,113 @@ export function PublicPhotographerProfileView({
           <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/70 via-zinc-950/20 to-transparent" />
         </div>
 
+        {!hideBackLink ? (
+          <button
+            type="button"
+            onClick={() => router.back()}
+            aria-label="Back"
+            title="Back"
+            className="absolute left-4 top-4 z-30 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/40 bg-black/45 text-white shadow-lg backdrop-blur-md transition hover:bg-black/60 sm:left-6 sm:top-5"
+          >
+            <ArrowLeft className="h-5 w-5" strokeWidth={1.75} />
+          </button>
+        ) : null}
+
         {bannerOverlay ? (
           <div className="absolute right-4 top-4 z-30 sm:right-6 sm:top-5">
             {bannerOverlay}
           </div>
         ) : null}
 
-        <div className="absolute inset-x-0 bottom-0 mx-auto max-w-5xl px-4 pb-4 sm:px-6 sm:pb-5">
-          <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-end sm:gap-5">
-            <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border-4 border-white/95 bg-zinc-100 shadow-2xl sm:h-28 sm:w-28">
-              {avatarIsLogoFallback ? (
-                <DirectoryListingPlaceholderImage
-                  alt=""
-                  fill
-                  className="object-contain bg-white p-4"
-                  sizes="112px"
-                />
-              ) : avatarRemote ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={avatar!}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <Image
-                  src={avatar!.startsWith('/') ? avatar! : `/${avatar!}`}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="112px"
-                />
-              )}
-            </div>
-            <div className="w-full min-w-0 rounded-2xl bg-black/45 px-4 py-3 text-center shadow-lg backdrop-blur-md sm:w-[min(100%,28rem)] sm:px-5 sm:py-3.5 sm:text-left lg:w-[25rem]">
-              <h1 className="font-serif text-2xl font-medium tracking-tight text-white sm:text-3xl">
-                {displayName(p)}
-              </h1>
-              {loc ? (
-                <p className="mt-1.5 flex items-center justify-center gap-1.5 text-sm text-white/90 sm:justify-start">
-                  <MapPin className="h-4 w-4 shrink-0 opacity-80" />
-                  {loc}
-                </p>
-              ) : null}
-              <div className="mt-2.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1.5 sm:justify-start">
-                <p className="text-base font-semibold text-amber-100 sm:text-lg">
-                  {formatDirectoryStartingPrice(p)}
-                </p>
-                {focuses.slice(0, 4).map((f) => (
-                  <span
-                    key={f}
-                    className="rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-medium text-white"
-                  >
-                    {f}
-                  </span>
-                ))}
-                {focuses.length > 4 ? (
-                  <span className="rounded-full bg-white/15 px-2.5 py-1 text-[11px] text-white/85">
-                    +{focuses.length - 4}
-                  </span>
-                ) : null}
-              </div>
-              <div className="mt-2.5 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                <PhotographerSocialIconButtons
-                  instagram={p.instagram}
-                  website={p.website}
-                  twitter={p.twitter}
-                  facebook={p.facebook}
-                  portfolioLinks={p.portfolioLinks}
-                  size="sm"
-                />
-                {!hideShare ? (
-                  <ProfileShareDropdown
-                    profileSlug={p.profileSlug}
-                    placement="below"
-                    tone="onDark"
-                    iconOnly
-                    menuZClass="z-[100]"
+        {/* Identity card: bottom flush with banner */}
+        <div className="absolute inset-x-0 bottom-0 z-20 px-4 pb-3 sm:px-6 sm:pb-4">
+          <div className="mx-auto w-full max-w-5xl">
+            <div className="flex w-full max-w-md items-start gap-3 rounded-2xl bg-black/45 px-3 py-2.5 shadow-lg backdrop-blur-md sm:max-w-lg sm:gap-4 sm:px-4 sm:py-3">
+              <div className="relative mt-0.5 h-14 w-14 shrink-0 overflow-hidden rounded-full border-[2.5px] border-white/95 bg-zinc-100 shadow-md sm:h-20 sm:w-20 sm:border-[3px]">
+                {avatarIsLogoFallback ? (
+                  <DirectoryListingPlaceholderImage
+                    alt=""
+                    fill
+                    className="object-contain bg-white p-2"
+                    sizes="80px"
                   />
+                ) : avatarRemote ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={avatar!}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <Image
+                    src={avatar!.startsWith('/') ? avatar! : `/${avatar!}`}
+                    alt=""
+                    fill
+                    className="object-cover"
+                    sizes="80px"
+                  />
+                )}
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <h1 className="min-w-0 flex-1 font-serif text-lg font-medium leading-snug tracking-tight text-white sm:text-2xl">
+                    {displayName(p)}
+                  </h1>
+                  <p className="shrink-0 pt-0.5 text-right text-xs font-semibold text-amber-100 sm:text-sm">
+                    {formatDirectoryStartingPrice(p)}
+                  </p>
+                </div>
+
+                {loc ? (
+                  <p className="mt-0.5 flex items-center gap-1 text-[11px] text-white/90 sm:mt-1 sm:text-sm">
+                    <MapPin className="h-3 w-3 shrink-0 opacity-80 sm:h-3.5 sm:w-3.5" />
+                    <span className="truncate">{loc}</span>
+                  </p>
                 ) : null}
+
+                {focuses.length > 0 ? (
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1 sm:mt-2">
+                    {focuses.slice(0, 3).map((f) => (
+                      <span
+                        key={f}
+                        className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-medium text-white"
+                      >
+                        {f}
+                      </span>
+                    ))}
+                    {focuses.length > 3 ? (
+                      <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] text-white/85">
+                        +{focuses.length - 3}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <div className="mt-2 flex items-center justify-between gap-2 sm:mt-2.5">
+                  <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                    <PhotographerSocialIconButtons
+                      instagram={p.instagram}
+                      website={p.website}
+                      twitter={p.twitter}
+                      facebook={p.facebook}
+                      portfolioLinks={p.portfolioLinks}
+                      size="sm"
+                    />
+                    {!hideShare ? (
+                      <ProfileShareDropdown
+                        profileSlug={p.profileSlug}
+                        placement="below"
+                        tone="onDark"
+                        iconOnly
+                        menuZClass="z-[100]"
+                      />
+                    ) : null}
+                  </div>
+                  {bookingIcon ? (
+                    <div className="shrink-0">{bookingIcon}</div>
+                  ) : null}
+                </div>
               </div>
             </div>
           </div>
@@ -369,26 +431,16 @@ export function PublicPhotographerProfileView({
 
       <div className="relative mx-auto max-w-5xl px-4 sm:px-6">
         <div
-          className={`flex flex-wrap items-center gap-x-4 gap-y-2 ${
+          className={`flex items-center gap-3 ${
             compactChrome ? 'mt-3' : 'mt-4'
           }`}
         >
-          <div className="shrink-0">
-            {!hideBackLink ? (
-              <button
-                type="button"
-                onClick={() => router.back()}
-                className="cursor-pointer text-sm font-medium text-amber-900 underline-offset-2 hover:underline"
-              >
-                ← Back
-              </button>
-            ) : (
-              toolbarLeft
-            )}
-          </div>
+          {hideBackLink && toolbarLeft ? (
+            <div className="shrink-0">{toolbarLeft}</div>
+          ) : null}
 
           <div
-            className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-x-4 gap-y-1"
+            className="flex min-w-0 flex-1 items-center justify-center gap-x-2.5 overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] sm:gap-x-4 [&::-webkit-scrollbar]:hidden"
             role="tablist"
             aria-label="Profile sections"
           >
@@ -403,7 +455,7 @@ export function PublicPhotographerProfileView({
                     role="tab"
                     aria-selected={active}
                     onClick={() => setTab(t.id)}
-                    className={`cursor-pointer bg-transparent px-0 py-1.5 text-sm transition-colors ${
+                    className={`shrink-0 cursor-pointer bg-transparent px-0 py-1.5 text-xs transition-colors sm:text-sm ${
                       active
                         ? 'border-b-2 border-zinc-900 font-bold text-zinc-900'
                         : 'border-b-2 border-transparent font-normal text-zinc-500 hover:text-zinc-800'

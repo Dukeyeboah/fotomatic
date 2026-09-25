@@ -12,6 +12,7 @@ import { PhotographerAccountMenu } from '@/components/photographer/photographer-
 import { AccountMenuDropdown } from '@/components/account-menu-dropdown';
 import { DashboardApplyPhotographerProvider } from '@/components/dashboard/dashboard-apply-photographer-context';
 import { MarketingImage } from '@/components/marketing-image';
+import { useBottomChromeVisible } from '@/lib/hooks/use-bottom-chrome-visible';
 
 export function DashboardLayoutClient({
   children,
@@ -32,6 +33,7 @@ export function DashboardLayoutClient({
   const { user, userData, loading } = useAuth();
   const { openLoginModal } = useLoginModal();
   const router = useRouter();
+  const footerVisible = useBottomChromeVisible();
 
   useEffect(() => {
     if (embedPublicProfile || skipRoleRedirect) return;
@@ -151,7 +153,12 @@ export function DashboardLayoutClient({
 
         <main className="flex w-full flex-1 flex-col pb-24">{children}</main>
 
-        <footer className="fixed inset-x-0 bottom-0 z-20 border-t border-zinc-200/70 bg-[#faf8f5]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
+        <footer
+          className={[
+            'fixed inset-x-0 bottom-0 z-20 border-t border-zinc-200/70 bg-[#faf8f5]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur transition-transform duration-300 ease-out',
+            footerVisible ? 'translate-y-0' : 'translate-y-full',
+          ].join(' ')}
+        >
           <div className="mx-auto flex max-w-6xl flex-col items-center gap-3 px-4 py-4 sm:px-6 lg:px-8">
             <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-xs text-zinc-400 sm:text-sm">
               <Link

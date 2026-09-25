@@ -17,6 +17,9 @@ import {
   Eye,
   CalendarPlus,
   ChevronDown,
+  ArrowDown,
+  ArrowUp,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { PhotographerSocialIconButtons } from '@/components/photographer-social-icon-buttons';
 import { PhotographerPublicDetailModal } from '@/components/photographer-public-detail-modal';
@@ -34,7 +37,13 @@ import {
   parsePhotographyFocusesFromFirestore,
 } from '@/lib/photography-focus';
 
-type SortMode = 'featured' | 'rating' | 'name-asc' | 'name-desc' | 'price-asc';
+type SortMode =
+  | 'featured'
+  | 'rating'
+  | 'name-asc'
+  | 'name-desc'
+  | 'price-asc'
+  | 'price-desc';
 
 function getPhotographerName(p: DirectoryPhotographer): string {
   if (p.lastName) return `${p.firstName} ${p.lastName}`.trim();
@@ -109,14 +118,6 @@ function DirectoryHeroImage({
   );
 }
 
-const SORT_OPTIONS: { id: SortMode; label: string }[] = [
-  { id: 'featured', label: 'Featured' },
-  { id: 'rating', label: 'Top rated' },
-  { id: 'name-asc', label: 'A–Z' },
-  { id: 'name-desc', label: 'Z–A' },
-  { id: 'price-asc', label: 'Price ↑' },
-];
-
 export function PhotographersGrid({
   promoLabel,
   variant = 'marketing',
@@ -130,6 +131,7 @@ export function PhotographersGrid({
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<SortMode>('featured');
   const [specialty, setSpecialty] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [bookingPhotographer, setBookingPhotographer] =
     useState<DirectoryPhotographer | null>(null);
   const [detailPhotographer, setDetailPhotographer] =
@@ -190,8 +192,9 @@ export function PhotographersGrid({
         );
         return sort === 'name-asc' ? cmp : -cmp;
       }
-      if (sort === 'price-asc') {
-        return startingPriceValue(a) - startingPriceValue(b);
+      if (sort === 'price-asc' || sort === 'price-desc') {
+        const cmp = startingPriceValue(a) - startingPriceValue(b);
+        return sort === 'price-asc' ? cmp : -cmp;
       }
       return 0;
     });
@@ -219,6 +222,10 @@ export function PhotographersGrid({
   };
 
   const embedded = variant === 'embedded';
+  const nameSortActive = sort === 'name-asc' || sort === 'name-desc';
+  const nameSortDesc = sort === 'name-desc';
+  const priceSortActive = sort === 'price-asc' || sort === 'price-desc';
+  const priceSortDesc = sort === 'price-desc';
 
   return (
     <div
@@ -229,43 +236,22 @@ export function PhotographersGrid({
     >
       <div
         className={[
-          'sticky z-20 space-y-4 border-b border-zinc-200/70 bg-[#f4f1ec]/95 backdrop-blur-md supports-[backdrop-filter]:bg-[#f4f1ec]/90',
+          'sticky z-20 border-b border-zinc-200/70 bg-[#f4f1ec]/95 backdrop-blur-md supports-[backdrop-filter]:bg-[#f4f1ec]/90',
           embedded
             ? 'top-14 -mx-4 px-4 pb-3 pt-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8'
-            : 'top-0 -mx-4 px-4 pb-4 pt-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8',
+            : 'top-0 -mx-4 px-4 pb-3 pt-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8',
         ].join(' ')}
       >
-        <div className="space-y-1.5 text-center">
-          {!embedded ? (
-            <p className="text-[11px] font-semibold tracking-[0.2em] text-amber-900/70">
-              DIRECTORY
-            </p>
-          ) : null}
-          <h1
-            className={[
-              'font-serif font-medium tracking-tight text-zinc-900',
-              embedded ? 'text-2xl md:text-3xl' : 'text-3xl md:text-4xl',
-            ].join(' ')}
-          >
-            Photographers
-          </h1>
-          <p
-            className={[
-              'mx-auto max-w-lg text-zinc-600',
-              embedded ? 'text-sm' : '',
-            ].join(' ')}
-          >
-            Browse profiles and book the right fit for your moment.
-          </p>
-          {promoLabel ? (
-            <p className="inline-block rounded-full border border-amber-200/80 bg-amber-50/90 px-4 py-2 text-sm font-medium text-amber-900">
+        {promoLabel ? (
+          <p className="mb-3 text-center">
+            <span className="inline-block rounded-full border border-amber-200/80 bg-amber-50/90 px-4 py-2 text-sm font-medium text-amber-900">
               {promoLabel}
-            </p>
-          ) : null}
-        </div>
+            </span>
+          </p>
+        ) : null}
 
-        <div className="space-y-3">
-          <div className="relative mx-auto max-w-xl">
+        <div className="mx-auto flex max-w-xl items-center gap-2">
+          <div className="relative min-w-0 flex-1">
             <Search
               className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400"
               strokeWidth={1.75}
@@ -273,73 +259,153 @@ export function PhotographersGrid({
             <input
               type="search"
               placeholder="Search by name, location, or specialty…"
-              className="w-full rounded-full border border-zinc-200/80 bg-white py-3 pl-11 pr-5 text-sm text-zinc-900 placeholder:text-zinc-500 caret-zinc-900 outline-none transition-shadow focus:ring-2 focus:ring-zinc-900/10"
+              aria-label="Search photographers"
+              className="w-full rounded-full border border-zinc-200/80 bg-white py-3 pl-11 pr-4 text-sm text-zinc-900 placeholder:text-zinc-500 caret-zinc-900 outline-none transition-shadow focus:ring-2 focus:ring-zinc-900/10"
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
           </div>
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((v) => !v)}
+            aria-label={filtersOpen ? 'Hide filters' : 'Show filters'}
+            aria-expanded={filtersOpen}
+            title={filtersOpen ? 'Hide filters' : 'Show filters'}
+            className={[
+              'inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full border transition-colors',
+              filtersOpen || sort !== 'featured' || specialty
+                ? 'border-zinc-900 bg-zinc-900 text-white hover:bg-zinc-800'
+                : 'border-zinc-200/80 bg-white text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900',
+            ].join(' ')}
+          >
+            <SlidersHorizontal className="h-4 w-4" strokeWidth={1.75} />
+          </button>
+        </div>
+
+        {filtersOpen ? (
           <div
-            className="flex flex-wrap justify-center gap-2"
+            className="mt-3 space-y-2"
             role="group"
             aria-label="Sort and filter photographers"
           >
-            {SORT_OPTIONS.map((opt) => {
-              const active = sort === opt.id;
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setSort(opt.id)}
-                  className={[
-                    'cursor-pointer rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors',
-                    active
-                      ? 'bg-zinc-900 text-white'
-                      : 'bg-white text-zinc-600 ring-1 ring-zinc-200 hover:bg-zinc-50 hover:text-zinc-900',
-                  ].join(' ')}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
-            <label
-              className={[
-                'relative inline-flex cursor-pointer items-center rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors',
-                specialty
-                  ? 'bg-zinc-900 text-white'
-                  : 'bg-white text-zinc-600 ring-1 ring-zinc-200 hover:bg-zinc-50 hover:text-zinc-900',
-              ].join(' ')}
-            >
-              <span className="sr-only">Filter by specialty</span>
-              <select
-                value={specialty}
-                onChange={(e) => setSpecialty(e.target.value)}
+            <div className="flex flex-nowrap items-center justify-center gap-1.5 overflow-x-auto sm:gap-2">
+              {(
+                [
+                  { id: 'featured' as const, label: 'Featured' },
+                  { id: 'rating' as const, label: 'Top rated' },
+                ] as const
+              ).map((opt) => {
+                const active = sort === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setSort(opt.id)}
+                    className={[
+                      'shrink-0 cursor-pointer whitespace-nowrap rounded-full px-2.5 py-1.5 text-xs font-semibold transition-colors sm:px-3.5',
+                      active
+                        ? 'bg-zinc-900 text-white'
+                        : 'bg-white text-zinc-600 ring-1 ring-zinc-200 hover:bg-zinc-50 hover:text-zinc-900',
+                    ].join(' ')}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() =>
+                  setSort(sort === 'name-asc' ? 'name-desc' : 'name-asc')
+                }
+                aria-label={
+                  nameSortDesc
+                    ? 'Sort Z to A (click to reverse)'
+                    : 'Sort A to Z (click to reverse)'
+                }
+                title={nameSortDesc ? 'Z–A' : 'A–Z'}
                 className={[
-                  'cursor-pointer appearance-none bg-transparent py-0 pr-4 outline-none',
-                  specialty ? 'text-white' : 'text-inherit',
+                  'inline-flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1.5 text-xs font-semibold transition-colors sm:px-3.5',
+                  nameSortActive
+                    ? 'bg-zinc-900 text-white'
+                    : 'bg-white text-zinc-600 ring-1 ring-zinc-200 hover:bg-zinc-50 hover:text-zinc-900',
                 ].join(' ')}
               >
-                <option value="">All specialties</option>
-                {PHOTOGRAPHY_FOCUS_OPTIONS.filter((o) => o !== 'Other').map(
-                  (opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ),
+                A–Z
+                {nameSortDesc ? (
+                  <ArrowUp className="h-3 w-3" strokeWidth={2.25} />
+                ) : (
+                  <ArrowDown className="h-3 w-3" strokeWidth={2.25} />
                 )}
-              </select>
-              <ChevronDown
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setSort(sort === 'price-asc' ? 'price-desc' : 'price-asc')
+                }
+                aria-label={
+                  priceSortDesc
+                    ? 'Sort price high to low (click to reverse)'
+                    : 'Sort price low to high (click to reverse)'
+                }
+                title={
+                  priceSortDesc ? 'Price high to low' : 'Price low to high'
+                }
                 className={[
-                  'pointer-events-none absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2',
-                  specialty ? 'text-white/80' : 'text-zinc-500',
+                  'inline-flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1.5 text-xs font-semibold transition-colors sm:px-3.5',
+                  priceSortActive
+                    ? 'bg-zinc-900 text-white'
+                    : 'bg-white text-zinc-600 ring-1 ring-zinc-200 hover:bg-zinc-50 hover:text-zinc-900',
                 ].join(' ')}
-                strokeWidth={2}
-              />
-            </label>
+              >
+                Price
+                {priceSortDesc ? (
+                  <ArrowUp className="h-3 w-3" strokeWidth={2.25} />
+                ) : (
+                  <ArrowDown className="h-3 w-3" strokeWidth={2.25} />
+                )}
+              </button>
+            </div>
+            <div className="flex justify-center">
+              <label
+                className={[
+                  'relative inline-flex cursor-pointer items-center rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors',
+                  specialty
+                    ? 'bg-zinc-900 text-white'
+                    : 'bg-white text-zinc-600 ring-1 ring-zinc-200 hover:bg-zinc-50 hover:text-zinc-900',
+                ].join(' ')}
+              >
+                <span className="sr-only">Filter by specialty</span>
+                <select
+                  value={specialty}
+                  onChange={(e) => setSpecialty(e.target.value)}
+                  className={[
+                    'cursor-pointer appearance-none bg-transparent py-0 pr-4 outline-none',
+                    specialty ? 'text-white' : 'text-inherit',
+                  ].join(' ')}
+                >
+                  <option value="">All specialties</option>
+                  {PHOTOGRAPHY_FOCUS_OPTIONS.filter((o) => o !== 'Other').map(
+                    (opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ),
+                  )}
+                </select>
+                <ChevronDown
+                  className={[
+                    'pointer-events-none absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2',
+                    specialty ? 'text-white/80' : 'text-zinc-500',
+                  ].join(' ')}
+                  strokeWidth={2}
+                />
+              </label>
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
 
-      <div className={embedded ? 'mt-5' : 'mt-8'}>
+      <div className={embedded ? 'mt-4' : 'mt-5'}>
       {filtered.length === 0 ? (
         <p className="text-center text-sm text-zinc-500">
           No photographers found.
