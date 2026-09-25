@@ -77,6 +77,22 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  /**
+   * Proxy Firebase Auth handler so Google “Continue to …” shows fotomatic.app
+   * instead of fotomatic-40799.firebaseapp.com. Requires:
+   * - NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=www.fotomatic.app (or fotomatic.app)
+   * - Authorized domain in Firebase Auth console
+   * - OAuth redirect URI https://www.fotomatic.app/__/auth/handler in Google Cloud
+   */
+  async rewrites() {
+    return [
+      {
+        source: "/__/auth/:path*",
+        destination:
+          "https://fotomatic-40799.firebaseapp.com/__/auth/:path*",
+      },
+    ];
+  },
 };
 
 export default nextConfig;
