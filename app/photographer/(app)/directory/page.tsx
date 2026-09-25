@@ -1,16 +1,6 @@
-import { Suspense } from 'react';
-import { PhotographersGridClient } from '@/components/photographers-page-client';
+import { redirect } from 'next/navigation';
 
-export default function PhotographerDirectoryPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="px-4 py-12 text-center text-sm text-zinc-500 lg:px-10">
-          Loading directory…
-        </div>
-      }
-    >
-      <PhotographersGridClient variant="embedded" />
-    </Suspense>
-  );
+/** Legacy path — directory is now photographer home at `/photographer`. */
+export default function PhotographerDirectoryRedirect() {
+  redirect('/photographer');
 }

@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
-import { CalendarPlus, Eye, Heart } from 'lucide-react';
+import { CalendarPlus, Eye, Bookmark } from 'lucide-react';
 import {
   directoryPhotographerHeroImageUrl,
   type DirectoryPhotographer,
@@ -134,11 +134,11 @@ export function DashboardPhotographerCard({
             }
             onToggleSave();
           }}
-          className="absolute right-2 top-2 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white/95 text-zinc-700 shadow-md ring-1 ring-zinc-900/10 transition-colors hover:bg-white hover:text-red-600"
+          className="absolute right-2 top-2 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white/95 text-zinc-700 shadow-md ring-1 ring-zinc-900/10 transition-colors hover:bg-white hover:text-zinc-950"
           aria-label={saved ? 'Remove from favorites' : 'Add to favorites'}
         >
-          <Heart
-            className={`h-4 w-4 transition-colors ${saved ? 'fill-red-500 text-red-500' : ''}`}
+          <Bookmark
+            className={`h-4 w-4 transition-colors ${saved ? 'fill-zinc-900 text-zinc-900' : ''}`}
             strokeWidth={1.75}
           />
         </button>

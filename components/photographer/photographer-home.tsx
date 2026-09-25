@@ -35,9 +35,6 @@ import { PhotographerBookingRow } from '@/components/photographer/photographer-b
 import { PhotographerActivityFeed } from '@/components/photographer/photographer-activity-feed';
 import { PhotographerEarningsChart } from '@/components/photographer/photographer-earnings-chart';
 import { PhotographerReviewsPanel } from '@/components/photographer-reviews-panel';
-import { PhotographerQuickActionGrid } from '@/components/photographer/photographer-quick-actions';
-import { publicPhotographerProfilePath } from '@/lib/public-profile-url';
-import { isValidPublicProfileSlug } from '@/lib/public-profile-slug';
 
 type HomeTab =
   | 'overview'
@@ -48,9 +45,9 @@ type HomeTab =
 
 const TABS: ReadonlyArray<{ id: HomeTab; label: string }> = [
   { id: 'overview', label: 'Overview' },
-  { id: 'bookings', label: 'Upcoming bookings' },
-  { id: 'activity', label: 'Recent activity' },
-  { id: 'earnings', label: 'Earnings overview' },
+  { id: 'bookings', label: 'Bookings' },
+  { id: 'activity', label: 'Activity' },
+  { id: 'earnings', label: 'Earnings' },
   { id: 'reviews', label: 'Reviews' },
 ];
 
@@ -122,12 +119,6 @@ export function PhotographerHome() {
     return directory.filter((p) => p.id !== selfId).slice(0, 8);
   }, [directory, user]);
 
-  const myPublicProfileHref = useMemo(() => {
-    const raw = userData?.username?.trim();
-    if (!raw || !isValidPublicProfileSlug(raw)) return '/photographer/profile';
-    return publicPhotographerProfilePath(raw.toLowerCase());
-  }, [userData?.username]);
-
   const myListingId = useMemo(
     () =>
       user
@@ -141,17 +132,8 @@ export function PhotographerHome() {
   const myReviewAgg = myListingId ? reviewStats.get(myListingId) : undefined;
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="flex flex-wrap items-center justify-end gap-3">
-        <Link
-          href={myPublicProfileHref}
-          className="text-sm font-medium text-amber-900 underline-offset-4 hover:underline"
-        >
-          View my profile
-        </Link>
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-center justify-center gap-1 border-b border-zinc-200/90">
+    <div className="mx-auto w-full px-4 py-8 sm:px-6 lg:px-8">
+      <div className="flex flex-nowrap items-center justify-center gap-0.5 overflow-x-auto border-b border-zinc-200/90 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-1">
         {TABS.map((tab) => {
           const active = homeTab === tab.id;
           return (
@@ -159,7 +141,7 @@ export function PhotographerHome() {
               key={tab.id}
               type="button"
               onClick={() => setHomeTab(tab.id)}
-              className={`relative -mb-px cursor-pointer px-2.5 py-2.5 text-sm transition-colors sm:px-3.5 ${
+              className={`relative -mb-px shrink-0 cursor-pointer px-2 py-2.5 text-xs transition-colors sm:px-3.5 sm:text-sm ${
                 active
                   ? 'font-medium text-zinc-900'
                   : 'text-zinc-500 hover:text-zinc-800'
@@ -167,7 +149,7 @@ export function PhotographerHome() {
             >
               {tab.label}
               {active ? (
-                <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-zinc-900" />
+                <span className="absolute inset-x-1.5 bottom-0 h-0.5 rounded-full bg-zinc-900 sm:inset-x-2" />
               ) : null}
             </button>
           );
@@ -419,22 +401,13 @@ export function PhotographerHome() {
         ) : null}
       </div>
 
-      <section className="mt-12">
-        <h2 className="font-serif text-xl font-medium text-zinc-900">
-          Quick actions
-        </h2>
-        <div className="mt-3">
-          <PhotographerQuickActionGrid />
-        </div>
-      </section>
-
       <section className="mt-10">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <h2 className="font-serif text-xl font-medium text-zinc-900">
             Find a photographer
           </h2>
           <Link
-            href="/photographer/directory"
+            href="/photographer"
             className="text-sm font-semibold text-amber-900 hover:underline"
           >
             Browse all photographers →
@@ -450,7 +423,7 @@ export function PhotographerHome() {
               <div className="min-w-0 flex-1 rounded-2xl border border-dashed border-zinc-300 bg-white/60 px-6 py-10 text-center text-sm text-zinc-600">
                 No other photographers are listed yet.{' '}
                 <Link
-                  href="/photographer/directory"
+                  href="/photographer"
                   className="font-semibold text-amber-900 underline"
                 >
                   Open the directory

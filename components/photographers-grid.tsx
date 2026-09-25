@@ -12,7 +12,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
 import {
   MapPin,
-  Heart,
   Search,
   Eye,
   CalendarPlus,
@@ -20,6 +19,7 @@ import {
   ArrowDown,
   ArrowUp,
   SlidersHorizontal,
+  Bookmark,
 } from 'lucide-react';
 import { PhotographerSocialIconButtons } from '@/components/photographer-social-icon-buttons';
 import { PhotographerPublicDetailModal } from '@/components/photographer-public-detail-modal';
@@ -230,7 +230,7 @@ export function PhotographersGrid({
   return (
     <div
       className={[
-        'mx-auto max-w-6xl',
+        'mx-auto w-full',
         embedded ? 'px-4 pb-6 sm:px-6 lg:px-8' : 'px-4 py-14 sm:px-6 lg:px-8',
       ].join(' ')}
     >
@@ -411,7 +411,7 @@ export function PhotographersGrid({
           No photographers found.
         </p>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {filtered.map((p) => {
             const photo = directoryPhotographerHeroImageUrl(p);
             const canBook = !isOwnDirectoryPhotographerListing(p, viewerForSelf);
@@ -452,10 +452,10 @@ export function PhotographersGrid({
                       e.stopPropagation();
                       tryToggleFavorite(p);
                     }}
-                    className="absolute right-3 top-3 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white/95 text-zinc-900 ring-1 ring-zinc-900/10 transition-colors hover:bg-white hover:text-red-600"
+                    className="absolute right-3 top-3 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white/95 text-zinc-900 ring-1 ring-zinc-900/10 transition-colors hover:bg-white hover:text-zinc-950"
                   >
-                    <Heart
-                      className={`h-4 w-4 transition-colors ${isSaved(p.id) ? 'fill-red-500 text-red-500' : 'text-zinc-700'}`}
+                    <Bookmark
+                      className={`h-4 w-4 transition-colors ${isSaved(p.id) ? 'fill-zinc-900 text-zinc-900' : 'text-zinc-700'}`}
                       strokeWidth={1.75}
                     />
                   </button>

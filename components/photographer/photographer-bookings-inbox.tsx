@@ -67,7 +67,7 @@ function BookingAvatar({
 function photographerStatusBadge(status: BookingThread['status']) {
   const base = bookingStatusBadge(status);
   if (status === 'accepted_pending_payment') {
-    return { ...base, label: 'Accepted · Pending payment' };
+    return { ...base, label: 'Awaiting payment' };
   }
   if (status === 'pending_client_response') {
     return { ...base, label: 'Awaiting client' };
@@ -223,8 +223,8 @@ export function PhotographerBookingsInbox() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-      <div>
+    <div className="mx-auto w-full max-w-full overflow-x-hidden px-4 py-8 sm:px-6 lg:px-8">
+      <div className="min-w-0">
         <h1 className="font-serif text-2xl font-medium text-zinc-900">
           Bookings
         </h1>
@@ -237,7 +237,7 @@ export function PhotographerBookingsInbox() {
       {banner ? (
         <div
           className={[
-            'mt-6 rounded-xl px-4 py-3 text-sm',
+            'mt-6 break-words rounded-xl px-4 py-3 text-sm',
             banner.kind === 'ok'
               ? 'border border-emerald-200 bg-emerald-50 text-emerald-950'
               : 'border border-red-200 bg-red-50 text-red-950',
@@ -247,7 +247,7 @@ export function PhotographerBookingsInbox() {
         </div>
       ) : null}
 
-      <div className="mt-8 space-y-3">
+      <div className="mt-8 min-w-0 space-y-3">
         {threadsLoading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-zinc-300" />
@@ -269,12 +269,12 @@ export function PhotographerBookingsInbox() {
             return (
               <div
                 key={t.id}
-                className="overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-sm"
+                className="min-w-0 overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-sm"
               >
                 <button
                   type="button"
                   onClick={() => setExpanded(open ? null : t.id ?? null)}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-zinc-50"
+                  className="flex w-full min-w-0 items-center gap-2 px-3 py-3 text-left transition-colors hover:bg-zinc-50 sm:gap-3 sm:px-4"
                 >
                   {open ? (
                     <ChevronDown className="h-5 w-5 shrink-0 text-zinc-500" />
@@ -294,87 +294,102 @@ export function PhotographerBookingsInbox() {
                     </p>
                   </div>
                   <span
-                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${badge.className}`}
+                    className={`max-w-[38%] shrink-0 truncate rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 sm:max-w-none sm:px-2.5 sm:text-[11px] ${badge.className}`}
                   >
                     {badge.label}
                   </span>
                 </button>
 
                 {open && t.id ? (
-                  <div className="space-y-5 border-t border-zinc-100 px-4 pb-6 pt-4">
+                  <div className="min-w-0 space-y-4 overflow-hidden border-t border-zinc-100 px-3 pb-5 pt-4 sm:space-y-5 sm:px-4 sm:pb-6">
                     {actionsLocked ? (
-                      <p className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-700">
+                      <p className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs leading-relaxed text-zinc-700">
                         Accept / decline / suggest are only available while this
                         booking is <strong>Requested</strong>.
                       </p>
                     ) : null}
 
-                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
-                      <div className="min-w-0 shrink-0 xl:max-w-[220px]">
-                        <p className="text-sm font-semibold text-zinc-900">
+                    <div className="flex min-w-0 flex-col gap-4 xl:flex-row xl:items-start">
+                      <div className="min-w-0 xl:max-w-[220px] xl:shrink-0">
+                        <p className="break-words text-sm font-semibold text-zinc-900">
                           {t.clientName}
                         </p>
-                        <p className="mt-1 text-sm text-zinc-600">
+                        <p className="mt-1 break-words text-sm text-zinc-600">
                           {t.eventType} · {t.eventDate}
                           {t.eventTimeframe ? ` · ${t.eventTimeframe}` : ''}
                         </p>
-                        <p className="mt-1 text-sm text-zinc-600">
+                        <p className="mt-1 break-words text-sm text-zinc-600">
                           {t.duration} · {t.eventLocation}
                         </p>
-                        <p className="mt-2 text-xs text-zinc-500">
+                        <p className="mt-2 break-words text-xs text-zinc-500">
                           Shown to client: From $
                           {t.photographerStartingHourlyRate}
                         </p>
                         <Link
                           href={`/photographer/messages?thread=${encodeURIComponent(t.id)}`}
-                          className="mt-4 inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+                          className="mt-4 inline-flex max-w-full items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
                         >
-                          <MessageCircle className="h-4 w-4" strokeWidth={1.75} />
-                          Message client
+                          <MessageCircle
+                            className="h-4 w-4 shrink-0"
+                            strokeWidth={1.75}
+                          />
+                          <span className="truncate">Message client</span>
                         </Link>
                       </div>
 
-                      <div className="grid min-w-0 flex-1 gap-3 lg:grid-cols-3">
-                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                      <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                        <div className="min-w-0 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm sm:col-span-2 sm:p-4 xl:col-span-1">
                           <p className="text-sm font-semibold text-zinc-900">
                             Accept
                           </p>
-                          <div className="mt-2 flex gap-2">
-                            <div className="relative min-w-0 flex-1">
-                              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-zinc-500">
-                                $
-                              </span>
-                              <input
-                                inputMode="decimal"
-                                className={`${FIELD} pl-7`}
+                          <label className="mt-3 block min-w-0 space-y-1.5">
+                            <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                              Your rate
+                            </span>
+                            <div className="flex min-w-0 flex-col gap-2">
+                              <div className="flex min-w-0 overflow-hidden rounded-xl border border-zinc-200 bg-white focus-within:ring-2 focus-within:ring-amber-900/20">
+                                <span className="flex shrink-0 items-center border-r border-zinc-200 bg-zinc-50 px-3 text-sm font-medium text-zinc-500">
+                                  $
+                                </span>
+                                <input
+                                  inputMode="decimal"
+                                  aria-label="Accept rate amount"
+                                  placeholder="0"
+                                  disabled={actionsLocked}
+                                  className="min-w-0 flex-1 border-0 bg-transparent px-3 py-2.5 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 disabled:opacity-60"
+                                  value={acceptPrice}
+                                  onChange={(e) => {
+                                    const v = e.target.value.trim();
+                                    if (!v) setAcceptPrice('');
+                                    else setAcceptPrice(Number(v));
+                                  }}
+                                />
+                              </div>
+                              <select
+                                aria-label="Rate unit"
                                 disabled={actionsLocked}
-                                value={acceptPrice}
-                                onChange={(e) => {
-                                  const v = e.target.value.trim();
-                                  if (!v) setAcceptPrice('');
-                                  else setAcceptPrice(Number(v));
-                                }}
-                              />
+                                className="w-full min-w-0 cursor-pointer rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm font-medium text-zinc-800 outline-none focus:ring-2 focus:ring-amber-900/20 disabled:opacity-60"
+                                value={acceptUnit}
+                                onChange={(e) =>
+                                  setAcceptUnit(e.target.value as PriceUnit)
+                                }
+                              >
+                                <option value="hour">Per hour</option>
+                                <option value="day">Per day</option>
+                                <option value="event">Per event</option>
+                              </select>
                             </div>
-                            <select
-                              className={`${FIELD} w-[7.5rem] shrink-0`}
-                              disabled={actionsLocked}
-                              value={acceptUnit}
-                              onChange={(e) =>
-                                setAcceptUnit(e.target.value as PriceUnit)
-                              }
-                            >
-                              <option value="hour">/ hour</option>
-                              <option value="day">/ day</option>
-                              <option value="event">/ event</option>
-                            </select>
-                          </div>
+                          </label>
                           {quotePreview != null ? (
-                            <p className="mt-2 text-[11px] text-zinc-500">
+                            <p className="mt-2 break-words text-[11px] leading-relaxed text-zinc-500">
                               Client pays ${quotePreview.toFixed(2)} for this
                               booking ({t.duration})
                             </p>
-                          ) : null}
+                          ) : (
+                            <p className="mt-2 text-[11px] text-zinc-500">
+                              Enter a rate to see the client total.
+                            </p>
+                          )}
                           <button
                             type="button"
                             disabled={
@@ -384,7 +399,7 @@ export function PhotographerBookingsInbox() {
                               acceptPrice <= 0 ||
                               actionsLocked
                             }
-                            className="mt-2 w-full rounded-xl bg-zinc-900 px-3 py-2 text-xs font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
+                            className="mt-3 w-full rounded-xl bg-zinc-900 px-3 py-2.5 text-xs font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
                             onClick={async () => {
                               if (
                                 !t.id ||
@@ -435,16 +450,16 @@ export function PhotographerBookingsInbox() {
                           </button>
                         </div>
 
-                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                        <div className="min-w-0 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm sm:p-4">
                           <p className="text-sm font-semibold text-zinc-900">
                             Decline
                           </p>
-                          <label className="mt-2 block space-y-1">
+                          <label className="mt-2 block min-w-0 space-y-1">
                             <span className="text-[11px] font-medium text-zinc-600">
                               Reason (optional)
                             </span>
                             <input
-                              className={FIELD}
+                              className={`${FIELD} min-w-0`}
                               disabled={actionsLocked}
                               value={declineReason}
                               onChange={(e) =>
@@ -481,18 +496,18 @@ export function PhotographerBookingsInbox() {
                           </button>
                         </div>
 
-                        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                        <div className="min-w-0 rounded-xl border border-zinc-200 bg-white p-3 shadow-sm sm:col-span-2 sm:p-4 xl:col-span-1">
                           <p className="text-sm font-semibold text-zinc-900">
                             Suggest alternative
                           </p>
-                          <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                            <label className="block space-y-1">
+                          <div className="mt-2 grid min-w-0 gap-2 sm:grid-cols-2">
+                            <label className="block min-w-0 space-y-1">
                               <span className="text-[11px] font-medium text-zinc-600">
                                 Date
                               </span>
                               <input
                                 type="date"
-                                className={FIELD}
+                                className={`${FIELD} min-w-0`}
                                 disabled={actionsLocked}
                                 value={suggestDate}
                                 onChange={(e) =>
@@ -500,12 +515,12 @@ export function PhotographerBookingsInbox() {
                                 }
                               />
                             </label>
-                            <label className="block space-y-1">
+                            <label className="block min-w-0 space-y-1">
                               <span className="text-[11px] font-medium text-zinc-600">
                                 Time
                               </span>
                               <input
-                                className={FIELD}
+                                className={`${FIELD} min-w-0`}
                                 disabled={actionsLocked}
                                 value={suggestTimeframe}
                                 onChange={(e) =>
@@ -515,12 +530,12 @@ export function PhotographerBookingsInbox() {
                               />
                             </label>
                           </div>
-                          <label className="mt-2 block space-y-1">
+                          <label className="mt-2 block min-w-0 space-y-1">
                             <span className="text-[11px] font-medium text-zinc-600">
                               Note
                             </span>
                             <input
-                              className={FIELD}
+                              className={`${FIELD} min-w-0`}
                               disabled={actionsLocked}
                               value={suggestMessage}
                               onChange={(e) =>
@@ -554,7 +569,7 @@ export function PhotographerBookingsInbox() {
                               else
                                 setBanner({
                                   kind: 'ok',
-                                  text: 'Suggestion sent to the client.',
+                                  text: 'Alternative sent. Waiting on the client.',
                                 });
                             }}
                           >

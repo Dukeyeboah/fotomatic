@@ -16,6 +16,7 @@ import {
   CalendarPlus,
   ExternalLink,
   Globe2,
+  Bookmark,
   Heart,
   Mail,
   MapPin,
@@ -237,7 +238,7 @@ export function PhotographerPublicDetailModal({
             </button>
             <button
               type="button"
-              className="absolute left-1.5 top-1.5 z-30 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white/95 text-zinc-900 shadow-md ring-1 ring-zinc-900/10 transition-colors hover:bg-white hover:text-red-600 sm:left-2 sm:top-2"
+              className="absolute left-1.5 top-1.5 z-30 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-white/95 text-zinc-900 shadow-md ring-1 ring-zinc-900/10 transition-colors hover:bg-white hover:text-zinc-950 sm:left-2 sm:top-2"
               title={saved ? 'Remove from favorites' : 'Add to favorites'}
               onClick={() => {
                 if (!user) {
@@ -257,8 +258,8 @@ export function PhotographerPublicDetailModal({
                 onToggleSave();
               }}
             >
-              <Heart
-                className={`h-3.5 w-3.5 transition-colors ${saved ? 'fill-red-500 text-red-500' : 'text-zinc-700'}`}
+              <Bookmark
+                className={`h-3.5 w-3.5 transition-colors ${saved ? 'fill-zinc-900 text-zinc-900' : 'text-zinc-700'}`}
                 strokeWidth={1.75}
               />
             </button>

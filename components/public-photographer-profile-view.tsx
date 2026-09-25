@@ -146,7 +146,7 @@ export function PublicPhotographerProfileView({
 
   const bookHref = useMemo(() => {
     if (!user || !userData) return null;
-    if (userData.role === 'photographer') return '/photographer/directory';
+    if (userData.role === 'photographer') return '/photographer';
     return '/photographers';
   }, [user, userData]);
 
@@ -683,7 +683,7 @@ export function PublicPhotographerProfileView({
         photographer={p}
         browseHref={
           userData?.role === 'photographer'
-            ? '/photographer/directory'
+            ? '/photographer'
             : '/photographers'
         }
       />

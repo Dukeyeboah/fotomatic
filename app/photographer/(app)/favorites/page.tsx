@@ -5,7 +5,7 @@ import { FavoritesPhotographersView } from '@/components/favorites-photographers
 export default function PhotographerFavoritesPage() {
   return (
     <FavoritesPhotographersView
-      browseHref="/photographer/directory"
+      browseHref="/photographer"
       loginRedirectTo="/photographer/favorites"
     />
   );

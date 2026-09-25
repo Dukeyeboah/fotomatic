@@ -8,7 +8,7 @@ import {
   CalendarCheck,
   CircleUserRound,
   CreditCard,
-  Heart,
+  Bookmark,
   HelpCircle,
   Home,
   LogOut,
@@ -155,7 +155,7 @@ export function DashboardAccountMenu() {
           >
             My bookings
           </MenuRow>
-          <MenuRow href="/saved" icon={Heart} onNavigate={close}>
+          <MenuRow href="/saved" icon={Bookmark} onNavigate={close}>
             Favorites
           </MenuRow>
           <MenuRow

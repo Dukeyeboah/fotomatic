@@ -86,7 +86,7 @@ export default function PhotographerSettingsPage() {
     userData?.email?.trim() || user?.email?.trim() || '—';
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full px-4 py-10 sm:px-6 lg:px-8">
       <h1 className="font-serif text-2xl font-medium text-zinc-900">
         Account settings
       </h1>
@@ -101,7 +101,7 @@ export default function PhotographerSettingsPage() {
       ) : !user ? (
         <p className="mt-8 text-sm text-zinc-600">Log in to manage settings.</p>
       ) : (
-        <div className="mt-8 grid gap-4 lg:grid-cols-2 lg:items-start">
+        <div className="mt-8 mx-auto w-full max-w-2xl space-y-4">
           <CollapsibleSettingsCard title="Account summary" defaultOpen>
             <div className="grid gap-6 sm:grid-cols-2">
               <dl className="space-y-3">
@@ -150,32 +150,30 @@ export default function PhotographerSettingsPage() {
             </Link>
           </CollapsibleSettingsCard>
 
-          <div className="space-y-4">
-            <CollapsibleSettingsCard title="Payment & payouts" defaultOpen>
-              <Suspense
-                fallback={
-                  <p className="text-sm text-zinc-500">
-                    Loading payout settings…
-                  </p>
-                }
-              >
-                <PhotographerPayoutSettings />
-              </Suspense>
-            </CollapsibleSettingsCard>
+          <CollapsibleSettingsCard title="Payment & payouts" defaultOpen>
+            <Suspense
+              fallback={
+                <p className="text-sm text-zinc-500">
+                  Loading payout settings…
+                </p>
+              }
+            >
+              <PhotographerPayoutSettings />
+            </Suspense>
+          </CollapsibleSettingsCard>
 
-            <CollapsibleSettingsCard title="Help">
-              <p className="text-sm text-zinc-600">
-                Questions about bookings, payouts, or your public profile? Reach
-                the Fotomatic team from the help center.
-              </p>
-              <Link
-                href="/photographer/contact"
-                className="mt-3 inline-block text-sm font-semibold text-amber-900 hover:underline"
-              >
-                Open help center →
-              </Link>
-            </CollapsibleSettingsCard>
-          </div>
+          <CollapsibleSettingsCard title="Help">
+            <p className="text-sm text-zinc-600">
+              Questions about bookings, payouts, or your public profile? Reach
+              the Fotomatic team from the help center.
+            </p>
+            <Link
+              href="/photographer/contact"
+              className="mt-3 inline-block text-sm font-semibold text-amber-900 hover:underline"
+            >
+              Open help center →
+            </Link>
+          </CollapsibleSettingsCard>
         </div>
       )}
     </div>

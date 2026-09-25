@@ -9,6 +9,6 @@ export default async function LegacyPhotographersSlugRedirect({
 }) {
   const { slug } = await params;
   const s = typeof slug === 'string' ? slug.trim() : '';
-  if (!s) redirect('/photographer/directory');
+  if (!s) redirect('/photographer');
   redirect(publicPhotographerProfilePath(s));
 }

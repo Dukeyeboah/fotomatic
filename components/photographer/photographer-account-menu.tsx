@@ -13,11 +13,11 @@ import {
   CircleUserRound,
   HelpCircle,
   Home,
+  LayoutDashboard,
   LogOut,
   Bell,
-  Heart,
+  Bookmark,
   MessageCircle,
-  Search,
   Settings,
   Star,
   UserRound,
@@ -146,11 +146,25 @@ export function PhotographerAccountMenu() {
             Home
           </MenuRow>
           <MenuRow
-            href="/photographer/directory"
-            icon={Search}
+            href="/photographer/dashboard"
+            icon={LayoutDashboard}
             onNavigate={close}
           >
-            Photographers
+            Dashboard
+          </MenuRow>
+          <MenuRow
+            href="/photographer/bookings"
+            icon={CalendarCheck}
+            onNavigate={close}
+            suffix={
+              openRequests > 0 ? (
+                <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-amber-900 px-1.5 py-0.5 text-[11px] font-bold text-white">
+                  {openRequests > 99 ? '99+' : openRequests}
+                </span>
+              ) : null
+            }
+          >
+            Bookings
           </MenuRow>
           <MenuRow
             href="/photographer/messages"
@@ -168,24 +182,10 @@ export function PhotographerAccountMenu() {
           </MenuRow>
           <MenuRow
             href="/photographer/favorites"
-            icon={Heart}
+            icon={Bookmark}
             onNavigate={close}
           >
             Favorites
-          </MenuRow>
-          <MenuRow
-            href="/photographer/bookings"
-            icon={CalendarCheck}
-            onNavigate={close}
-            suffix={
-              openRequests > 0 ? (
-                <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-amber-900 px-1.5 py-0.5 text-[11px] font-bold text-white">
-                  {openRequests > 99 ? '99+' : openRequests}
-                </span>
-              ) : null
-            }
-          >
-            Bookings
           </MenuRow>
           <MenuRow
             href="/photographer/calendar"

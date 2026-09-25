@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Heart } from 'lucide-react';
+import { Bookmark } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLoginModal } from '@/contexts/LoginModalContext';
 import { BookingRequestModal } from '@/components/booking-request-modal';
@@ -60,17 +60,11 @@ export function FavoritesPhotographersView({
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full px-4 py-8 sm:px-6 lg:px-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-serif text-2xl font-medium text-zinc-900 sm:text-3xl">
-            Favorites
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-zinc-600">
-            Photographers you’ve hearted — ready when you want to book or
-            revisit their work.
-          </p>
-        </div>
+        <h1 className="font-serif text-2xl font-medium text-zinc-900 sm:text-3xl">
+          Favorites
+        </h1>
         <Link
           href={browseHref}
           className="text-sm font-semibold text-amber-900 underline-offset-2 hover:underline"
@@ -82,11 +76,11 @@ export function FavoritesPhotographersView({
       {favorites.length === 0 ? (
         <div className="mt-12 rounded-2xl border border-dashed border-zinc-300 bg-white/70 px-6 py-14 text-center">
           <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-500">
-            <Heart className="h-5 w-5" strokeWidth={1.75} />
+            <Bookmark className="h-5 w-5" strokeWidth={1.75} />
           </span>
           <p className="mt-4 text-sm text-zinc-600">
-            No favorites yet. Heart photographers you love from the directory or
-            their profile.
+            No favorites yet. Bookmark photographers you love from the directory
+            or their profile.
           </p>
           <Link
             href={browseHref}
@@ -96,7 +90,7 @@ export function FavoritesPhotographersView({
           </Link>
         </div>
       ) : (
-        <div className="mt-8 grid justify-items-center gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid justify-items-center gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {favorites.map((p) => (
             <DashboardPhotographerCard
               key={p.id}

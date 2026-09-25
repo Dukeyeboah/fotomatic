@@ -18,7 +18,7 @@ import {
   UserRound,
   CalendarCheck,
   CreditCard,
-  Heart,
+  Bookmark,
   Inbox,
   Search,
 } from 'lucide-react';
@@ -175,7 +175,7 @@ export function AccountMenuDropdown() {
               >
                 My bookings
               </Row>
-              <Row href="/saved" icon={Heart} onClick={close}>
+              <Row href="/saved" icon={Bookmark} onClick={close}>
                 Favorites
               </Row>
               <Row

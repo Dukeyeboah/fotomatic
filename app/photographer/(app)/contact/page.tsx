@@ -4,7 +4,7 @@ export default function PhotographerContactPage() {
   return (
     <ContactSupportContent
       loginRedirectTo="/photographer/contact"
-      photographersHref="/photographer/directory"
+      photographersHref="/photographer"
       dashboardHref="/photographer"
     />
   );

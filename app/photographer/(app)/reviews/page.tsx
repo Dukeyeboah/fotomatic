@@ -1,11 +1,10 @@
 'use client';
 
-import Link from 'next/link';
 import { Star } from 'lucide-react';
 
 export default function PhotographerReviewsPage() {
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full px-4 py-10 sm:px-6 lg:px-8">
       <h1 className="font-serif text-2xl font-medium text-zinc-900">
         Reviews
       </h1>
@@ -22,12 +21,6 @@ export default function PhotographerReviewsPage() {
           <p className="text-sm text-zinc-600">No reviews yet</p>
         </div>
       </div>
-      <Link
-        href="/photographer"
-        className="mt-8 inline-block text-sm font-semibold text-amber-900 hover:underline"
-      >
-        ← Dashboard
-      </Link>
     </div>
   );
 }

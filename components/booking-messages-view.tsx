@@ -15,7 +15,7 @@ import {
   type BookingThreadMessage,
 } from '@/lib/firebase/booking-threads';
 import { BookingPaymentModal } from '@/components/booking-payment-modal';
-import { Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 
 const PANE_HEIGHT =
   'h-[min(72vh,760px)] max-h-[min(72vh,760px)]';
@@ -45,6 +45,8 @@ export function BookingMessagesView({
     [threads, activeThreadId],
   );
 
+  const chatOpen = Boolean(activeThreadId);
+
   const selectThread = (id: string | null | undefined) => {
     if (!id) return;
     setActiveThreadId(id);
@@ -53,29 +55,19 @@ export function BookingMessagesView({
     });
   };
 
+  const backToThreads = () => {
+    setActiveThreadId(null);
+    router.push(pathname, { scroll: false });
+  };
+
   useEffect(() => {
     if (!user) return;
     return subscribeThreadsForClient(user.uid, setThreads);
   }, [user]);
 
   useEffect(() => {
-    if (threadFromUrl) {
-      setActiveThreadId(threadFromUrl);
-      return;
-    }
-    setActiveThreadId((cur) => {
-      if (cur) return cur;
-      return null;
-    });
+    setActiveThreadId(threadFromUrl);
   }, [threadFromUrl]);
-
-  useEffect(() => {
-    if (threadFromUrl) return;
-    setActiveThreadId((cur) => {
-      if (cur) return cur;
-      return threads[0]?.id ?? null;
-    });
-  }, [threads, threadFromUrl]);
 
   useEffect(() => {
     if (!activeThreadId) {
@@ -91,16 +83,11 @@ export function BookingMessagesView({
   }, [activeThreadId, user]);
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full px-4 py-8 sm:px-6 lg:px-8">
       <div className="flex items-end justify-between gap-4">
-        <div>
-          <h1 className="font-serif text-2xl font-medium text-zinc-900">
-            Messages
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm text-zinc-600">
-            Choose a conversation on the left to read and reply.
-          </p>
-        </div>
+        <h1 className="font-serif text-2xl font-medium text-zinc-900">
+          Messages
+        </h1>
         <Link
           href={ordersLinkHref}
           className="shrink-0 text-sm font-semibold text-amber-900 underline"
@@ -127,7 +114,11 @@ export function BookingMessagesView({
       ) : (
         <div className="mt-6 grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
           <aside
-            className={`flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm ${PANE_HEIGHT}`}
+            className={[
+              'flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm',
+              PANE_HEIGHT,
+              chatOpen ? 'hidden lg:flex' : 'flex',
+            ].join(' ')}
           >
             <p className="shrink-0 border-b border-zinc-100 bg-white px-4 pb-2.5 pt-4 text-xs font-semibold uppercase tracking-wide text-zinc-500">
               Conversations
@@ -193,16 +184,28 @@ export function BookingMessagesView({
           </aside>
 
           <section
-            className={`flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm ${PANE_HEIGHT}`}
+            className={[
+              'flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm',
+              PANE_HEIGHT,
+              chatOpen ? 'flex' : 'hidden lg:flex',
+            ].join(' ')}
           >
             {!activeThread ? (
-              <div className="p-6 text-sm text-zinc-600">
-                Select a thread to view messages.
+              <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-zinc-600">
+                Select a conversation to view messages.
               </div>
             ) : (
               <>
-                <div className="flex shrink-0 items-center justify-between gap-4 border-b border-zinc-200 px-4 py-3">
-                  <div className="min-w-0">
+                <div className="flex shrink-0 items-start gap-2 border-b border-zinc-200 px-3 py-3 sm:px-4">
+                  <button
+                    type="button"
+                    onClick={backToThreads}
+                    aria-label="Back to conversations"
+                    className="mt-0.5 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-zinc-700 transition-colors hover:bg-zinc-100 lg:hidden"
+                  >
+                    <ArrowLeft className="h-5 w-5" strokeWidth={1.75} />
+                  </button>
+                  <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-zinc-900">
                       {activeThread.photographerName}
                     </p>
@@ -213,7 +216,7 @@ export function BookingMessagesView({
                         : ''}
                     </p>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                     {activeThread.status === 'accepted_pending_payment' ? (
                       <button
                         type="button"
@@ -236,9 +239,9 @@ export function BookingMessagesView({
                   </div>
                 </div>
 
-                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
+                <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-4 sm:px-4">
                   {messages.length === 0 ? (
-                    <p className="py-6 text-sm text-zinc-600">
+                    <p className="py-6 text-center text-sm text-zinc-600">
                       No messages yet.
                     </p>
                   ) : (
@@ -246,11 +249,11 @@ export function BookingMessagesView({
                       <div
                         key={m.id ?? `${m.senderUserId}-${m.text}`}
                         className={[
-                          'max-w-[85%] rounded-2xl px-4 py-3 text-sm',
+                          'max-w-[80%] rounded-[1.15rem] px-3.5 py-2 text-sm leading-relaxed',
                           m.senderRole === 'client'
-                            ? 'ml-auto bg-zinc-900 text-white'
+                            ? 'ml-auto rounded-br-md bg-zinc-900 text-white'
                             : m.senderRole === 'photographer'
-                              ? 'bg-zinc-100 text-zinc-900'
+                              ? 'mr-auto rounded-bl-md bg-zinc-100 text-zinc-900'
                               : 'mx-auto bg-amber-50 text-amber-950',
                         ].join(' ')}
                       >
@@ -261,7 +264,7 @@ export function BookingMessagesView({
                 </div>
 
                 <form
-                  className="flex shrink-0 gap-3 border-t border-zinc-200 px-4 py-3"
+                  className="flex shrink-0 gap-2 border-t border-zinc-200 px-3 py-3 sm:gap-3 sm:px-4"
                   onSubmit={async (e) => {
                     e.preventDefault();
                     if (!activeThread.id || !user) return;
@@ -278,17 +281,17 @@ export function BookingMessagesView({
                   }}
                 >
                   <input
-                    className="flex-1 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-500 caret-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20"
-                    placeholder="Write a message…"
+                    className="flex-1 rounded-full border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-500 caret-zinc-900 outline-none focus:ring-2 focus:ring-amber-900/20"
+                    placeholder="Message…"
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                   />
                   <button
                     type="submit"
-                    disabled={sending}
-                    className="rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
+                    disabled={sending || !text.trim()}
+                    className="rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60"
                   >
-                    {sending ? 'Sending…' : 'Send'}
+                    {sending ? '…' : 'Send'}
                   </button>
                 </form>
               </>

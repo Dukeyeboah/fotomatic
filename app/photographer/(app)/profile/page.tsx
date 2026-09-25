@@ -10,7 +10,7 @@ import { defaultUserDataFromAuth } from '@/lib/firebase/user-profile';
 import { directoryPhotographerFromUserData } from '@/lib/photographers-directory';
 import { publicPhotographerProfilePath } from '@/lib/public-profile-url';
 import { isValidPublicProfileSlug } from '@/lib/public-profile-slug';
-import { Loader2 } from 'lucide-react';
+import { ExternalLink, Loader2, Pencil } from 'lucide-react';
 
 export default function PhotographerProfileEditorPage() {
   const { user, userData, loading, refreshUserData } = useAuth();
@@ -58,7 +58,7 @@ export default function PhotographerProfileEditorPage() {
 
   if (editing) {
     return (
-      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full px-4 py-8 sm:px-6 lg:px-8">
         <div>
           <h1 className="font-serif text-2xl font-medium text-zinc-900">
             Edit profile
@@ -93,6 +93,35 @@ export default function PhotographerProfileEditorPage() {
     );
   }
 
+  const bannerActions = (
+    <div className="flex flex-row items-center gap-1.5 sm:flex-col sm:items-end sm:gap-2">
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        aria-label="Edit profile"
+        title="Edit profile"
+        className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-white/40 bg-black/50 text-white shadow-lg backdrop-blur-md transition hover:bg-black/65 sm:h-10 sm:w-10"
+      >
+        <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={1.75} />
+      </button>
+      {publicHref ? (
+        <Link
+          href={publicHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="View public profile"
+          title="View public profile"
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-white/40 bg-black/50 text-white shadow-lg backdrop-blur-md transition hover:bg-black/65 sm:h-10 sm:w-10"
+        >
+          <ExternalLink
+            className="h-3.5 w-3.5 sm:h-4 sm:w-4"
+            strokeWidth={1.75}
+          />
+        </Link>
+      ) : null}
+    </div>
+  );
+
   return (
     <div>
       {preview ? (
@@ -102,25 +131,7 @@ export default function PhotographerProfileEditorPage() {
           hideBookingCta
           hideShare={!publicHref}
           compactChrome
-          toolbarLeft={
-            publicHref ? (
-              <Link
-                href={publicHref}
-                className="text-sm font-medium text-amber-900 underline-offset-2 hover:underline"
-              >
-                View public page
-              </Link>
-            ) : null
-          }
-          bannerOverlay={
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="rounded-full border border-white/40 bg-black/50 px-4 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur-md transition hover:bg-black/65"
-            >
-              Edit profile
-            </button>
-          }
+          bannerOverlay={bannerActions}
         />
       ) : null}
     </div>

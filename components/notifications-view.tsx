@@ -45,9 +45,6 @@ export function NotificationsView({
           <h1 className="font-serif text-2xl font-medium text-zinc-900">
             Notifications
           </h1>
-          <p className="mt-1 text-sm text-zinc-600">
-            Updates about your bookings and messages.
-          </p>
         </div>
         {!loading && user && unreadIds.length > 0 ? (
           <button

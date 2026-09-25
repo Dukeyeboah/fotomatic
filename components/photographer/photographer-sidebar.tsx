@@ -9,13 +9,13 @@ import {
   Calendar,
   CalendarCheck,
   CircleDollarSign,
-  Heart,
+  Bookmark,
   HelpCircle,
+  Home,
   Inbox,
   LayoutDashboard,
   PanelLeft,
   PanelLeftClose,
-  Search,
   Settings,
   Star,
   UserRound,
@@ -29,10 +29,10 @@ const nav: Array<{
   label: string;
   icon: typeof LayoutDashboard;
 }> = [
-  { href: '/photographer', label: 'Home', icon: LayoutDashboard },
-  { href: '/photographer/directory', label: 'Find photographers', icon: Search },
+  { href: '/photographer', label: 'Home', icon: Home },
+  { href: '/photographer/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/photographer/messages', label: 'Messages', icon: Inbox },
-  { href: '/photographer/favorites', label: 'Favorites', icon: Heart },
+  { href: '/photographer/favorites', label: 'Favorites', icon: Bookmark },
   { href: '/photographer/bookings', label: 'Bookings', icon: CalendarCheck },
   { href: '/photographer/calendar', label: 'Calendar', icon: Calendar },
   { href: '/photographer/notifications', label: 'Notifications', icon: Bell },
@@ -204,7 +204,7 @@ export function PhotographerSidebar({
         ) : (
           <div className="mx-auto mb-3">
             <Link
-              href="/photographer/directory"
+              href="/photographer"
               title="Find photographers"
               onClick={onNavigate}
               className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-900 text-white hover:bg-zinc-800"
