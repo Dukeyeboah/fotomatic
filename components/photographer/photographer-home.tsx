@@ -132,7 +132,7 @@ export function PhotographerHome() {
   const myReviewAgg = myListingId ? reviewStats.get(myListingId) : undefined;
 
   return (
-    <div className="mx-auto w-full px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full px-4 pb-8 pt-3 sm:px-6 sm:pt-4 lg:px-8">
       <div className="flex flex-nowrap items-center justify-center gap-0.5 overflow-x-auto border-b border-zinc-200/90 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-1">
         {TABS.map((tab) => {
           const active = homeTab === tab.id;

@@ -229,16 +229,16 @@ export function PhotographersGrid({
 
   return (
     <div
-      className={[
-        'mx-auto w-full',
-        embedded ? 'px-4 pb-6 sm:px-6 lg:px-8' : 'px-4 py-14 sm:px-6 lg:px-8',
-      ].join(' ')}
-    >
+        className={[
+          'mx-auto w-full',
+          embedded ? 'px-4 pb-6 sm:px-6 lg:px-8' : 'px-4 py-14 sm:px-6 lg:px-8',
+        ].join(' ')}
+      >
       <div
         className={[
-          'sticky z-20 border-b border-zinc-200/70 bg-[#f4f1ec]/95 backdrop-blur-md supports-[backdrop-filter]:bg-[#f4f1ec]/90',
+          'sticky z-20 border-b border-zinc-200/70 bg-[#f4f1ec] supports-[backdrop-filter]:bg-[#f4f1ec]/95 supports-[backdrop-filter]:backdrop-blur-md',
           embedded
-            ? 'top-14 -mx-4 px-4 pb-3 pt-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8'
+            ? 'top-14 -mx-4 px-4 pb-2 pt-1 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8'
             : 'top-0 -mx-4 px-4 pb-3 pt-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8',
         ].join(' ')}
       >

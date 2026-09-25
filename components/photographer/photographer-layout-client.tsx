@@ -86,7 +86,7 @@ export function PhotographerLayoutClient({
 
   return (
     <PhotographerBookingThreadsProvider>
-      <div className="flex min-h-[100dvh] flex-col overflow-x-hidden bg-[#f4f1ec]">
+      <div className="flex min-h-[100dvh] flex-col bg-[#f4f1ec]">
         <header className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/95 pt-[max(0px,env(safe-area-inset-top))] backdrop-blur">
           <div className="mx-auto flex h-14 w-full max-w-full items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
             <Link
@@ -116,7 +116,7 @@ export function PhotographerLayoutClient({
           </div>
         </header>
 
-        <main className="flex w-full min-w-0 flex-1 flex-col overflow-x-hidden pb-24">
+        <main className="flex w-full min-w-0 flex-1 flex-col pb-24">
           {children}
         </main>
 
