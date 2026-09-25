@@ -45,6 +45,7 @@ import { formatDirectoryStartingPrice } from '@/lib/photographer-pricing';
 import { isDirectoryListingFallbackUrl } from '@/lib/fotomatic-marketing-images';
 import { DirectoryListingPlaceholderImage } from '@/components/directory-listing-placeholder-image';
 import { parsePhotographyFocusesFromFirestore } from '@/lib/photography-focus';
+import { SimilarPhotographersSection } from '@/components/similar-photographers-section';
 
 function displayName(p: DirectoryPhotographer): string {
   if (p.lastName) return `${p.firstName} ${p.lastName}`.trim();
@@ -625,6 +626,15 @@ export function PublicPhotographerProfileView({
           </div>
         ) : null}
       </div>
+
+      <SimilarPhotographersSection
+        photographer={p}
+        browseHref={
+          userData?.role === 'photographer'
+            ? '/photographer/directory'
+            : '/photographers'
+        }
+      />
 
       {lightboxUrl ? (
         <div
